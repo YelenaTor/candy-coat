@@ -2,6 +2,14 @@
 
 All notable changes to the **Candy Coat** project will be documented in this file.
 
+## [0.2.0] - 2026-02-18
+### Added
+-   **Session Capture:**
+    -   New "Session Capture" tab in main UI.
+    -   **Pop-out Session Window** that isolates chat between staff and a specific patron.
+    -   **Context Menu Integration:** Right-click a player in chat -> "Start Candy Session".
+    -   `ChatTwo` IPC support for context menu items.
+
 ## [0.1.0] - 2026-02-18
 ### Added
 -   **Booking System:** Complete UI for adding and managing bookings.

@@ -29,6 +29,10 @@ public sealed class Plugin : IDalamudPlugin
     private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
 
+    public SamplePlugin.Services.SessionManager SessionManager { get; init; }
+    private SamplePlugin.Windows.SessionWindow SessionWindow { get; init; }
+    private SamplePlugin.IPC.ChatTwoIpc ChatTwoIpc { get; init; }
+
     public Plugin()
     {
         ECommonsMain.Init(PluginInterface, this);
@@ -38,11 +42,24 @@ public sealed class Plugin : IDalamudPlugin
         // You might normally want to embed resources and load them from the manifest stream
         var goatImagePath = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "goat.png");
 
+        // Initialize Services
+        SessionManager = new SamplePlugin.Services.SessionManager();
+
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(this, goatImagePath);
-
+        SessionWindow = new SamplePlugin.Windows.SessionWindow(SessionManager);
+        
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
+        WindowSystem.AddWindow(SessionWindow);
+
+        // Initialize IPC
+        ChatTwoIpc = new SamplePlugin.IPC.ChatTwoIpc((targetName) => 
+        {
+            SessionManager.StartCapture(targetName);
+            SessionWindow.IsOpen = true;
+        });
+        ChatTwoIpc.Enable();
 
         CommandManager.AddHandler(MainCommandName, new CommandInfo(OnMainCommand)
         {
@@ -76,8 +93,14 @@ public sealed class Plugin : IDalamudPlugin
         
         WindowSystem.RemoveAllWindows();
 
+        ChatTwoIpc?.Disable();
+        ChatTwoIpc?.Dispose();
+        
         ConfigWindow.Dispose();
         MainWindow.Dispose();
+        SessionWindow?.Dispose();
+        
+        SessionManager?.Dispose();
 
         CommandManager.RemoveHandler(MainCommandName);
     }
