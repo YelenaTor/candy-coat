@@ -8,6 +8,11 @@ public class Configuration : IPluginConfiguration
 {
     public int Version { get; set; } = 0;
 
+    public bool IsSetupComplete { get; set; } = false;
+    public string CharacterName { get; set; } = string.Empty;
+    public string HomeWorld { get; set; } = string.Empty;
+    public bool EnableGlamourer { get; set; } = true;
+    public bool EnableChatTwo { get; set; } = true;
     public bool IsConfigWindowMovable { get; set; } = true;
     public bool SomePropertyToBeSavedAndWithADefault { get; set; } = true;
 

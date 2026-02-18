@@ -13,11 +13,26 @@ public class GlamourerIpc : IDisposable
 
     private readonly ICallGateSubscriber<Dictionary<Guid, string>> _getDesignListSubscriber;
     private readonly ICallGateSubscriber<Guid, int, uint, uint, int> _applyDesignSubscriber;
+    private readonly ICallGateSubscriber<int> _apiVersionSubscriber;
 
     public GlamourerIpc()
     {
         _getDesignListSubscriber = Svc.PluginInterface.GetIpcSubscriber<Dictionary<Guid, string>>(LabelGetDesignList);
         _applyDesignSubscriber = Svc.PluginInterface.GetIpcSubscriber<Guid, int, uint, uint, int>(LabelApplyDesign);
+        _apiVersionSubscriber = Svc.PluginInterface.GetIpcSubscriber<int>("Glamourer.ApiVersion");
+    }
+
+    public bool IsAvailable()
+    {
+        try
+        {
+            _apiVersionSubscriber.InvokeFunc();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     public Dictionary<Guid, string> GetDesignList()

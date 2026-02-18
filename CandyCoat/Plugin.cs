@@ -31,6 +31,7 @@ public sealed class Plugin : IDalamudPlugin
 
     public SamplePlugin.Services.SessionManager SessionManager { get; init; }
     private SamplePlugin.Windows.SessionWindow SessionWindow { get; init; }
+    private SamplePlugin.Windows.SetupWindow SetupWindow { get; init; }
     private SamplePlugin.IPC.ChatTwoIpc ChatTwoIpc { get; init; }
 
     public Plugin()
@@ -60,6 +61,22 @@ public sealed class Plugin : IDalamudPlugin
             SessionWindow.IsOpen = true;
         });
         ChatTwoIpc.Enable();
+        
+        // Initialize Setup Window (needs IPCs)
+        SetupWindow = new SamplePlugin.Windows.SetupWindow(this, new SamplePlugin.IPC.GlamourerIpc(), ChatTwoIpc);
+        WindowSystem.AddWindow(SetupWindow);
+
+        // Startup Logic
+        if (!Configuration.IsSetupComplete)
+        {
+            SetupWindow.IsOpen = true;
+        }
+        else
+        {
+            // Normal startup
+            // MainWindow.IsOpen = true; // Or keep closed until command? 
+            // Usually we don't auto-open main window on load unless configured.
+        }
 
         CommandManager.AddHandler(MainCommandName, new CommandInfo(OnMainCommand)
         {
@@ -99,6 +116,7 @@ public sealed class Plugin : IDalamudPlugin
         ConfigWindow.Dispose();
         MainWindow.Dispose();
         SessionWindow?.Dispose();
+        SetupWindow?.Dispose();
         
         SessionManager?.Dispose();
 
@@ -107,10 +125,21 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnMainCommand(string command, string args)
     {
+        if (!Configuration.IsSetupComplete)
+        {
+            SetupWindow.IsOpen = true;
+            return;
+        }
+        
         // In response to the slash command, toggle the display status of our main ui
         MainWindow.Toggle();
     }
     
+    public void OnSetupComplete()
+    {
+        MainWindow.IsOpen = true;
+    }
+
     public void ToggleConfigUi() => ConfigWindow.Toggle();
     public void ToggleMainUi() => MainWindow.Toggle();
 }

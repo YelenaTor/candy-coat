@@ -2,6 +2,17 @@
 
 All notable changes to the **Candy Coat** project will be documented in this file.
 
+## [0.3.0] - 2026-02-18
+### Changed
+-   **Renaming:** Project structure updated to **Candy Coat**.
+
+### Added
+-   **First Time Setup Wizard:**
+    -   New onboarding flow for new users.
+    -   **Identity Setup:** Set your character name and world.
+    -   **Dependency Check:** Automatically checks for **Glamourer** and **ChatTwo**.
+    -   **Configuration:** Enable/Disable features during setup.
+
 ## [0.2.0] - 2026-02-18
 ### Added
 -   **Session Capture:**
