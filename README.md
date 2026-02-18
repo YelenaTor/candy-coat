@@ -1,33 +1,37 @@
-# Candy Coat 🍬
+.:*~*:._.:*~*: Candy Coat :*~*:. _.:*~*:.
 
-**Candy Coat** is a specialized venue assistant plugin for **Sugar Venue**, designed to streamline booking management, patron tracking, and immersion through automation.
+*~* a cute venue assistant for sugar venue *~*
+designed to streamlnie booking management, patron tracking, and immersion <3
 
-## Features
+[ .:: Features ::. ]
 
-### 📅 Booking Management
--   **Quick Entry:** Easily add new bookings with Client Name, Service, Room, and Gil amount.
--   **Live Tracking:** View all active bookings in a sortable table.
--   **Status Updates:** Mark bookings as Active, Completed (Paid/Unpaid), or Inactive via right-click context menu.
+~*~ Booking Management ~*~
++ Quick Entry :: easily add new bookings with client name, service, room, & gil <3
++ Live Tracking :: view all active bookings in a cute sortable table
++ Status Updates :: mark bookings as active, completed, or inactive via right-click
 
-### 📍 Client & Patron Locator
--   **Patron Tracking:** "Favorite" specific clients to track their presence.
--   **Proximity Scanner:** Automatically detects if a favorite client is in the venue and displays their distance.
--   **Profiles:** Click on any client to view their detailed profile.
+~*~ Client & Patron Locator ~*~
++ Patron Tracking :: "favorite" specific clients to track their presence ^__^
++ Proximity Scanner :: automatically detects if a favorite client is near & shows distance
++ Profiles :: click on any client to view their detailed profile
 
-### 👗 Glamourer Integration
--   **Quick Swaps:** Link your saved Glamourer designs to specific Client Profiles.
--   **One-Click Transform:** Instantly apply a specific outfit/appearance when starting a session with a client directly from their profile.
+~*~ Glamourer Integration ~*~
++ Quick Swaps :: link your saved glamourer designs to client profiles
++ One-Click Transform :: instantly apply a specific outfit w/ just one click!
 
-## Requirements
--   **Dalamud:** This plugin runs within the Dalamud framework for FFXIV.
--   **Glamourer:** Required for Quick Swap functionality.
--   **OtterGui:** (Bundled/Dependency) Used for the user interface.
+[ .:: Requirements ::. ]
 
-## Installation
-1.  Install via the Sugar Venue custom repository (or load `SamplePlugin.dll` via DevPlugins if testing).
-2.  Open the interface with `/candy`.
+* Dalamud :: runs within the dalamud framework
+* Glamourer :: required for quick swap functionality
+* OtterGui :: (bundled) used for the user interface
 
-## Usage
-1.  **Staff Login:** Use your staff key on the Overview tab (WIP).
-2.  **Bookings:** Navigate to the "Bookings" tab to manage your active sessions.
-3.  **Client Profiles:** Click any name in the Booking or Locator list to open the expanded profile view. Here you can edit **Notes**, **RP Hooks**, and manage **Glamour Links**.
+[ .:: Installation ::. ]
+
+1. install via the sugar venue custom repo (or load CandyCoat.dll for testing)
+2. open the interface with /candy
+
+[ .:: Usage ::. ]
+
+1. Staff Login :: use your staff key on the overview tab (wip)
+2. Bookings :: navigate to the "bookings" tab to manage active sessions
+3. Client Profiles :: click any name to open the profile view. edit notes, rp hooks, & manage glam links <3

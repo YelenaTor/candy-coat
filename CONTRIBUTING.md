@@ -1,8 +1,10 @@
-# Contributing to Candy Coat
+x_X Contributing to Candy Coat X_x
 
-Thank you for your interest in **Candy Coat**.
+thank you for your interest in candy coat <3
 
-At this time, this project is **closed to external contributions**. Development is strictly managed internally by the **Sugar Venue** technical team to ensure security and consistency with our venue's specific needs.
+at this time, this project is *closed to external contributions*.
+development is strictly managed internally by the sugar venue technical team to ensure security & consistency w/ our needs.
 
-## Reporting Issues
-If you encounter a bug or have a feature request specific to your work at Sugar, please contact the development lead directly via the venue Discord.
+[ .:: Reporting Issues ::. ]
+if you encounter a bug or have a feature request specific to your work at sugar...
+plz contact the development lead directly via the venue discord (^_^)/"

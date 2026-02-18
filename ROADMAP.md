@@ -1,21 +1,21 @@
-# Roadmap 🗺️
+.*~ Roadmap ~*.
 
-Future plans for **Candy Coat** development.
+future plans for candy coat development <3
 
-## Upcoming Features
+[ .:: Upcoming Features ::. ]
 
-- [ ] **Chat2 Integration**
-    - [ ] Add "Add to Bookings" to the Chat Context Menu (Right-click name in chat).
-    - [ ] Add "Open Profile" to Chat Context Menu.
+[ ] Chat2 Integration
+    * add "add to bookings" to the chat context menu
+    * add "open profile" to chat context menu
 
-- [ ] **Booking Analytics**
-    - [ ] View history of completed bookings.
-    - [ ] Calculate total Gil earned per session/week.
+[ ] Booking Analytics
+    * view history of completed bookings
+    * calculate total gil earned per session/week
 
-- [ ] **Staff Sync**
-    - [ ] Sync active bookings with a central web server (Staff Login implementation).
-    - [ ] See which other staff members are currently free/busy.
+[ ] Staff Sync
+    * sync active bookings with a central web server
+    * see which other staff members are currently free/busy
 
-- [ ] **Immersion Features**
-    - [ ] "On Duty" mode (Auto-reply integration?).
-    - [ ] Custom UI Themes matching Sugar Venue aesthetics.
+[ ] Immersion Features
+    * "on duty" mode (auto-reply integration?)
+    * custom ui themes matching sugar venue aesthetics

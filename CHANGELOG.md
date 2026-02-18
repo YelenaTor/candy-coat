@@ -1,39 +1,39 @@
-# Changelog
+~*~ Changelog ~*~
 
-All notable changes to the **Candy Coat** project will be documented in this file.
+all notable changes to the candy coat project will be documented here <3
 
-## [0.3.0] - 2026-02-18
-### Changed
--   **Renaming:** Project structure updated to **Candy Coat**.
+.: 0.3.0 :. - 2026-02-18
+[ Changed ]
+* Renaming :: project structure updated to candy coat
 
-### Added
--   **First Time Setup Wizard:**
-    -   New onboarding flow for new users.
-    -   **Identity Setup:** Set your character name and world.
-    -   **Dependency Check:** Automatically checks for **Glamourer** and **ChatTwo**.
-    -   **Configuration:** Enable/Disable features during setup.
+[ Added ]
+* First Time Setup Wizard ::
+  + new onboarding flow for new users ^__^
+  + Identity Setup :: set your character name and world
+  + Dependency Check :: automatically checks for Glamourer and ChatTwo
+  + Configuration :: enable/disable features during setup
 
-## [0.2.0] - 2026-02-18
-### Added
--   **Session Capture:**
-    -   New "Session Capture" tab in main UI.
-    -   **Pop-out Session Window** that isolates chat between staff and a specific patron.
-    -   **Context Menu Integration:** Right-click a player in chat -> "Start Candy Session".
-    -   `ChatTwo` IPC support for context menu items.
+.: 0.2.0 :. - 2026-02-18
+[ Added ]
+* Session Capture ::
+  + new "session capture" tab in main ui
+  + Pop-out Session Window :: isolates chat between staff and a specific patron
+  + Context Menu Integration :: right-click a player in chat -> "start candy session"
+  + ChatTwo IPC support for context menu items
 
-## [0.1.0] - 2026-02-18
-### Added
--   **Booking System:** Complete UI for adding and managing bookings.
--   **Patron Locator:** Functionality to track and detect favorite patrons in the venue.
--   **Client Profiles:** Detailed view for patrons including persistent "Notes" and "RP Hooks".
--   **Glamourer Integration:**
-    -   IPC Wrapper for `Glamourer`.
-    -   Ability to link Glamourer Designs to Client Profiles.
-    -   "Quick Swap" buttons to apply designs instantly.
--   **UI Refactor:** Converted entire UI to use `OtterGui` for a premium feel.
+.: 0.1.0 :. - 2026-02-18
+[ Added ]
+* Booking System :: complete ui for adding and managing bookings
+* Patron Locator :: functionality to track and detect favorite patrons
+* Client Profiles :: detailed view for patrons including persistent notes
+* Glamourer Integration ::
+  + ipc wrapper for glamourer
+  + ability to link designs to profiles
+  + "quick swap" buttons to apply designs instantly
+* UI Refactor :: converted entire ui to use OtterGui for a premium feel
 
-### Removed
--   Legacy sample commands (`/cset`, `/cbook`).
+[ Removed ]
+* Legacy sample commands (/cset, /cbook)
 
-## [0.0.1] - Initial Start
--   Project scaffolding based on Dalamud Sample Plugin.
+.: 0.0.1 :. - Initial Start
+* project scaffolding based on dalamud sample plugin
