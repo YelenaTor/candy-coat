@@ -6,6 +6,10 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using SamplePlugin.Windows;
 
+using ECommons;
+using ECommons.Constants;
+using ECommons.DalamudServices;
+
 namespace SamplePlugin;
 
 public sealed class Plugin : IDalamudPlugin
@@ -17,7 +21,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
 
-    private const string CommandName = "/pmycommand";
+    private const string MainCommandName = "/candy";
 
     public Configuration Configuration { get; init; }
 
@@ -27,6 +31,8 @@ public sealed class Plugin : IDalamudPlugin
 
     public Plugin()
     {
+        ECommonsMain.Init(PluginInterface, this);
+        
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
         // You might normally want to embed resources and load them from the manifest stream
@@ -38,9 +44,9 @@ public sealed class Plugin : IDalamudPlugin
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
 
-        CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
+        CommandManager.AddHandler(MainCommandName, new CommandInfo(OnMainCommand)
         {
-            HelpMessage = "A useful message to display in /xlhelp"
+            HelpMessage = "Open Candy Coat's main interface."
         });
 
         // Tell the UI system that we want our windows to be drawn throught he window system
@@ -61,6 +67,8 @@ public sealed class Plugin : IDalamudPlugin
 
     public void Dispose()
     {
+        ECommonsMain.Dispose();
+        
         // Unregister all actions to not leak anythign during disposal of plugin
         PluginInterface.UiBuilder.Draw -= WindowSystem.Draw;
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUi;
@@ -71,10 +79,10 @@ public sealed class Plugin : IDalamudPlugin
         ConfigWindow.Dispose();
         MainWindow.Dispose();
 
-        CommandManager.RemoveHandler(CommandName);
+        CommandManager.RemoveHandler(MainCommandName);
     }
 
-    private void OnCommand(string command, string args)
+    private void OnMainCommand(string command, string args)
     {
         // In response to the slash command, toggle the display status of our main ui
         MainWindow.Toggle();

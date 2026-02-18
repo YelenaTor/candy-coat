@@ -1,12 +1,13 @@
 {
-  "Author": "your name here",
-  "Name": "Sample Plugin",
-  "Punchline": "A short one-liner that shows up in /xlplugins.",
-  "Description": "A description that shows up in /xlplugins. List any major slash-command(s).",
+  "Author": "Yoru Shokohime",
+  "Name": "Candy Coat",
+  "Punchline": "Private venue assistant for Sweethearts and Candy Hearts.",
+  "Description": "Private plugin for the Candy Coat venue. Provides tools for Sweethearts and Candy Hearts to check bookings and clients. Main commands: /candy (main UI), /cset (settings), /cbook (bookings).",
   "ApplicableVersion": "any",
   "Tags": [
-    "sample",
-    "plugin",
-    "goats"
+    "candy",
+    "venue",
+    "bookings",
+    "private"
   ]
 }

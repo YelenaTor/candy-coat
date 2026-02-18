@@ -8,10 +8,11 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
+  </PropertyGroup>
+
   <ItemGroup>
-    <Content Include="..\Data\goat.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Visible>false</Visible>
-    </Content>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="ECommons" Version="11.0.3" />
+    <PackageReference Include="OtterGui" Version="8.2.3" />
   </ItemGroup>
 </Project>
