@@ -6,7 +6,7 @@ using Dalamud.Plugin.Ipc;
 using ImGuiNET;
 using ECommons.DalamudServices;
 
-namespace SamplePlugin.IPC;
+namespace CandyCoat.IPC;
 
 public class ChatTwoIpc : IDisposable
 {

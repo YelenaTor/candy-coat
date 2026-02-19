@@ -4,7 +4,7 @@ using Dalamud.Plugin;
 using Dalamud.Plugin.Ipc;
 using ECommons.DalamudServices;
 
-namespace SamplePlugin.IPC;
+namespace CandyCoat.IPC;
 
 public class GlamourerIpc : IDisposable
 {

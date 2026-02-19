@@ -2,7 +2,16 @@
 
 all notable changes to the candy coat project will be documented here <3
 
-.: 0.3.0 :. - 2026-02-18
+.: 0.3.1 :. - 2026-02-19
+[ Changed ]
+* Refactoring ::
+  + Renamed namespace to `CandyCoat`
+  + Optimized `MainWindow` checks
+  + Added `World` to Patron data
+  + Filtered chat capture to relevant types
+  + Removed legacy staff key features
+
+.: 0.3.0 :. - 2026-02-188
 [ Changed ]
 * Renaming :: project structure updated to candy coat
 

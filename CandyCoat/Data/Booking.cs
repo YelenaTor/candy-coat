@@ -1,6 +1,6 @@
 using System;
 
-namespace SamplePlugin.Data;
+namespace CandyCoat.Data;
 
 public enum BookingState
 {

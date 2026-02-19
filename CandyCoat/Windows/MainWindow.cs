@@ -7,15 +7,15 @@ using ImGuiNET;
 using OtterGui.Widgets;
 using ECommons.DalamudServices;
 
-namespace SamplePlugin.Windows;
+namespace CandyCoat.Windows;
 
 public class MainWindow : Window, IDisposable
 {
     private readonly string goatImagePath;
     private readonly Plugin plugin;
 
-    private readonly SamplePlugin.IPC.GlamourerIpc glamourer;
-    private SamplePlugin.Data.Patron? selectedPatron = null;
+    private readonly CandyCoat.IPC.GlamourerIpc glamourer;
+    private CandyCoat.Data.Patron? selectedPatron = null;
 
     public MainWindow(Plugin plugin, string goatImagePath)
         : base("Candy Coat - Sugar##CandyCoatMain", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
@@ -28,7 +28,7 @@ public class MainWindow : Window, IDisposable
 
         this.goatImagePath = goatImagePath;
         this.plugin = plugin;
-        this.glamourer = new SamplePlugin.IPC.GlamourerIpc();
+        this.glamourer = new CandyCoat.IPC.GlamourerIpc();
     }
 
     public void Dispose()
@@ -53,13 +53,68 @@ public class MainWindow : Window, IDisposable
     }
 
     // ... (Existing DrawOverviewTab code) ...
-
     private void DrawBookingsTab()
     {
         using var tab = ImRaii.TabItem("Bookings");
         if (!tab) return;
 
-        // ... (Existing Booking Inputs code) ...
+        ImGui.TextUnformatted("New Booking");
+        ImGui.Separator();
+
+        // Input Form
+        var inputWidth = 200f;
+        
+        ImGui.AlignTextToFramePadding();
+        ImGui.Text("Patron:");
+        ImGui.SameLine(80);
+        ImGui.SetNextItemWidth(inputWidth);
+        ImGui.InputText("##NewBookingName", ref newBookingName, 100);
+        
+        ImGui.SameLine();
+        ImGui.Text("Service:");
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(inputWidth);
+        ImGui.InputText("##NewBookingService", ref newBookingService, 100);
+
+        ImGui.AlignTextToFramePadding();
+        ImGui.Text("Room:");
+        ImGui.SameLine(80);
+        ImGui.SetNextItemWidth(inputWidth);
+        ImGui.InputText("##NewBookingRoom", ref newBookingRoom, 50);
+
+        ImGui.SameLine();
+        ImGui.Text("Gil:");
+        ImGui.SameLine(368); // Align with Service input
+        ImGui.SetNextItemWidth(inputWidth);
+        ImGui.InputInt("##NewBookingGil", ref newBookingGil, 0);
+
+        if (ImGui.Button("Add Booking"))
+        {
+            if (!string.IsNullOrWhiteSpace(newBookingName))
+            {
+                var newBooking = new SamplePlugin.Data.Booking
+                {
+                    PatronName = newBookingName,
+                    Service = newBookingService,
+                    Room = newBookingRoom,
+                    Gil = newBookingGil,
+                    Timestamp = DateTime.Now,
+                    State = SamplePlugin.Data.BookingState.Active
+                };
+                plugin.Configuration.Bookings.Add(newBooking);
+                plugin.Configuration.Save();
+                
+                // Reset inputs
+                newBookingName = string.Empty;
+                newBookingService = string.Empty;
+                newBookingRoom = string.Empty;
+                newBookingGil = 0;
+            }
+        }
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
 
         // Booking List
         using var table = ImRaii.Table("BookingsTable", 5, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable | ImGuiTableFlags.Sortable);
@@ -83,7 +138,11 @@ public class MainWindow : Window, IDisposable
                 var patron = plugin.Configuration.Patrons.Find(p => p.Name == booking.PatronName);
                 if (patron == null)
                 {
-                    patron = new SamplePlugin.Data.Patron { Name = booking.PatronName };
+                    // Assuming 'PatronName' might be 'Name' or 'Name @World' in future?
+                    // For now, initializing World as empty or separate input would be better.
+                    // But to keep it simple and compile, we just set a default.
+                    // TODO: Parse World from input or ask user.
+                    patron = new CandyCoat.Data.Patron { Name = booking.PatronName, World = "Unknown" };
                     plugin.Configuration.Patrons.Add(patron);
                     plugin.Configuration.Save();
                 }
@@ -93,7 +152,40 @@ public class MainWindow : Window, IDisposable
             ImGui.TableNextColumn();
             ImGui.TextUnformatted(booking.Service);
             
-            // ... (Rest of table columns) ...
+            ImGui.TableNextColumn();
+            ImGui.TextUnformatted(booking.Room);
+            
+            ImGui.TableNextColumn();
+            ImGui.TextUnformatted($"{booking.Gil:N0}");
+            
+            ImGui.TableNextColumn();
+            var stateColor = booking.State switch
+            {
+                CandyCoat.Data.BookingState.Active => new Vector4(0.0f, 1.0f, 0.0f, 1.0f),
+                CandyCoat.Data.BookingState.Inactive => new Vector4(0.5f, 0.5f, 0.5f, 1.0f),
+                CandyCoat.Data.BookingState.CompletedPaid => new Vector4(0.0f, 0.8f, 1.0f, 1.0f),
+                CandyCoat.Data.BookingState.CompletedUnpaid => new Vector4(1.0f, 0.0f, 0.0f, 1.0f),
+                _ => Vector4.One
+            };
+            ImGui.TextColored(stateColor, booking.State.ToString());
+
+            // Context Menu to change state or delete
+            if (ImGui.BeginPopupContextItem($"BookingContext{booking.Id}"))
+            {
+                if (ImGui.Selectable("Mark Active")) { booking.State = CandyCoat.Data.BookingState.Active; plugin.Configuration.Save(); }
+                if (ImGui.Selectable("Mark Completed (Paid)")) { booking.State = CandyCoat.Data.BookingState.CompletedPaid; plugin.Configuration.Save(); }
+                if (ImGui.Selectable("Mark Completed (Unpaid)")) { booking.State = CandyCoat.Data.BookingState.CompletedUnpaid; plugin.Configuration.Save(); }
+                if (ImGui.Selectable("Mark Inactive")) { booking.State = CandyCoat.Data.BookingState.Inactive; plugin.Configuration.Save(); }
+                ImGui.Separator();
+                if (ImGui.Selectable("Delete Booking")) 
+                { 
+                    plugin.Configuration.Bookings.Remove(booking); 
+                    plugin.Configuration.Save();
+                    ImGui.EndPopup(); 
+                    break; // Break to avoid collection modification exception
+                }
+                ImGui.EndPopup();
+            }
         }
     }
 
@@ -112,7 +204,7 @@ public class MainWindow : Window, IDisposable
         {
             if (!string.IsNullOrWhiteSpace(newPatronName) && !plugin.Configuration.Patrons.Exists(p => p.Name == newPatronName))
             {
-                plugin.Configuration.Patrons.Add(new SamplePlugin.Data.Patron { Name = newPatronName, IsFavorite = true });
+                plugin.Configuration.Patrons.Add(new CandyCoat.Data.Patron { Name = newPatronName, World = "Unknown", IsFavorite = true });
                 plugin.Configuration.Save();
                 newPatronName = string.Empty;
             }
@@ -208,13 +300,13 @@ public class MainWindow : Window, IDisposable
                 {
                     if (glamTab)
                     {
+                        // Optimization: Cache design list once for this frame/tab draw
+                        var allDesigns = glamourer.GetDesignList();
+
                         ImGui.Text("Assigned Outfits (Quick Swap)");
                         foreach (var designId in selectedPatron.QuickSwitchDesignIds.ToArray())
                         {
-                             // We need to look up the name, but our IPC gets the whole list.
-                             // Optimization: Cache design list.
-                             var designs = glamourer.GetDesignList();
-                             var name = designs.ContainsKey(designId) ? designs[designId] : designId.ToString();
+                             var name = allDesigns.TryGetValue(designId, out var designName) ? designName : designId.ToString();
                              
                              if (ImGui.Button($"Apply: {name}"))
                              {
@@ -231,7 +323,7 @@ public class MainWindow : Window, IDisposable
                         ImGui.Separator();
                         ImGui.Text("All Designs");
                         
-                        var allDesigns = glamourer.GetDesignList();
+                        // Use the cached list here too
                         foreach (var kvp in allDesigns)
                         {
                             if (ImGui.Selectable(kvp.Value))
@@ -257,40 +349,19 @@ public class MainWindow : Window, IDisposable
         IsOpen = true;
         // Switch tab logic
     }
-}
-
-    private string staffKey = string.Empty;
-    private string staffSecret = string.Empty;
 
     private void DrawOverviewTab()
     {
         using var tab = ImRaii.TabItem("Overview");
         if (!tab) return;
 
-        ImGui.TextUnformatted("Welcome to Candy Coat (OtterGui Edition)!");
+        ImGui.TextUnformatted("Welcome to Candy Coat!");
         ImGui.Spacing();
-
-        ImGui.TextUnformatted("Staff Login");
-        ImGui.Separator();
         
-        ImGui.AlignTextToFramePadding();
-        ImGui.Text("Staff Key:");
-        ImGui.SameLine();
-        ImGui.InputText("##CandyCoatStaffKey", ref staffKey, 128);
-
-        ImGui.AlignTextToFramePadding();
-        ImGui.Text("Secret:    ");
-        ImGui.SameLine();
-        ImGui.InputText("##CandyCoatStaffSecret", ref staffSecret, 128, ImGuiInputTextFlags.Password);
-
+        ImGui.TextWrapped("Your venue assistant is ready.");
         ImGui.Spacing();
-        if (ImGui.Button("Login"))
-        {
-            // Login logic here
-        }
         
-        ImGui.SameLine();
-        if (ImGui.Button("Settings"))
+        if (ImGui.Button("Open Settings"))
         {
             plugin.ToggleConfigUi();
         }
@@ -302,130 +373,7 @@ public class MainWindow : Window, IDisposable
     private string newBookingRoom = string.Empty;
     private int newBookingGil = 0;
 
-    private void DrawBookingsTab()
-    {
-        using var tab = ImRaii.TabItem("Bookings");
-        if (!tab) return;
-
-        ImGui.TextUnformatted("New Booking");
-        ImGui.Separator();
-
-        // Input Form
-        var inputWidth = 200f;
-        
-        ImGui.AlignTextToFramePadding();
-        ImGui.Text("Patron:");
-        ImGui.SameLine(80);
-        ImGui.SetNextItemWidth(inputWidth);
-        ImGui.InputText("##NewBookingName", ref newBookingName, 100);
-        
-        ImGui.SameLine();
-        ImGui.Text("Service:");
-        ImGui.SameLine();
-        ImGui.SetNextItemWidth(inputWidth);
-        ImGui.InputText("##NewBookingService", ref newBookingService, 100);
-
-        ImGui.AlignTextToFramePadding();
-        ImGui.Text("Room:");
-        ImGui.SameLine(80);
-        ImGui.SetNextItemWidth(inputWidth);
-        ImGui.InputText("##NewBookingRoom", ref newBookingRoom, 50);
-
-        ImGui.SameLine();
-        ImGui.Text("Gil:");
-        ImGui.SameLine(368); // Align with Service input
-        ImGui.SetNextItemWidth(inputWidth);
-        ImGui.InputInt("##NewBookingGil", ref newBookingGil, 0);
-
-        if (ImGui.Button("Add Booking"))
-        {
-            if (!string.IsNullOrWhiteSpace(newBookingName))
-            {
-                var newBooking = new SamplePlugin.Data.Booking
-                {
-                    PatronName = newBookingName,
-                    Service = newBookingService,
-                    Room = newBookingRoom,
-                    Gil = newBookingGil,
-                    Timestamp = DateTime.Now,
-                    State = SamplePlugin.Data.BookingState.Active
-                };
-                plugin.Configuration.Bookings.Add(newBooking);
-                plugin.Configuration.Save();
-                
-                // Reset inputs
-                newBookingName = string.Empty;
-                newBookingService = string.Empty;
-                newBookingRoom = string.Empty;
-                newBookingGil = 0;
-            }
-        }
-
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
-
-        // Booking List
-        using var table = ImRaii.Table("BookingsTable", 5, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable | ImGuiTableFlags.Sortable);
-        if (!table) return;
-
-        ImGui.TableSetupColumn("Patron", ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Service", ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Room", ImGuiTableColumnFlags.WidthFixed, 60f);
-        ImGui.TableSetupColumn("Gil", ImGuiTableColumnFlags.WidthFixed, 80f);
-        ImGui.TableSetupColumn("State", ImGuiTableColumnFlags.WidthFixed, 100f);
-        ImGui.TableHeadersRow();
-
-        foreach (var booking in plugin.Configuration.Bookings)
-        {
-            ImGui.TableNextRow();
-            
-            ImGui.TableNextColumn();
-            ImGui.TextUnformatted(booking.PatronName);
-            
-            ImGui.TableNextColumn();
-            ImGui.TextUnformatted(booking.Service);
-            
-            ImGui.TableNextColumn();
-            ImGui.TextUnformatted(booking.Room);
-            
-            ImGui.TableNextColumn();
-            ImGui.TextUnformatted($"{booking.Gil:N0}");
-            
-            ImGui.TableNextColumn();
-            var stateColor = booking.State switch
-            {
-                SamplePlugin.Data.BookingState.Active => new Vector4(0.0f, 1.0f, 0.0f, 1.0f),
-                SamplePlugin.Data.BookingState.Inactive => new Vector4(0.5f, 0.5f, 0.5f, 1.0f),
-                SamplePlugin.Data.BookingState.CompletedPaid => new Vector4(0.0f, 0.8f, 1.0f, 1.0f),
-                SamplePlugin.Data.BookingState.CompletedUnpaid => new Vector4(1.0f, 0.0f, 0.0f, 1.0f),
-                _ => Vector4.One
-            };
-            ImGui.TextColored(stateColor, booking.State.ToString());
-
-            // Context Menu to change state or delete
-            if (ImGui.BeginPopupContextItem($"BookingContext{booking.Id}"))
-            {
-                if (ImGui.Selectable("Mark Active")) { booking.State = SamplePlugin.Data.BookingState.Active; plugin.Configuration.Save(); }
-                if (ImGui.Selectable("Mark Completed (Paid)")) { booking.State = SamplePlugin.Data.BookingState.CompletedPaid; plugin.Configuration.Save(); }
-                if (ImGui.Selectable("Mark Completed (Unpaid)")) { booking.State = SamplePlugin.Data.BookingState.CompletedUnpaid; plugin.Configuration.Save(); }
-                if (ImGui.Selectable("Mark Inactive")) { booking.State = SamplePlugin.Data.BookingState.Inactive; plugin.Configuration.Save(); }
-                ImGui.Separator();
-                if (ImGui.Selectable("Delete Booking")) 
-                { 
-                    plugin.Configuration.Bookings.Remove(booking); 
-                    plugin.Configuration.Save();
-                    ImGui.EndPopup(); 
-                    break; // Break to avoid collection modification exception
-                }
-                ImGui.EndPopup();
-            }
-        }
-    }
-
     private string newPatronName = string.Empty;
-
-
     private string _manualTargetName = string.Empty;
 
     private void DrawSessionTab()
@@ -481,11 +429,5 @@ public class MainWindow : Window, IDisposable
         
         ImGui.Separator();
         ImGui.TextWrapped("Note: You can also right-click a player in Chat to start a session.");
-    }
-
-    public void OpenBookingsTab()
-    {
-        IsOpen = true;
-        // Logic to switch to booking tab can be implemented if using a stateful tab management
     }
 }

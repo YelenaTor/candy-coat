@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
-using SamplePlugin.Data;
+using CandyCoat.Data;
 
-namespace SamplePlugin;
+namespace CandyCoat;
 
 [Serializable]
 public class Configuration : IPluginConfiguration
@@ -9,6 +9,8 @@ public class Configuration : IPluginConfiguration
     public int Version { get; set; } = 0;
 
     public bool IsSetupComplete { get; set; } = false;
+    public List<CandyCoat.Data.Booking> Bookings { get; set; } = new();
+    public List<Patron> Patrons { get; set; } = new();
     public string CharacterName { get; set; } = string.Empty;
     public string HomeWorld { get; set; } = string.Empty;
     public bool EnableGlamourer { get; set; } = true;

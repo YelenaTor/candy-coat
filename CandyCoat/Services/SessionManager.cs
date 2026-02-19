@@ -4,7 +4,7 @@ using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using ECommons.DalamudServices;
 
-namespace SamplePlugin.Services;
+namespace CandyCoat.Services;
 
 public class SessionMessage
 {
@@ -55,6 +55,19 @@ public class SessionManager : IDisposable
     private void OnChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled)
     {
         if (!IsCapturing) return;
+
+        // Filter for allowed chat types
+        bool isAllowedType = type == XivChatType.TellIncoming ||
+                             type == XivChatType.TellOutgoing ||
+                             type == XivChatType.Say ||
+                             type == XivChatType.Party ||
+                             type == XivChatType.Alliance ||
+                             type == XivChatType.Yell ||
+                             type == XivChatType.Shout ||
+                             type == XivChatType.Emote ||
+                             type == XivChatType.CustomEmote;
+
+        if (!isAllowedType) return;
 
         var senderName = sender.TextValue;
         var localName = Svc.ClientState.LocalPlayer?.Name.ToString();

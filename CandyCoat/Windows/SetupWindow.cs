@@ -5,9 +5,9 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using ImGuiNET;
 using ECommons.DalamudServices;
-using SamplePlugin.IPC;
+using CandyCoat.IPC;
 
-namespace SamplePlugin.Windows;
+namespace CandyCoat.Windows;
 
 public class SetupWindow : Window, IDisposable
 {

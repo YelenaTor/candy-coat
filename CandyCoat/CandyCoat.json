@@ -3,6 +3,7 @@
   "Name": "Candy Coat",
   "Punchline": "Private venue assistant for Sweethearts and Candy Hearts.",
   "Description": "Private plugin for the Candy Coat venue. Provides tools for Sweethearts and Candy Hearts to check bookings and clients. Main commands: /candy (main UI), /cset (settings), /cbook (bookings).",
+  "AssemblyVersion": "0.3.1.0",
   "ApplicableVersion": "any",
   "Tags": [
     "candy",

@@ -10,7 +10,7 @@ using ECommons;
 using ECommons.Constants;
 using ECommons.DalamudServices;
 
-namespace SamplePlugin;
+namespace CandyCoat;
 
 public sealed class Plugin : IDalamudPlugin
 {
@@ -25,14 +25,14 @@ public sealed class Plugin : IDalamudPlugin
 
     public Configuration Configuration { get; init; }
 
-    public readonly WindowSystem WindowSystem = new("SamplePlugin");
+    public readonly WindowSystem WindowSystem = new("CandyCoat");
     private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
 
-    public SamplePlugin.Services.SessionManager SessionManager { get; init; }
-    private SamplePlugin.Windows.SessionWindow SessionWindow { get; init; }
-    private SamplePlugin.Windows.SetupWindow SetupWindow { get; init; }
-    private SamplePlugin.IPC.ChatTwoIpc ChatTwoIpc { get; init; }
+    public CandyCoat.Services.SessionManager SessionManager { get; init; }
+    private CandyCoat.Windows.SessionWindow SessionWindow { get; init; }
+    private CandyCoat.Windows.SetupWindow SetupWindow { get; init; }
+    private CandyCoat.IPC.ChatTwoIpc ChatTwoIpc { get; init; }
 
     public Plugin()
     {
@@ -44,18 +44,18 @@ public sealed class Plugin : IDalamudPlugin
         var goatImagePath = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "goat.png");
 
         // Initialize Services
-        SessionManager = new SamplePlugin.Services.SessionManager();
+        SessionManager = new CandyCoat.Services.SessionManager();
 
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(this, goatImagePath);
-        SessionWindow = new SamplePlugin.Windows.SessionWindow(SessionManager);
+        SessionWindow = new CandyCoat.Windows.SessionWindow(SessionManager);
         
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
         WindowSystem.AddWindow(SessionWindow);
 
         // Initialize IPC
-        ChatTwoIpc = new SamplePlugin.IPC.ChatTwoIpc((targetName) => 
+        ChatTwoIpc = new CandyCoat.IPC.ChatTwoIpc((targetName) => 
         {
             SessionManager.StartCapture(targetName);
             SessionWindow.IsOpen = true;
@@ -63,7 +63,7 @@ public sealed class Plugin : IDalamudPlugin
         ChatTwoIpc.Enable();
         
         // Initialize Setup Window (needs IPCs)
-        SetupWindow = new SamplePlugin.Windows.SetupWindow(this, new SamplePlugin.IPC.GlamourerIpc(), ChatTwoIpc);
+        SetupWindow = new CandyCoat.Windows.SetupWindow(this, new CandyCoat.IPC.GlamourerIpc(), ChatTwoIpc);
         WindowSystem.AddWindow(SetupWindow);
 
         // Startup Logic

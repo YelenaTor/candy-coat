@@ -5,7 +5,7 @@ using Dalamud.Interface.Utility;
 using ImGuiNET;
 using SamplePlugin.Services;
 
-namespace SamplePlugin.Windows;
+namespace CandyCoat.Windows;
 
 public class SessionWindow : Window, IDisposable
 {
