@@ -2,6 +2,13 @@
 
 all notable changes to the candy coat project will be documented here <3
 
+.: 0.4.1 :. - 2026-02-20
+[ Added ]
+* Management Access Control ::
+  + Gated sensitive features (Dashboard Analytics and full Blackbook assignment) behind a Management Mode passcode (`YXIII`).
+  + Regular staff can now only `Favorite` patrons, ensuring data security and preventing accidental/malicious blacklisting.
+  + Added an unlocking mechanism to the Settings tab that securely enables management mode.
+
 .: 0.4.0 :. - 2026-02-20
 [ Added ]
 * Venue Management Suite ::

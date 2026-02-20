@@ -29,37 +29,42 @@ public class OverviewTab : ITab
         ImGui.Spacing();
         ImGui.Separator();
         
-        ImGui.Text("Dashboard & Analytics");
-        ImGui.Spacing();
+        if (_plugin.Configuration.IsManagementModeEnabled)
+        {
+            ImGui.Text("Dashboard & Analytics");
+            ImGui.Spacing();
 
-        var today = DateTime.Now.ToString("yyyy-MM-dd");
-        var dailyEarnings = _plugin.Configuration.DailyEarnings.TryGetValue(today, out var val) ? val : 0;
-        
-        ImGui.Text($"Today's Earnings: {dailyEarnings:N0} Gil");
-        
-        var totalEarnings = _plugin.Configuration.DailyEarnings.Values.Sum();
-        ImGui.Text($"All-Time Earnings: {totalEarnings:N0} Gil");
-        
-        ImGui.Spacing();
-        ImGui.Text("Top 5 Spenders:");
-        
-        var topSpenders = _plugin.Configuration.Patrons
-            .Where(p => p.TotalGilSpent > 0)
-            .OrderByDescending(p => p.TotalGilSpent)
-            .Take(5);
+            var today = DateTime.Now.ToString("yyyy-MM-dd");
+            var dailyEarnings = _plugin.Configuration.DailyEarnings.TryGetValue(today, out var val) ? val : 0;
             
-        bool hasSpenders = false;
-        foreach (var p in topSpenders)
-        {
-            hasSpenders = true;
-            ImGui.Text($"- {p.Name}: {p.TotalGilSpent:N0} Gil");
+            ImGui.Text($"Today's Earnings: {dailyEarnings:N0} Gil");
+            
+            var totalEarnings = _plugin.Configuration.DailyEarnings.Values.Sum();
+            ImGui.Text($"All-Time Earnings: {totalEarnings:N0} Gil");
+            
+            ImGui.Spacing();
+            ImGui.Text("Top 5 Spenders:");
+            
+            var topSpenders = _plugin.Configuration.Patrons
+                .Where(p => p.TotalGilSpent > 0)
+                .OrderByDescending(p => p.TotalGilSpent)
+                .Take(5);
+                
+            bool hasSpenders = false;
+            foreach (var p in topSpenders)
+            {
+                hasSpenders = true;
+                ImGui.Text($"- {p.Name}: {p.TotalGilSpent:N0} Gil");
+            }
+            
+            if (!hasSpenders)
+            {
+                ImGui.TextDisabled("No spending data yet.");
+            }
         }
-        
-        if (!hasSpenders)
+        else
         {
-            ImGui.TextDisabled("No spending data yet.");
+            ImGui.TextDisabled("Welcome to your shift. Have a wonderful time!");
         }
-        
-
     }
 }

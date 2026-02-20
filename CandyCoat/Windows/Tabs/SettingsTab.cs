@@ -80,5 +80,30 @@ public class SettingsTab : ITab
             ImGui.Separator();
             ImGui.PopID();
         }
+        
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Text("Management Access");
+        ImGui.Spacing();
+        
+        if (_plugin.Configuration.IsManagementModeEnabled)
+        {
+            ImGui.TextColored(new Vector4(0f, 1f, 0f, 1f), "✔️ Management Mode Active");
+        }
+        else
+        {
+            var code = "";
+            ImGui.SetNextItemWidth(200);
+            if (ImGui.InputTextWithHint("##mgmtcode", "Enter Passcode", ref code, 20, ImGuiInputTextFlags.Password))
+            {
+                if (code == "YXIII")
+                {
+                    _plugin.Configuration.IsManagementModeEnabled = true;
+                    _plugin.Configuration.Save();
+                }
+            }
+            ImGui.SameLine();
+            ImGui.TextDisabled("(Locked)");
+        }
     }
 }

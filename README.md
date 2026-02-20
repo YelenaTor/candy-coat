@@ -25,6 +25,9 @@ A Plugin designed to streamline booking management, patron tracking, and immersi
 + Profile Scraper :: 1-click scrape native FFXIV "Search Info" to automatically fill Patron notes
 + Custom Macros :: create custom `{name}` template strings to instantly greet patrons in tells
 
+~*~ Security & Access Control ~*~
++ Management Mode :: sensitive analytics and blackbook tagging are securely locked behind a staff passcode.
+
 ~*~ Glamourer Integration ~*~
 + Quick Swaps :: link your saved glamourer designs to client profiles
 + One-Click Transform :: instantly apply a specific outfit w/ just one click!

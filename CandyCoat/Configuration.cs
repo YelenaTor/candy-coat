@@ -11,6 +11,7 @@ public class Configuration : IPluginConfiguration
     public int Version { get; set; } = 0;
 
     public bool IsSetupComplete { get; set; } = false;
+    public bool IsManagementModeEnabled { get; set; } = false;
     public List<CandyCoat.Data.Booking> Bookings { get; set; } = new();
     public List<Data.MacroTemplate> Macros { get; set; } = new();
     public List<Patron> Patrons { get; set; } = new();

@@ -57,12 +57,24 @@ public class PatronDetailsWindow : Window, IDisposable
         ImGui.Text($"Name: {patron.Name}");
         ImGui.Text($"Last Visit: {patron.LastVisitDate:d} at {patron.LastVisitDate:t}");
         
-        var statusStrs = Enum.GetNames<PatronStatus>();
-        int currentStatus = (int)patron.Status;
-        if (ImGui.Combo("Status", ref currentStatus, statusStrs, statusStrs.Length))
+        if (_plugin.Configuration.IsManagementModeEnabled)
         {
-            patron.Status = (PatronStatus)currentStatus;
-            _plugin.Configuration.Save();
+            var statusStrs = Enum.GetNames<PatronStatus>();
+            int currentStatus = (int)patron.Status;
+            if (ImGui.Combo("Status", ref currentStatus, statusStrs, statusStrs.Length))
+            {
+                patron.Status = (PatronStatus)currentStatus;
+                _plugin.Configuration.Save();
+            }
+        }
+        else
+        {
+            bool isFav = patron.Status == PatronStatus.Favorite;
+            if (ImGui.Checkbox("Is Favorite VIP", ref isFav))
+            {
+                patron.Status = isFav ? PatronStatus.Favorite : PatronStatus.Neutral;
+                _plugin.Configuration.Save();
+            }
         }
         ImGui.Separator();
 
