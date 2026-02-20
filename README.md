@@ -1,7 +1,7 @@
 .:*~*:._.:*~*: Candy Coat :*~*:. _.:*~*:.
 
 *~* a cute venue assistant for sugar venue *~*
-designed to streamlnie booking management, patron tracking, and immersion <3
+A Plugin designed to streamline booking management, patron tracking, and immersion <3
 
 [ .:: Features ::. ]
 

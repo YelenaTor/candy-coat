@@ -30,13 +30,15 @@ jobs:
         Expand-Archive -Force latest.zip "$env:AppData\XIVLauncher\addon\Hooks\dev"
 
     - name: Build with dotnet
-      run: dotnet build --configuration Release
+      run: |
+        dotnet restore
+        dotnet build --configuration Release
 
     - name: Store artifacts
       uses: actions/upload-artifact@v4
       with:
         name: CandyCoat
-        path: .\CandyCoat\bin\x64\Release\CandyCoat\*
+        path: .\CandyCoat\bin\x64\Release\*
         if-no-files-found: error
         retention-days: 1
 
