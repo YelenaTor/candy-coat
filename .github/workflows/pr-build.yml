@@ -1,6 +1,8 @@
 name: PR Builder for CandyCoat
 
 on:
+  push:
+    branches: [ master ]
   pull_request:
     branches: [ master ]
 
