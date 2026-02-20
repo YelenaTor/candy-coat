@@ -56,8 +56,8 @@ jobs:
         
         $manifest = Get-Content $manifestPath | ConvertFrom-Json
         $manifest.AssemblyVersion = $version
-        $manifest.DownloadLinkInstall = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
-        $manifest.DownloadLinkUpdate = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
+        $manifest | Add-Member -NotePropertyName "DownloadLinkInstall" -NotePropertyValue "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
+        $manifest | Add-Member -NotePropertyName "DownloadLinkUpdate" -NotePropertyValue "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
         
         # Save modifed manifest back into the output folder BEFORE zipping
         $manifest | ConvertTo-Json -Depth 10 | Set-Content $manifestPath
