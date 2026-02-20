@@ -52,7 +52,7 @@ public class SessionManager : IDisposable
         OnMessageAdded?.Invoke();
     }
 
-    private void OnChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled)
+    private void OnChatMessage(XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled)
     {
         if (!IsCapturing) return;
 
@@ -64,13 +64,13 @@ public class SessionManager : IDisposable
                              type == XivChatType.Alliance ||
                              type == XivChatType.Yell ||
                              type == XivChatType.Shout ||
-                             type == XivChatType.Emote ||
+                             type == XivChatType.StandardEmote ||
                              type == XivChatType.CustomEmote;
 
         if (!isAllowedType) return;
 
         var senderName = sender.TextValue;
-        var localName = Svc.ClientState.LocalPlayer?.Name.ToString();
+        var localName = Svc.Objects.LocalPlayer?.Name.ToString();
 
         // 1. Check if it's the target speaking
         // Note: senderName might contain cross-world markers, need robust check if strictly needed,

@@ -4,10 +4,9 @@ using Dalamud.Plugin;
 using System.IO;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
-using SamplePlugin.Windows;
+using CandyCoat.Windows;
 
 using ECommons;
-using ECommons.Constants;
 using ECommons.DalamudServices;
 
 namespace CandyCoat;
@@ -26,12 +25,18 @@ public sealed class Plugin : IDalamudPlugin
     public Configuration Configuration { get; init; }
 
     public readonly WindowSystem WindowSystem = new("CandyCoat");
-    private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
 
     public CandyCoat.Services.SessionManager SessionManager { get; init; }
+    public CandyCoat.Services.VenueService VenueService { get; init; }
+    public CandyCoat.Services.LocatorService LocatorService { get; init; }
+    public CandyCoat.Services.TradeMonitorService TradeMonitorService { get; init; }
+    public CandyCoat.Services.WaitlistManager WaitlistManager { get; init; }
+    public CandyCoat.Services.ShiftManager ShiftManager { get; init; }
+
     private CandyCoat.Windows.SessionWindow SessionWindow { get; init; }
     private CandyCoat.Windows.SetupWindow SetupWindow { get; init; }
+    private CandyCoat.Windows.PatronDetailsWindow PatronDetailsWindow { get; init; }
     private CandyCoat.IPC.ChatTwoIpc ChatTwoIpc { get; init; }
 
     public Plugin()
@@ -45,12 +50,18 @@ public sealed class Plugin : IDalamudPlugin
 
         // Initialize Services
         SessionManager = new CandyCoat.Services.SessionManager();
+        VenueService = new CandyCoat.Services.VenueService(this);
+        LocatorService = new CandyCoat.Services.LocatorService(this);
+        TradeMonitorService = new CandyCoat.Services.TradeMonitorService(this);
+        WaitlistManager = new CandyCoat.Services.WaitlistManager();
+        ShiftManager = new CandyCoat.Services.ShiftManager(this);
+        var glamourerIpc = new CandyCoat.IPC.GlamourerIpc();
 
-        ConfigWindow = new ConfigWindow(this);
-        MainWindow = new MainWindow(this, goatImagePath);
+        PatronDetailsWindow = new CandyCoat.Windows.PatronDetailsWindow(this, glamourerIpc);
+        MainWindow = new MainWindow(this, VenueService, WaitlistManager, ShiftManager, PatronDetailsWindow, goatImagePath);
         SessionWindow = new CandyCoat.Windows.SessionWindow(SessionManager);
         
-        WindowSystem.AddWindow(ConfigWindow);
+        WindowSystem.AddWindow(PatronDetailsWindow);
         WindowSystem.AddWindow(MainWindow);
         WindowSystem.AddWindow(SessionWindow);
 
@@ -63,7 +74,7 @@ public sealed class Plugin : IDalamudPlugin
         ChatTwoIpc.Enable();
         
         // Initialize Setup Window (needs IPCs)
-        SetupWindow = new CandyCoat.Windows.SetupWindow(this, new CandyCoat.IPC.GlamourerIpc(), ChatTwoIpc);
+        SetupWindow = new CandyCoat.Windows.SetupWindow(this, glamourerIpc, ChatTwoIpc);
         WindowSystem.AddWindow(SetupWindow);
 
         // Startup Logic
@@ -87,16 +98,8 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.Draw += WindowSystem.Draw;
 
         // This adds a button to the plugin installer entry of this plugin which allows
-        // toggling the display status of the configuration ui
-        PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUi;
-
-        // Adds another button doing the same but for the main ui of the plugin
-        PluginInterface.UiBuilder.OpenMainUi += ToggleMainUi;
-
-        // Add a simple message to the log with level set to information
-        // Use /xllog to open the log window in-game
-        // Example Output: 00:57:54.959 | INF | [SamplePlugin] ===A cool log message from Sample Plugin===
-        Log.Information($"===A cool log message from {PluginInterface.Manifest.Name}===");
+        // Add a simple log message to indicate Candy Coat loaded correctly
+        Log.Information($"[CandyCoat] Started successfully.");
     }
 
     public void Dispose()
@@ -105,7 +108,6 @@ public sealed class Plugin : IDalamudPlugin
         
         // Unregister all actions to not leak anythign during disposal of plugin
         PluginInterface.UiBuilder.Draw -= WindowSystem.Draw;
-        PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUi;
         PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUi;
         
         WindowSystem.RemoveAllWindows();
@@ -113,12 +115,14 @@ public sealed class Plugin : IDalamudPlugin
         ChatTwoIpc?.Disable();
         ChatTwoIpc?.Dispose();
         
-        ConfigWindow.Dispose();
         MainWindow.Dispose();
+        PatronDetailsWindow.Dispose();
         SessionWindow?.Dispose();
         SetupWindow?.Dispose();
         
         SessionManager?.Dispose();
+        LocatorService?.Dispose();
+        TradeMonitorService?.Dispose();
 
         CommandManager.RemoveHandler(MainCommandName);
     }
@@ -140,6 +144,5 @@ public sealed class Plugin : IDalamudPlugin
         MainWindow.IsOpen = true;
     }
 
-    public void ToggleConfigUi() => ConfigWindow.Toggle();
     public void ToggleMainUi() => MainWindow.Toggle();
 }

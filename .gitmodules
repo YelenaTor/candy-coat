@@ -1,0 +1,6 @@
+[submodule "CandyCoat/OtterGui"]
+	path = CandyCoat/OtterGui
+	url = https://github.com/Ottermandias/OtterGui.git
+[submodule "CandyCoat/ECommons"]
+	path = CandyCoat/ECommons
+	url = https://github.com/NightmareXIV/ECommons.git

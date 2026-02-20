@@ -15,6 +15,16 @@ public class GlamourerIpc : IDisposable
     private readonly ICallGateSubscriber<Guid, int, uint, uint, int> _applyDesignSubscriber;
     private readonly ICallGateSubscriber<int> _apiVersionSubscriber;
 
+    // Based on Glamourer Api Enums
+    [Flags]
+    public enum ApplyFlag : uint
+    {
+        Once = 1 << 0,
+        Equipment = 1 << 1,
+        Customization = 1 << 2,
+        // ... (We only strictly need 0 (Manual) or Once for basic usage, but typing it helps)
+    }
+
     public GlamourerIpc()
     {
         _getDesignListSubscriber = Svc.PluginInterface.GetIpcSubscriber<Dictionary<Guid, string>>(LabelGetDesignList);
@@ -37,35 +47,41 @@ public class GlamourerIpc : IDisposable
 
     public Dictionary<Guid, string> GetDesignList()
     {
+        if (!IsAvailable()) 
+        {
+            Svc.Log.Warning("[CandyCoat] Glamourer IPC is not available or out of date.");
+            return new Dictionary<Guid, string>();
+        }
+
         try
         {
             return _getDesignListSubscriber.InvokeFunc();
         }
         catch (Exception ex)
         {
-            Svc.Log.Error($"Failed to get Glamourer design list: {ex.Message}");
+            Svc.Log.Error($"[CandyCoat] Failed to get Glamourer design list: {ex.Message}");
             return new Dictionary<Guid, string>();
         }
     }
 
     public void ApplyDesign(Guid designId)
     {
+        if (!IsAvailable()) 
+        {
+            Svc.Log.Warning("[CandyCoat] Glamourer IPC is not available or out of date.");
+            return;
+        }
+
         try
         {
             // Apply to LocalPlayer (Index 0)
-            // ApplyFlag: 0 (Manual) or check Api.Enums
-            // We'll use 0 for objectIndex (LocalPlayer)
-            
-            // Note: The signature in the provided API was:
-            // GlamourerApiEc ApplyDesign(Guid designId, int objectIndex, uint key, ApplyFlag flags);
-            // We need to map this to the IPC subscriber signature.
-            // Be careful with Enum types in IPC, often passed as int/uint.
-            
-            _applyDesignSubscriber.InvokeFunc(designId, 0, 0, 0); 
+            // ApplyFlag: 0 (Manual) 
+            _applyDesignSubscriber.InvokeFunc(designId, 0, 0, (uint)0); 
+            Svc.Log.Info($"[CandyCoat] Successfully requested Glamourer to apply design {designId}.");
         }
         catch (Exception ex)
         {
-            Svc.Log.Error($"Failed to apply Glamourer design: {ex.Message}");
+            Svc.Log.Error($"[CandyCoat] Failed to apply Glamourer design: {ex.Message}");
         }
     }
 

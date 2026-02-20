@@ -3,7 +3,7 @@ using System.Numerics;
 using Dalamud.Interface.Windowing;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using ECommons.DalamudServices;
 using CandyCoat.IPC;
 
@@ -24,7 +24,6 @@ public class SetupWindow : Window, IDisposable
 
     // Step 2: Dependencies
     private bool _glamourerDetected = false;
-    private bool _chatTwoDetected = false; // ChatTwo detection is hard, maybe manual check?
 
     public SetupWindow(Plugin plugin, GlamourerIpc glamourer, ChatTwoIpc chatTwo) : base("Candy Coat Setup##CandyCoatSetup")
     {
@@ -108,7 +107,7 @@ public class SetupWindow : Window, IDisposable
 
         if (ImGui.Button("Detect Current Character"))
         {
-            var player = Svc.ClientState.LocalPlayer;
+            var player = Svc.Objects.LocalPlayer;
             if (player != null)
             {
                 var nameParts = player.Name.ToString().Split(' ');
@@ -117,7 +116,7 @@ public class SetupWindow : Window, IDisposable
                     _firstName = nameParts[0];
                     _lastName = nameParts[1];
                 }
-                _homeWorld = player.HomeWorld.GameData?.Name.ToString() ?? "";
+                _homeWorld = player.HomeWorld.ValueNullable?.Name.ToString() ?? "";
             }
         }
         
@@ -130,10 +129,7 @@ public class SetupWindow : Window, IDisposable
     private void CheckDependencies()
     {
         _glamourerDetected = _glamourer.IsAvailable();
-        // ChatTwo detection logic or assume optional
-        // Since ChatTwoIpc.IsAvailable returns false for now, let's just not block on it.
-        // Or we can try to rely on user check.
-        _chatTwoDetected = false; 
+        _glamourerDetected = _glamourer.IsAvailable();
     }
 
     private void DrawStep2_Dependencies()

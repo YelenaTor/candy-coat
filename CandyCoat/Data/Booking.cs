@@ -19,4 +19,6 @@ public class Booking
     public int Gil { get; set; }
     public BookingState State { get; set; } = BookingState.Active;
     public DateTime Timestamp { get; set; } = DateTime.Now;
+    public TimeSpan Duration { get; set; } = TimeSpan.FromMinutes(60);
+    public DateTime EndTime => Timestamp + Duration;
 }

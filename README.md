@@ -15,6 +15,16 @@ designed to streamlnie booking management, patron tracking, and immersion <3
 + Proximity Scanner :: automatically detects if a favorite client is near & shows distance
 + Profiles :: click on any client to view their detailed profile
 
+~*~ Venue Operations & Analytics ~*~
++ Dashboard :: track daily earnings and view top spenders
++ Shift Management :: clock in/out and measure gil earned per shift
++ Waitlist Queue :: manage line-ups with active wait timers and 1-click tell notifications
+
+~*~ CRM & Automation ~*~
++ The Blackbook :: flag problem patrons with warning/blacklisted statuses and receive proximity chat alerts
++ Profile Scraper :: 1-click scrape native FFXIV "Search Info" to automatically fill Patron notes
++ Custom Macros :: create custom `{name}` template strings to instantly greet patrons in tells
+
 ~*~ Glamourer Integration ~*~
 + Quick Swaps :: link your saved glamourer designs to client profiles
 + One-Click Transform :: instantly apply a specific outfit w/ just one click!

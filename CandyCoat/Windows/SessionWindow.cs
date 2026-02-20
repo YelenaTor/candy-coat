@@ -2,8 +2,8 @@ using System;
 using System.Numerics;
 using Dalamud.Interface.Windowing;
 using Dalamud.Interface.Utility;
-using ImGuiNET;
-using SamplePlugin.Services;
+using Dalamud.Bindings.ImGui;
+using CandyCoat.Services;
 
 namespace CandyCoat.Windows;
 

@@ -3,7 +3,7 @@ using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Ipc;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using ECommons.DalamudServices;
 
 namespace CandyCoat.IPC;

@@ -1,18 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project Sdk="Dalamud.NET.Sdk/13.1.0">
+<Project Sdk="Dalamud.NET.Sdk/14.0.1">
   <PropertyGroup>
     <Version>0.0.0.1</Version>
-    <Description>A sample plugin.</Description>
-    <PackageProjectUrl>https://github.com/goatcorp/SamplePlugin</PackageProjectUrl>
+    <Description>Private venue assistant for Candy Coat.</Description>
+    <PackageProjectUrl>https://github.com/NightmareXIV/CandyCoat</PackageProjectUrl>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
     <IsPackable>false</IsPackable>
-  </PropertyGroup>
-
+    <TargetFramework>net10.0-windows7.0</TargetFramework>
+    <LangVersion>preview</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="ECommons\**" />
+    <Compile Remove="OtterGui\**" />
+    <EmbeddedResource Remove="ECommons\**" />
+    <EmbeddedResource Remove="OtterGui\**" />
+    <None Remove="ECommons\**" />
+    <None Remove="OtterGui\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="ECommons" Version="11.0.3" />
-    <PackageReference Include="OtterGui" Version="8.2.3" />
+    <Reference Include="Dalamud.Bindings.ImGui" Private="false" />
+    <ProjectReference Include="ECommons\ECommons\ECommons.csproj" />
+    <ProjectReference Include="OtterGui\OtterGui.csproj" />
   </ItemGroup>
 </Project>

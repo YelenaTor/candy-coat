@@ -2,6 +2,19 @@
 
 all notable changes to the candy coat project will be documented here <3
 
+.: 0.4.0 :. - 2026-02-20
+[ Added ]
+* Venue Management Suite ::
+  + The Blackbook: Added `PatronStatus` (Favorite, Warning, Blacklisted) and Locator proximity chat alerts.
+  + Dashboard Analytics: New UI displaying daily earnings and top spenders, reading from trade logs.
+  + Waitlist Queue: `WaitlistTab` added to manage waiting patrons with active timers and 1-click tells.
+  + Shift Management: `StaffTab` added for clocking in/out, recording shift duration and income.
+  + Automated Macros: `SettingsTab` now allows creating reusable text macros with `{name}` insertion, executable from the Patron Profile.
+  + Profile Scraper: Re-hooked `CharacterInspect` via `FFXIVClientStructs` to scrape native Search Info into Patron Notes.
+* API 14 / .NET 10 Migration ::
+  + Upgraded to Dalamud API v14 and .NET 10 frameworks.
+  + Corrected `AtkUnitBasePtr` and `IChatGui` delegate errors.
+
 .: 0.3.1 :. - 2026-02-19
 [ Changed ]
 * Refactoring ::
