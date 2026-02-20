@@ -1,0 +1,107 @@
+name: Release CandyCoat
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on tagging e.g. v1.0.0
+
+jobs:
+  build_release:
+    runs-on: windows-2022
+    permissions:
+      contents: write # Needed to create GitHub Release
+
+    env:
+      Solution_Name: CandyCoat
+      Plugin_Name: CandyCoat
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+        quality: preview
+
+    - name: Download Dalamud
+      run: |
+        Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/latest.zip -OutFile latest.zip
+        Expand-Archive -Force latest.zip "$env:AppData\XIVLauncher\addon\Hooks\dev"
+
+    - name: Cache NuGet Packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Build with dotnet
+      run: |
+        dotnet restore
+        dotnet build --configuration Release
+
+    - name: Create ZIP and repo.json
+      run: |
+        $version = "${{ github.ref_name }}".TrimStart('v')
+        $outDir = ".\CandyCoat\bin\x64\Release\CandyCoat"
+        $zipName = "CandyCoat-latest.zip"
+        
+        # Modify the compiled manifest to inject URLs
+        $manifestPath = "$outDir\CandyCoat.json"
+        
+        $manifest = Get-Content $manifestPath | ConvertFrom-Json
+        $manifest.AssemblyVersion = $version
+        $manifest.DownloadLinkInstall = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
+        $manifest.DownloadLinkUpdate = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
+        
+        # Save modifed manifest back into the output folder BEFORE zipping
+        $manifest | ConvertTo-Json -Depth 10 | Set-Content $manifestPath
+        
+        # Compress the output folder containing the modded json and dll
+        Compress-Archive -Path "$outDir\*" -DestinationPath $zipName
+        
+        # Generate the custom repo index containing a list of all plugins (just 1 here)
+        $repoArray = @($manifest)
+        $repoArray | ConvertTo-Json -Depth 10 | Set-Content "repo.json"
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          CandyCoat-latest.zip
+          repo.json
+        draft: false
+        prerelease: false
+
+  deploy_pages:
+    needs: build_release
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Download repo.json from freshly created Release
+        run: |
+          mkdir public
+          wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/repo.json -O public/repo.json
+          
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './public'
+          
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
