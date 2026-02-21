@@ -51,27 +51,36 @@ jobs:
         $version = "${{ github.ref_name }}".TrimStart('v')
         $outDir = "./publish"
         $zipName = "CandyCoat-latest.zip"
+        $manifestPath = "$outDir/CandyCoat.json"
         
-        # Modify the compiled manifest to inject URLs
-        $manifestPath = "$outDir\CandyCoat.json"
+        # Remove the Dalamud latest.zip if it exists in the output
+        if (Test-Path "$outDir/latest.zip") {
+            Remove-Item "$outDir/latest.zip" -Force
+            Write-Host "Removed latest.zip from output directory"
+        }
         
+        # Modify manifest
         $manifest = Get-Content $manifestPath | ConvertFrom-Json
         $manifest.AssemblyVersion = $version
         $manifest | Add-Member -Force -NotePropertyName "DownloadLinkInstall" -NotePropertyValue "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
         $manifest | Add-Member -Force -NotePropertyName "DownloadLinkUpdate" -NotePropertyValue "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
-        
-        # Save modified manifest back
         $manifest | ConvertTo-Json -Depth 10 | Set-Content $manifestPath
         
-        # Remove any existing latest.zip that might be in the output folder
-        if (Test-Path "$outDir\latest.zip") {
-            Remove-Item "$outDir\latest.zip" -Force
-        }
+        # Create temp directory and copy files (excluding nested zips)
+        $tempDir = "./temp_zip"
+        if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force }
+        New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+        Get-ChildItem -Path $outDir -Exclude "*.zip" | Copy-Item -Destination $tempDir -Recurse -Force
         
-        # Compress ONLY the contents of the output folder
-        Compress-Archive -Path "$outDir\*" -DestinationPath $zipName -Force
+        # Verify what we're zipping
+        Write-Host "=== Files to be zipped ==="
+        Get-ChildItem -Path $tempDir | Select-Object Name, Length
         
-        # Generate repo.json as an array
+        # Create ZIP from temp directory (files at root level)
+        Compress-Archive -Path "$tempDir/*" -DestinationPath $zipName -Force
+        Remove-Item $tempDir -Recurse -Force
+        
+        # Generate repo.json as array
         $repoArray = @($manifest)
         ConvertTo-Json -InputObject $repoArray -Depth 10 | Set-Content "repo.json"
 

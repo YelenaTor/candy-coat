@@ -2,6 +2,12 @@
 
 all notable changes to the candy coat project will be documented here <3
 
+.: 0.4.10 :. - 2026-02-22
+[ Fixed ]
+* CI/CD ::
+  + Completely resolved nested ZIP structure by implementing a temporary staging process during the build workflow.
+  + Specifically excluded stray `latest.zip` files from the final plugin bundles.
+
 .: 0.4.9 :. - 2026-02-22
 [ Fixed ]
 * CI/CD ::
