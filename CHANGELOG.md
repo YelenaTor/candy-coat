@@ -2,6 +2,13 @@
 
 all notable changes to the candy coat project will be documented here <3
 
+.: 0.4.2 :. - 2026-02-21
+[ Fixed ]
+* Critical Crash ::
+  + Resolved a fatal CLR crash (MissingMethodException) during plugin initialization caused by a binary mismatch in `TerraFX.Interop.Windows` with Dalamud API 14.
+  + Replaced unstable TerraFX MessageBox calls with a secure P/Invoke implementation.
+  + Fixed `FindWindowEx` signature mismatch in `WindowFunctions`.
+
 .: 0.4.1 :. - 2026-02-20
 [ Added ]
 * Management Access Control ::
