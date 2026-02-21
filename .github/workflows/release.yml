@@ -57,18 +57,23 @@ jobs:
         
         $manifest = Get-Content $manifestPath | ConvertFrom-Json
         $manifest.AssemblyVersion = $version
-        $manifest | Add-Member -NotePropertyName "DownloadLinkInstall" -NotePropertyValue "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
-        $manifest | Add-Member -NotePropertyName "DownloadLinkUpdate" -NotePropertyValue "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
+        $manifest | Add-Member -Force -NotePropertyName "DownloadLinkInstall" -NotePropertyValue "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
+        $manifest | Add-Member -Force -NotePropertyName "DownloadLinkUpdate" -NotePropertyValue "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
         
-        # Save modified manifest back into the output folder BEFORE zipping
+        # Save modified manifest back
         $manifest | ConvertTo-Json -Depth 10 | Set-Content $manifestPath
         
-        # Compress the output folder containing the modded json and dll
-        Compress-Archive -Path "$outDir\*" -DestinationPath $zipName
+        # Remove any existing latest.zip that might be in the output folder
+        if (Test-Path "$outDir\latest.zip") {
+            Remove-Item "$outDir\latest.zip" -Force
+        }
         
-        # Generate the custom repo index containing a list of all plugins (just 1 here)
+        # Compress ONLY the contents of the output folder
+        Compress-Archive -Path "$outDir\*" -DestinationPath $zipName -Force
+        
+        # Generate repo.json as an array
         $repoArray = @($manifest)
-        $repoArray | ConvertTo-Json -AsArray -Depth 10 | Set-Content "repo.json"
+        ConvertTo-Json -InputObject $repoArray -Depth 10 | Set-Content "repo.json"
 
     - name: Upload repo.json as artifact
       uses: actions/upload-artifact@v4
