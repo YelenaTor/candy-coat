@@ -2,6 +2,11 @@
 
 all notable changes to the candy coat project will be documented here <3
 
+.: 0.4.7 :. - 2026-02-22
+[ Fixed ]
+* CI/CD ::
+  + Fixed `repo.json` format to ensure it is always an array, satisfying Dalamud's custom repository requirements.
+
 .: 0.4.6 :. - 2026-02-21
 [ Added ]
 * Support & Feedback ::
