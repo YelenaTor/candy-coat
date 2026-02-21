@@ -2,6 +2,15 @@
 
 all notable changes to the candy coat project will be documented here <3
 
+.: 0.5.0 :. - 2026-02-22
+[ Added ]
+* Support & Feedback ::
+  + Added a dedicated section to the Settings tab for reporting bugs, crashes, and suggestions.
+[ Fixed ]
+* CI/CD ::
+  + Completely overhauled the release pipeline to ensure flat ZIP structures and array-based `repo.json` formatting.
+  + Fixed nested directory and stray ZIP inclusion issues.
+
 .: 0.4.10 :. - 2026-02-22
 [ Fixed ]
 * CI/CD ::

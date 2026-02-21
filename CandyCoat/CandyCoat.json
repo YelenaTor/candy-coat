@@ -4,7 +4,7 @@
     "InternalName": "CandyCoat",
     "Punchline": "Private venue assistant for Sweethearts and Candy Hearts.",
     "Description": "Private plugin for the Sugar venue. Provides tools for Sweethearts and Candy Hearts to check bookings and clients. Main commands: /candy (main UI), /cset (settings), /cbook (bookings).",
-    "AssemblyVersion": "0.4.10.0",
+    "AssemblyVersion": "0.5.0.0",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 14,
     "LoadRequiredState": 0,
