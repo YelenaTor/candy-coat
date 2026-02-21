@@ -53,11 +53,12 @@ jobs:
         $zipName = "CandyCoat-latest.zip"
         $manifestPath = "$outDir/CandyCoat.json"
         
-        # Remove the Dalamud latest.zip if it exists in the output
-        if (Test-Path "$outDir/latest.zip") {
-            Remove-Item "$outDir/latest.zip" -Force
-            Write-Host "Removed latest.zip from output directory"
-        }
+        # Debug: Show what's in publish
+        Write-Host "=== Contents of publish directory ==="
+        Get-ChildItem -Path $outDir -Recurse | Select-Object FullName
+        
+        # Remove any zip files in output
+        Get-ChildItem -Path $outDir -Filter "*.zip" -Recurse | Remove-Item -Force
         
         # Modify manifest
         $manifest = Get-Content $manifestPath | ConvertFrom-Json
@@ -66,19 +67,12 @@ jobs:
         $manifest | Add-Member -Force -NotePropertyName "DownloadLinkUpdate" -NotePropertyValue "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
         $manifest | ConvertTo-Json -Depth 10 | Set-Content $manifestPath
         
-        # Create temp directory and copy files (excluding nested zips)
-        $tempDir = "./temp_zip"
-        if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force }
-        New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
-        Get-ChildItem -Path $outDir -Exclude "*.zip" | Copy-Item -Destination $tempDir -Recurse -Force
-        
-        # Verify what we're zipping
+        # List files to zip
         Write-Host "=== Files to be zipped ==="
-        Get-ChildItem -Path $tempDir | Select-Object Name, Length
+        Get-ChildItem -Path $outDir -File | Select-Object Name, Length
         
-        # Create ZIP from temp directory (files at root level)
-        Compress-Archive -Path "$tempDir/*" -DestinationPath $zipName -Force
-        Remove-Item $tempDir -Recurse -Force
+        # Zip ONLY files (not subdirectories) directly from publish
+        Compress-Archive -Path "$outDir/*.dll","$outDir/*.json","$outDir/*.pdb","$outDir/*.xml" -DestinationPath $zipName -Force
         
         # Generate repo.json as array
         $repoArray = @($manifest)
