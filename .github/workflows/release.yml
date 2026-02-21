@@ -44,12 +44,12 @@ jobs:
     - name: Build with dotnet
       run: |
         dotnet restore
-        dotnet build --configuration Release
+        dotnet build CandyCoat/CandyCoat.csproj --configuration Release --output ./publish
 
     - name: Create ZIP and repo.json
       run: |
         $version = "${{ github.ref_name }}".TrimStart('v')
-        $outDir = ".\CandyCoat\bin\x64\Release\CandyCoat"
+        $outDir = "./publish"
         $zipName = "CandyCoat-latest.zip"
         
         # Modify the compiled manifest to inject URLs

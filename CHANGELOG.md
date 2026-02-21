@@ -2,6 +2,11 @@
 
 all notable changes to the candy coat project will be documented here <3
 
+.: 0.4.9 :. - 2026-02-22
+[ Fixed ]
+* CI/CD ::
+  + Resolved "Empty ZIP" issue by explicitly specifying the build output directory in the release workflow, ensuring all plugin binaries are correctly included in the archive.
+
 .: 0.4.8 :. - 2026-02-22
 [ Fixed ]
 * CI/CD ::
