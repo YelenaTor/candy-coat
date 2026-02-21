@@ -105,5 +105,26 @@ public class SettingsTab : ITab
             ImGui.SameLine();
             ImGui.TextDisabled("(Locked)");
         }
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Text("Support & Feedback");
+        ImGui.Spacing();
+        ImGui.TextWrapped("Thank you for helping us improve Candy Coat! <3");
+        ImGui.BulletText("Bugs & Crashes: Report via Discord (DM me) or GitHub Issues.");
+        ImGui.BulletText("Suggestions: Use the #🍰-staff-bot-testing channel on Discord.");
+        ImGui.Spacing();
+        ImGui.TextColored(new Vector4(0.8f, 0.8f, 0.8f, 1f), "Reporting Format:");
+        ImGui.TextDisabled("1. Description of the issue\n2. Steps to reproduce\n3. Attach any relevant screenshots or logs");
+        
+        if (ImGui.Button("Open GitHub Issues"))
+        {
+            ECommons.GenericHelpers.ShellStart("https://github.com/YelenaTor/candy-coat/issues");
+        }
+        ImGui.SameLine();
+        if (ImGui.Button("Copy Discord Link"))
+        {
+            ImGui.SetClipboardText("https://discord.gg/your-discord-link"); // User to replace
+        }
     }
 }

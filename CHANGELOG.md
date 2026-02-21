@@ -2,6 +2,13 @@
 
 all notable changes to the candy coat project will be documented here <3
 
+.: 0.4.6 :. - 2026-02-21
+[ Added ]
+* Support & Feedback ::
+  + Added a dedicated section to the Settings tab for reporting bugs, crashes, and suggestions.
+  + Added direct links and format guidance for staff members.
+
+
 .: 0.4.5 :. - 2026-02-21
 [ Added ]
 * Patron UI Overhaul ::
