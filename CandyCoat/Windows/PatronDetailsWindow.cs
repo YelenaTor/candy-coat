@@ -69,10 +69,10 @@ public class PatronDetailsWindow : Window, IDisposable
         }
         else
         {
-            bool isFav = patron.Status == PatronStatus.Favorite;
-            if (ImGui.Checkbox("Is Favorite VIP", ref isFav))
+            bool isReg = patron.Status == PatronStatus.Regular;
+            if (ImGui.Checkbox("Is Regular VIP", ref isReg))
             {
-                patron.Status = isFav ? PatronStatus.Favorite : PatronStatus.Neutral;
+                patron.Status = isReg ? PatronStatus.Regular : PatronStatus.Neutral;
                 _plugin.Configuration.Save();
             }
         }

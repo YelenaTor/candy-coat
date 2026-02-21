@@ -59,7 +59,7 @@ public class VenueService
     public void TrackPatron(string name)
     {
         var patron = EnsurePatronExists(name);
-        patron.Status = PatronStatus.Favorite;
+        patron.Status = PatronStatus.Regular;
         _plugin.Configuration.Save();
     }
 

@@ -2,6 +2,18 @@
 
 all notable changes to the candy coat project will be documented here <3
 
+.: 0.4.5 :. - 2026-02-21
+[ Added ]
+* Patron UI Overhaul ::
+  + Renamed "Favorite" status to "Regular" across the entire plugin.
+  + Added an "Eye" button to regulars in the locator list to instantly target them in-game.
+  + Overhauled "Add Patron" UI with separate fields for First Name, Last Name, and World.
+  + Added a "Detect Targeted" button to auto-fill patron details from your current game target.
+  + Integrated a new "Add as Regular" option into the in-game character right-click context menu.
+[ Fixed ]
+* CI/CD ::
+  + Hardened the release pipeline to use internal job artifacts, resolving intermittent GitHub Pages deployment failures.
+
 .: 0.4.3 :. - 2026-02-21
 [ Fixed ]
 * API 14 Validation ::

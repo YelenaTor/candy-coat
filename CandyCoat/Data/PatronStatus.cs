@@ -3,7 +3,7 @@ namespace CandyCoat.Data;
 public enum PatronStatus
 {
     Neutral,
-    Favorite,
+    Regular,
     Warning,
     Blacklisted
 }

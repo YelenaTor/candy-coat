@@ -4,7 +4,13 @@ using Dalamud.Plugin;
 using System.IO;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
+using Dalamud.Game.Gui.ContextMenu;
+using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Game.ClientState.Objects.Enums;
+using System.Linq;
 using CandyCoat.Windows;
+using CandyCoat.Data;
 
 using ECommons;
 using ECommons.DalamudServices;
@@ -94,6 +100,9 @@ public sealed class Plugin : IDalamudPlugin
             HelpMessage = "Open Candy Coat's main interface."
         });
 
+        // Context Menu
+        Svc.ContextMenu.OnMenuOpened += OnMenuOpened;
+
         // Tell the UI system that we want our windows to be drawn throught he window system
         PluginInterface.UiBuilder.Draw += WindowSystem.Draw;
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUi;
@@ -109,6 +118,7 @@ public sealed class Plugin : IDalamudPlugin
         ECommonsMain.Dispose();
         
         // Unregister all actions to not leak anythign during disposal of plugin
+        Svc.ContextMenu.OnMenuOpened -= OnMenuOpened;
         PluginInterface.UiBuilder.Draw -= WindowSystem.Draw;
         PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUi;
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUi;
@@ -147,6 +157,43 @@ public sealed class Plugin : IDalamudPlugin
         MainWindow.IsOpen = true;
     }
 
-    public void ToggleMainUi() => MainWindow.Toggle();
-    public void ToggleConfigUi() => MainWindow.Toggle();
+    public void ToggleMainUi()
+    {
+        MainWindow.Toggle();
+    }
+
+    public void ToggleConfigUi()
+    {
+        MainWindow.Toggle();
+    }
+
+    private void OnMenuOpened(IMenuOpenedArgs args)
+    {
+        // For players, we check the target manager
+        if (Svc.Targets.Target is not IPlayerCharacter pc)
+            return;
+
+        var name = pc.Name.ToString();
+
+        var item = new MenuItem
+        {
+            Name = "Add as Regular",
+            OnClicked = _ =>
+            {
+                var patron = EnsurePatronExists(name);
+                patron.Status = PatronStatus.Regular;
+
+                if (pc.HomeWorld.IsValid)
+                    patron.World = pc.HomeWorld.Value.Name.ToString();
+                else if (Svc.PlayerState.HomeWorld.IsValid)
+                    patron.World = Svc.PlayerState.HomeWorld.Value.Name.ToString();
+
+                Configuration.Save();
+            }
+        };
+
+        args.AddMenuItem(item);
+    }
+
+    public Patron EnsurePatronExists(string name) => VenueService.EnsurePatronExists(name);
 }

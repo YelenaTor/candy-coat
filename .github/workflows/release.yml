@@ -69,6 +69,12 @@ jobs:
         $repoArray = @($manifest)
         $repoArray | ConvertTo-Json -Depth 10 | Set-Content "repo.json"
 
+    - name: Upload repo.json as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: repo-json
+        path: repo.json
+
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
@@ -89,10 +95,11 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Download repo.json from freshly created Release
-        run: |
-          mkdir public
-          wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/repo.json -O public/repo.json
+      - name: Download repo.json artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: repo-json
+          path: public
           
       - name: Setup Pages
         uses: actions/configure-pages@v5

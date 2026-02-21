@@ -15,7 +15,7 @@ public class LocatorService : IDisposable
     private readonly HashSet<string> _alertedPatrons = new();
 
     // Cached state for the UI to read from
-    public List<(Data.Patron Patron, float Distance)> NearbyFavorites { get; private set; } = new();
+    public List<(Data.Patron Patron, float Distance)> NearbyRegulars { get; private set; } = new();
 
     public LocatorService(Plugin plugin)
     {
@@ -38,7 +38,7 @@ public class LocatorService : IDisposable
         var localPlayer = Svc.Objects.LocalPlayer;
         if (localPlayer == null)
         {
-            NearbyFavorites.Clear();
+            NearbyRegulars.Clear();
             _alertedPatrons.Clear();
             return;
         }
@@ -80,7 +80,7 @@ public class LocatorService : IDisposable
         // Clean up alerted patrons who left so we can alert again if they return
         _alertedPatrons.RemoveWhere(name => !currentNearbyNames.Contains(name));
 
-        NearbyFavorites = newCache;
+        NearbyRegulars = newCache;
     }
 
     public void Dispose()

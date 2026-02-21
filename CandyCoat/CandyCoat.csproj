@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Dalamud.NET.Sdk/14.0.1">
   <PropertyGroup>
-    <Version>0.0.0.1</Version>
-    <Description>Private venue assistant for Candy Coat.</Description>
+    <Version>0.4.5</Version>
+    <Description>Private venue assistant for Sugar.</Description>
     <PackageProjectUrl>https://github.com/NightmareXIV/CandyCoat</PackageProjectUrl>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
     <IsPackable>false</IsPackable>
