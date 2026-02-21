@@ -96,6 +96,8 @@ public sealed class Plugin : IDalamudPlugin
 
         // Tell the UI system that we want our windows to be drawn throught he window system
         PluginInterface.UiBuilder.Draw += WindowSystem.Draw;
+        PluginInterface.UiBuilder.OpenMainUi += ToggleMainUi;
+        PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUi;
 
         // This adds a button to the plugin installer entry of this plugin which allows
         // Add a simple log message to indicate Candy Coat loaded correctly
@@ -109,6 +111,7 @@ public sealed class Plugin : IDalamudPlugin
         // Unregister all actions to not leak anythign during disposal of plugin
         PluginInterface.UiBuilder.Draw -= WindowSystem.Draw;
         PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUi;
+        PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUi;
         
         WindowSystem.RemoveAllWindows();
 
@@ -145,4 +148,5 @@ public sealed class Plugin : IDalamudPlugin
     }
 
     public void ToggleMainUi() => MainWindow.Toggle();
+    public void ToggleConfigUi() => MainWindow.Toggle();
 }

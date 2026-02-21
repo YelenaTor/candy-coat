@@ -2,6 +2,12 @@
 
 all notable changes to the candy coat project will be documented here <3
 
+.: 0.4.3 :. - 2026-02-21
+[ Fixed ]
+* API 14 Validation ::
+  + Registered mandatory `OpenMainUi` and `OpenConfigUi` callbacks to resolve Dalamud validation warnings.
+  + Improved UI integration with the Dalamud plugin list.
+
 .: 0.4.2 :. - 2026-02-21
 [ Fixed ]
 * Critical Crash ::
