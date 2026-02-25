@@ -32,3 +32,6 @@ bld/
 DumpSig/
 GetSig.cs
 CLAUDE.md
+
+# API secrets
+.env

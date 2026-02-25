@@ -39,6 +39,7 @@ public sealed class Plugin : IDalamudPlugin
     public CandyCoat.Services.TradeMonitorService TradeMonitorService { get; init; }
     public CandyCoat.Services.WaitlistManager WaitlistManager { get; init; }
     public CandyCoat.Services.ShiftManager ShiftManager { get; init; }
+    public CandyCoat.Services.SyncService SyncService { get; init; }
 
     private CandyCoat.Windows.SessionWindow SessionWindow { get; init; }
     private CandyCoat.Windows.SetupWindow SetupWindow { get; init; }
@@ -61,6 +62,7 @@ public sealed class Plugin : IDalamudPlugin
         TradeMonitorService = new CandyCoat.Services.TradeMonitorService(this);
         WaitlistManager = new CandyCoat.Services.WaitlistManager();
         ShiftManager = new CandyCoat.Services.ShiftManager(this);
+        SyncService = new CandyCoat.Services.SyncService(this);
         var glamourerIpc = new CandyCoat.IPC.GlamourerIpc();
 
         PatronDetailsWindow = new CandyCoat.Windows.PatronDetailsWindow(this, glamourerIpc);
@@ -136,6 +138,7 @@ public sealed class Plugin : IDalamudPlugin
         SessionManager?.Dispose();
         LocatorService?.Dispose();
         TradeMonitorService?.Dispose();
+        SyncService?.Dispose();
 
         CommandManager.RemoveHandler(MainCommandName);
     }
@@ -150,6 +153,12 @@ public sealed class Plugin : IDalamudPlugin
         
         // In response to the slash command, toggle the display status of our main ui
         MainWindow.Toggle();
+
+        // Wake/sleep sync service based on UI state
+        if (MainWindow.IsOpen)
+            _ = SyncService.WakeAsync();
+        else
+            SyncService.Sleep();
     }
     
     public void OnSetupComplete()

@@ -45,6 +45,13 @@ public class Configuration : IPluginConfiguration
     public List<Data.MacroTemplate> CandyHeartMacros { get; set; } = new();
     public List<Data.MacroTemplate> BartenderMacros { get; set; } = new();
 
+    // Sync API settings
+    public string ApiUrl { get; set; } = string.Empty;
+    public string VenueKey { get; set; } = string.Empty;
+    public string VenueId { get; set; } = string.Empty; // Future: multi-venue
+    public bool EnableSync { get; set; } = false;
+    public DateTime LastSyncTimestamp { get; set; } = DateTime.MinValue;
+
     // The below exist just to make saving less cumbersome
     public void Save()
     {

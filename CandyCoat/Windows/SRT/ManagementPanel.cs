@@ -77,7 +77,10 @@ public class ManagementPanel : IToolboxPanel
         }
 
         ImGui.Spacing();
-        ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ Staff roster is local-only. Cross-client sync planned for a future update.");
+        if (_plugin.SyncService.IsConnected)
+            ImGui.TextColored(new Vector4(0.2f, 1f, 0.4f, 1f), "🟢 Staff roster synced.");
+        else
+            ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ Staff roster is local-only. Enable sync in Settings.");
     }
 
     private void DrawRoomStatusBoard()
@@ -87,7 +90,10 @@ public class ManagementPanel : IToolboxPanel
         if (rooms.Count == 0)
         {
             ImGui.TextDisabled("No rooms defined. Set up in Owner > Room Editor.");
-            ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ Room status is local-only. Other staff cannot see your room changes until sync is added.");
+            if (_plugin.SyncService.IsConnected)
+                ImGui.TextColored(new Vector4(0.2f, 1f, 0.4f, 1f), "🟢 Room status synced.");
+            else
+                ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ Room status is local-only. Enable sync in Settings.");
             return;
         }
 
@@ -233,6 +239,6 @@ public class ManagementPanel : IToolboxPanel
         ImGui.Text("Venue Capacity");
         var nearbyCount = _plugin.LocatorService.GetNearbyCount();
         ImGui.Text($"Nearby Players: {nearbyCount}");
-        ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ Avoid using in heavily populated areas (e.g. Limsa, Gridania). Scanning many players may impact performance.");
+        ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ Avoid using in heavily populated areas. Scanning many players may impact performance.");
     }
 }

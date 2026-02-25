@@ -152,7 +152,12 @@ public class SweetheartPanel : IToolboxPanel
             // DND
             ImGui.Checkbox("Do Not Disturb", ref _dndToggle);
             if (_dndToggle)
-                ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ DND is local-only. Other staff cannot see your status until sync is added.");
+            {
+                if (_plugin.SyncService.IsConnected)
+                    ImGui.TextColored(new Vector4(0.2f, 1f, 0.4f, 1f), "🟢 DND status synced to other staff.");
+                else
+                    ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ DND is local-only. Enable sync in Settings.");
+            }
         }
     }
 

@@ -198,9 +198,22 @@ public class MainWindow : Window, IDisposable
             ImGui.TextDisabled("  Set up in Settings.");
         }
 
-        // ── Settings (pinned to bottom) ──
-        var footerHeight = ImGui.GetFrameHeightWithSpacing() + ImGui.GetStyle().ItemSpacing.Y;
+        // ── Sync Status + Settings (pinned to bottom) ──
+        var syncService = plugin.SyncService;
+        var syncHeight = plugin.Configuration.EnableSync ? ImGui.GetFrameHeightWithSpacing() : 0;
+        var footerHeight = ImGui.GetFrameHeightWithSpacing() + ImGui.GetStyle().ItemSpacing.Y + syncHeight;
         ImGui.SetCursorPosY(ImGui.GetWindowHeight() - footerHeight - ImGui.GetStyle().WindowPadding.Y);
+
+        if (plugin.Configuration.EnableSync)
+        {
+            if (syncService.IsWaking)
+                ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⏳ Connecting...");
+            else if (syncService.IsConnected)
+                ImGui.TextColored(new Vector4(0.2f, 1f, 0.4f, 1f), "🟢 Synced");
+            else
+                ImGui.TextColored(new Vector4(1f, 0.3f, 0.3f, 1f), "🔴 Offline");
+        }
+
         ImGui.Separator();
 
         bool settingsSelected = _activeSection == SidebarSection.Settings;
@@ -218,6 +231,17 @@ public class MainWindow : Window, IDisposable
 
     private void DrawContentPanel()
     {
+        // Wake overlay when sync is connecting
+        if (plugin.Configuration.EnableSync && plugin.SyncService.IsWaking)
+        {
+            var region = ImGui.GetContentRegionAvail();
+            ImGui.SetCursorPos(new Vector2(region.X / 2 - 80, region.Y / 2 - 20));
+            ImGui.TextColored(new Vector4(1f, 0.6f, 0.8f, 1f), "☁ Waking up...");
+            ImGui.SetCursorPosX(region.X / 2 - 100);
+            ImGui.TextDisabled("Connecting to Candy Coat API");
+            return;
+        }
+
         switch (_activeSection)
         {
             case SidebarSection.Dashboard:
@@ -367,6 +391,62 @@ public class MainWindow : Window, IDisposable
             {
                 config.EnableChatTwo = enableChat;
                 config.Save();
+            }
+            ImGui.Spacing();
+        }
+
+        // ── Sync / API Configuration ──
+        if (ImGui.CollapsingHeader("Sync / API Configuration"))
+        {
+            ImGui.Spacing();
+            var enableSync = config.EnableSync;
+            if (ImGui.Checkbox("Enable Sync", ref enableSync))
+            {
+                config.EnableSync = enableSync;
+                config.Save();
+                if (!enableSync)
+                    plugin.SyncService.Sleep();
+            }
+
+            if (config.EnableSync)
+            {
+                ImGui.Spacing();
+                var apiUrl = config.ApiUrl;
+                ImGui.SetNextItemWidth(300);
+                if (ImGui.InputTextWithHint("##apiUrl", "http://localhost:5000", ref apiUrl, 200))
+                {
+                    config.ApiUrl = apiUrl;
+                    config.Save();
+                }
+                ImGui.SameLine();
+                ImGui.Text("API URL");
+
+                var venueKey = config.VenueKey;
+                ImGui.SetNextItemWidth(300);
+                if (ImGui.InputTextWithHint("##venueKey", "00000000-0000-0000-0000-000000000000", ref venueKey, 100))
+                {
+                    config.VenueKey = venueKey;
+                    config.Save();
+                }
+                ImGui.SameLine();
+                ImGui.Text("Venue Key");
+
+                ImGui.Spacing();
+                if (ImGui.Button("Test Connection"))
+                {
+                    _ = plugin.SyncService.WakeAsync();
+                }
+                ImGui.SameLine();
+
+                var sync = plugin.SyncService;
+                if (sync.IsWaking)
+                    ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⏳ Connecting...");
+                else if (sync.IsConnected)
+                    ImGui.TextColored(new Vector4(0.2f, 1f, 0.4f, 1f), "🟢 Connected");
+                else if (!string.IsNullOrEmpty(sync.LastError))
+                    ImGui.TextColored(new Vector4(1f, 0.3f, 0.3f, 1f), $"🔴 {sync.LastError}");
+                else
+                    ImGui.TextDisabled("Not connected");
             }
             ImGui.Spacing();
         }

@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: candycoat
+      POSTGRES_USER: candy
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U candy -d candycoat" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./CandyCoat.API
+    environment:
+      ConnectionStrings__Default: "Host=db;Database=candycoat;Username=candy;Password=${DB_PASSWORD}"
+      VENUE_KEY: ${VENUE_KEY}
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:

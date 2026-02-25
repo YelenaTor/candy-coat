@@ -150,7 +150,10 @@ public class CandyHeartPanel : IToolboxPanel
     private void DrawEscortHandoff()
     {
         ImGui.Text("Escort Handoff");
-        ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ Handoff is local-only. The receiving staffer won't see this until cross-client sync is added.");
+        if (_plugin.SyncService.IsConnected)
+            ImGui.TextColored(new Vector4(0.2f, 1f, 0.4f, 1f), "🟢 Handoff will be synced to receiving staffer.");
+        else
+            ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ Handoff is local-only. Enable sync in Settings.");
 
         if (_activePatrons.Count > 0)
         {
@@ -277,7 +280,10 @@ public class CandyHeartPanel : IToolboxPanel
         if (rooms.Count == 0)
         {
             ImGui.TextDisabled("No rooms defined.");
-            ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ Room status is local-only. Other staff cannot see changes until sync is added.");
+            if (_plugin.SyncService.IsConnected)
+                ImGui.TextColored(new Vector4(0.2f, 1f, 0.4f, 1f), "🟢 Room status synced.");
+            else
+                ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ Room status is local-only. Enable sync in Settings.");
             return;
         }
 

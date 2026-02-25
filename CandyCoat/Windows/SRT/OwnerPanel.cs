@@ -126,7 +126,10 @@ public class OwnerPanel : IToolboxPanel
     private void DrawStaffLeaderboard()
     {
         ImGui.Text("Staff Leaderboard");
-        ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ Leaderboard shows local data only. Cross-client staff earnings sync planned for a future update.");
+        if (_plugin.SyncService.IsConnected)
+            ImGui.TextColored(new Vector4(0.2f, 1f, 0.4f, 1f), "🟢 Leaderboard showing synced data.");
+        else
+            ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ Leaderboard shows local data only. Enable sync in Settings.");
 
         var myEarnings = _plugin.Configuration.Earnings
             .GroupBy(e => e.Role)
