@@ -100,7 +100,7 @@ public class SettingsTab : ITab
             ImGui.SetNextItemWidth(200);
             if (ImGui.InputTextWithHint("##mgmtcode", "Enter Passcode", ref code, 20, ImGuiInputTextFlags.Password))
             {
-                if (code == "YXIII")
+                if (code == "pixie13!?")
                 {
                     _plugin.Configuration.IsManagementModeEnabled = true;
                     _plugin.Configuration.Save();

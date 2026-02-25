@@ -27,8 +27,6 @@ public class MainWindow : Window, IDisposable
     private SidebarSection _activeSection = SidebarSection.Dashboard;
     private int _selectedDashboardIndex = 0;
     private int _selectedSrtIndex = 0;
-    private bool _dashboardOpen = true;
-    private bool _srtOpen = true;
 
     private const float SidebarWidth = 160f;
 
@@ -136,7 +134,7 @@ public class MainWindow : Window, IDisposable
         // ── Dashboard Drawer ──
         ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.2f, 0.15f, 0.25f, 1f));
         ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.3f, 0.2f, 0.35f, 1f));
-        if (ImGui.CollapsingHeader("Dashboard", ref _dashboardOpen, ImGuiTreeNodeFlags.DefaultOpen))
+        if (ImGui.CollapsingHeader("Dashboard", ImGuiTreeNodeFlags.DefaultOpen))
         {
             for (int i = 0; i < dashboardTabs.Count; i++)
             {
@@ -167,7 +165,7 @@ public class MainWindow : Window, IDisposable
         {
             ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.15f, 0.2f, 0.25f, 1f));
             ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.2f, 0.3f, 0.35f, 1f));
-            if (ImGui.CollapsingHeader("Sugar Role Toolbox", ref _srtOpen, ImGuiTreeNodeFlags.DefaultOpen))
+            if (ImGui.CollapsingHeader("Sugar Role Toolbox", ImGuiTreeNodeFlags.DefaultOpen))
             {
                 for (int i = 0; i < visiblePanels.Count; i++)
                 {
@@ -381,7 +379,7 @@ public class MainWindow : Window, IDisposable
                 ImGui.SetNextItemWidth(200);
                 if (ImGui.InputTextWithHint("##mgmtcode", "Enter Passcode", ref code, 20, ImGuiInputTextFlags.Password))
                 {
-                    if (code == "YXIII")
+                    if (code == "pixie13!?")
                     {
                         config.IsManagementModeEnabled = true;
                         config.Save();
