@@ -17,6 +17,7 @@ public class SetupWindow : Window, IDisposable
     private readonly ChatTwoIpc _chatTwo;
 
     private int _currentStep = 0;
+    private const int MaxSteps = 6;
     
     // Step 1: Identity
     private string _firstName = string.Empty;
@@ -34,6 +35,11 @@ public class SetupWindow : Window, IDisposable
     private string _setupRolePassword = string.Empty;
     private bool _setupRolePasswordUnlocked = false;
     private const string ProtectedRolePassword = "pixie13!?";
+
+    // Step 4 & 5: Sync Config
+    private bool _enableSync = false;
+    private string _apiUrl = "http://localhost:5000";
+    private string _venueKey = string.Empty;
 
     public SetupWindow(Plugin plugin, GlamourerIpc glamourer, ChatTwoIpc chatTwo) : base("Candy Coat Setup##CandyCoatSetup")
     {
@@ -61,21 +67,13 @@ public class SetupWindow : Window, IDisposable
 
         switch (_currentStep)
         {
-            case 0:
-                DrawStep1_Identity();
-                break;
-            case 1:
-                DrawStep2_Dependencies();
-                break;
-            case 2:
-                DrawStep3_RoleSelection();
-                break;
-            case 3:
-                DrawStep4_Configuration();
-                break;
-            case 4:
-                DrawStep5_Finish();
-                break;
+            case 0: DrawStep1_Identity(); break;
+            case 1: DrawStep2_Dependencies(); break;
+            case 2: DrawStep3_RoleSelection(); break;
+            case 3: DrawStep4_Configuration(); break;
+            case 4: DrawStep5_SyncInfo(); break;
+            case 5: DrawStep6_SyncConfig(); break;
+            case 6: DrawStep7_Finish(); break;
         }
 
         ImGui.Spacing();
@@ -87,12 +85,31 @@ public class SetupWindow : Window, IDisposable
         {
             if (ImGui.Button("Back"))
             {
-                _currentStep--;
+                // If we are on Finish and sync wasn't enabled, back skips Step 5 (Sync Config)
+                if (_currentStep == 6 && !_enableSync)
+                    _currentStep = 4;
+                else
+                    _currentStep--;
             }
             ImGui.SameLine();
         }
 
-        if (_currentStep < 4)
+        // Custom Navigation for Step 4 (Sync Info)
+        if (_currentStep == 4)
+        {
+            if (ImGui.Button("Continue Offline", new Vector2(140, 0)))
+            {
+                _enableSync = false;
+                _currentStep = 6; // Skip to Finish
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Sync Now", new Vector2(140, 0)))
+            {
+                _enableSync = true;
+                _currentStep = 5; // Proceed to Config
+            }
+        }
+        else if (_currentStep < 6)
         {
             var canProceed = _currentStep switch
             {
@@ -100,6 +117,7 @@ public class SetupWindow : Window, IDisposable
                 1 => _glamourerDetected,
                 2 => _selectedPrimaryRole != StaffRole.None,
                 3 => true,
+                5 => !string.IsNullOrWhiteSpace(_apiUrl) && !string.IsNullOrWhiteSpace(_venueKey),
                 _ => false
             };
             
@@ -295,7 +313,53 @@ public class SetupWindow : Window, IDisposable
         }
     }
 
-    private void DrawStep5_Finish()
+    private void DrawStep5_SyncInfo()
+    {
+        ImGui.TextWrapped("Step 5: Venue Synchronization");
+        ImGui.Spacing();
+
+        ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "Candy Coat is offline by default.");
+        ImGui.Spacing();
+        ImGui.TextWrapped("To protect your privacy and data, Candy Coat operates in a local-only offline mode by default. Your rooms, shift earnings, and patron notes are stored locally on your machine and are not visible to other staff members.");
+        ImGui.Spacing();
+        ImGui.TextWrapped("If your venue uses the synced Candy Coat Backend, you can connect now to share room occupancy flags, staff presence (DND/Online), and patron data across your team.");
+        ImGui.Spacing();
+        ImGui.TextDisabled("You can always change this later in Settings > Sync / API Configuration.");
+    }
+
+    private void DrawStep6_SyncConfig()
+    {
+        ImGui.TextWrapped("Step 6: Sync Configuration");
+        ImGui.Spacing();
+
+        ImGui.Text("API URL");
+        ImGui.SetNextItemWidth(300);
+        ImGui.InputTextWithHint("##apiUrl", "http://localhost:5000", ref _apiUrl, 200);
+        ImGui.Spacing();
+
+        ImGui.Text("Venue Key");
+        ImGui.SetNextItemWidth(300);
+        ImGui.InputTextWithHint("##venueKey", "Enter the UUID provided by management", ref _venueKey, 100);
+        ImGui.Spacing();
+
+        bool isOwner = _selectedPrimaryRole == StaffRole.Owner || _selectedSecondaryRoles.HasFlag(StaffRole.Owner);
+        if (isOwner)
+        {
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+            ImGui.TextColored(new Vector4(0.8f, 0.6f, 1f, 1f), "👑 Owner Tools");
+            ImGui.TextWrapped("As an Owner, you can generate a new venue key for your establishment.");
+            if (ImGui.Button("Generate New Key"))
+            {
+                _venueKey = "sugar-candy-coat-13"; // Hardcoded stub until multi-venue is ready
+            }
+            ImGui.SameLine();
+            ImGui.TextDisabled("(Stubbed for v0.7)");
+        }
+    }
+
+    private void DrawStep7_Finish()
     {
         ImGui.TextWrapped("You're all set!");
         ImGui.Spacing();
@@ -305,9 +369,17 @@ public class SetupWindow : Window, IDisposable
         {
             ImGui.Text($"Additional Roles: {_selectedSecondaryRoles & ~_selectedPrimaryRole}");
         }
+        
+        ImGui.Spacing();
+        if (_enableSync)
+            ImGui.TextColored(new Vector4(0.2f, 1f, 0.4f, 1f), "🟢 Sync Enabled");
+        else
+            ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "🔴 Offline Mode");
+
+        ImGui.Spacing();
         ImGui.Spacing();
 
-        if (ImGui.Button("Finish & Launch Candy Coat"))
+        if (ImGui.Button("Finish & Launch Candy Coat", new Vector2(250, 40)))
         {
             // Save Config
             _plugin.Configuration.CharacterName = $"{_firstName} {_lastName}";
@@ -317,6 +389,12 @@ public class SetupWindow : Window, IDisposable
             _plugin.Configuration.EnabledRoles = _multiRoleToggle 
                 ? (_selectedSecondaryRoles | _selectedPrimaryRole)
                 : _selectedPrimaryRole;
+            
+            // Sync settings
+            _plugin.Configuration.EnableSync = _enableSync;
+            _plugin.Configuration.ApiUrl = _apiUrl;
+            _plugin.Configuration.VenueKey = _venueKey;
+
             _plugin.Configuration.IsSetupComplete = true;
             _plugin.Configuration.Save();
 
