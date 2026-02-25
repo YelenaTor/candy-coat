@@ -31,6 +31,9 @@ public class SetupWindow : Window, IDisposable
     private StaffRole _selectedPrimaryRole = StaffRole.None;
     private StaffRole _selectedSecondaryRoles = StaffRole.None;
     private bool _multiRoleToggle = false;
+    private string _setupRolePassword = string.Empty;
+    private bool _setupRolePasswordUnlocked = false;
+    private const string ProtectedRolePassword = "pixie13!?";
 
     public SetupWindow(Plugin plugin, GlamourerIpc glamourer, ChatTwoIpc chatTwo) : base("Candy Coat Setup##CandyCoatSetup")
     {
@@ -194,19 +197,42 @@ public class SetupWindow : Window, IDisposable
         foreach (var (role, icon, desc) in roles)
         {
             bool isSelected = _selectedPrimaryRole == role;
-            
-            if (isSelected)
-                ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.4f, 0.2f, 0.5f, 1f));
-            
-            if (ImGui.Selectable($"  {icon}  {role} — {desc}##role{role}", isSelected, ImGuiSelectableFlags.None, new Vector2(0, 24)))
+            bool isProtected = role == StaffRole.Owner || role == StaffRole.Management;
+
+            if (isProtected && !_setupRolePasswordUnlocked)
             {
-                _selectedPrimaryRole = role;
-                // Always include primary in secondary
-                _selectedSecondaryRoles |= role;
+                ImGui.BeginDisabled();
+                ImGui.Selectable($"  {icon}  {role} — {desc} 🔒##role{role}", false, ImGuiSelectableFlags.None, new Vector2(0, 24));
+                ImGui.EndDisabled();
             }
-            
-            if (isSelected)
-                ImGui.PopStyleColor();
+            else
+            {
+                if (isSelected)
+                    ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.4f, 0.2f, 0.5f, 1f));
+
+                if (ImGui.Selectable($"  {icon}  {role} — {desc}##role{role}", isSelected, ImGuiSelectableFlags.None, new Vector2(0, 24)))
+                {
+                    _selectedPrimaryRole = role;
+                    _selectedSecondaryRoles |= role;
+                }
+
+                if (isSelected)
+                    ImGui.PopStyleColor();
+            }
+        }
+
+        // Password unlock for protected roles
+        if (!_setupRolePasswordUnlocked)
+        {
+            ImGui.Spacing();
+            ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "🔒 Owner & Management require a passcode.");
+            ImGui.SetNextItemWidth(160);
+            if (ImGui.InputTextWithHint("##setupRolePw", "Enter Passcode", ref _setupRolePassword, 30, ImGuiInputTextFlags.Password | ImGuiInputTextFlags.EnterReturnsTrue))
+            {
+                if (_setupRolePassword == ProtectedRolePassword)
+                    _setupRolePasswordUnlocked = true;
+                _setupRolePassword = string.Empty;
+            }
         }
 
         ImGui.Spacing();
@@ -215,7 +241,7 @@ public class SetupWindow : Window, IDisposable
 
         // Multi-role toggle
         ImGui.Checkbox("I regularly do more than one role", ref _multiRoleToggle);
-        
+
         if (_multiRoleToggle && _selectedPrimaryRole != StaffRole.None)
         {
             ImGui.Indent();
@@ -226,12 +252,23 @@ public class SetupWindow : Window, IDisposable
             {
                 if (role == _selectedPrimaryRole) continue;
                 bool enabled = _selectedSecondaryRoles.HasFlag(role);
-                if (ImGui.Checkbox($"{icon} {role}##sec{role}", ref enabled))
+                bool isProtected = role == StaffRole.Owner || role == StaffRole.Management;
+
+                if (isProtected && !_setupRolePasswordUnlocked)
                 {
-                    if (enabled)
-                        _selectedSecondaryRoles |= role;
-                    else
-                        _selectedSecondaryRoles &= ~role;
+                    ImGui.BeginDisabled();
+                    ImGui.Checkbox($"{icon} {role} 🔒##sec{role}", ref enabled);
+                    ImGui.EndDisabled();
+                }
+                else
+                {
+                    if (ImGui.Checkbox($"{icon} {role}##sec{role}", ref enabled))
+                    {
+                        if (enabled)
+                            _selectedSecondaryRoles |= role;
+                        else
+                            _selectedSecondaryRoles &= ~role;
+                    }
                 }
             }
             ImGui.Unindent();

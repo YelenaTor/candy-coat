@@ -28,6 +28,11 @@ public class MainWindow : Window, IDisposable
     private int _selectedDashboardIndex = 0;
     private int _selectedSrtIndex = 0;
 
+    // Password gate for protected roles
+    private string _rolePassword = string.Empty;
+    private bool _rolePasswordUnlocked = false;
+    private const string ProtectedRolePassword = "pixie13!?";
+
     private const float SidebarWidth = 160f;
 
     public MainWindow(Plugin plugin, VenueService venueService, WaitlistManager waitlistManager, ShiftManager shiftManager, PatronDetailsWindow detailsWindow, string goatImagePath)
@@ -224,12 +229,18 @@ public class MainWindow : Window, IDisposable
 
             case SidebarSection.SRT:
                 var visiblePanels = GetVisibleSrtPanels();
-                if (_selectedSrtIndex >= 0 && _selectedSrtIndex < visiblePanels.Count)
+                if (visiblePanels.Count == 0)
+                {
+                    _selectedSrtIndex = 0;
+                    ImGui.TextDisabled("No roles enabled. Set up in Settings.");
+                }
+                else if (_selectedSrtIndex >= 0 && _selectedSrtIndex < visiblePanels.Count)
                 {
                     visiblePanels[_selectedSrtIndex].DrawContent();
                 }
                 else
                 {
+                    _selectedSrtIndex = 0;
                     ImGui.TextDisabled("Select a toolbox from the sidebar.");
                 }
                 break;
@@ -259,11 +270,40 @@ public class MainWindow : Window, IDisposable
             {
                 if (role == StaffRole.None) continue;
                 bool isPrimary = config.PrimaryRole == role;
-                if (ImGui.RadioButton(role.ToString(), isPrimary))
+                bool isProtected = role == StaffRole.Owner || role == StaffRole.Management;
+
+                if (isProtected && !_rolePasswordUnlocked && !config.IsManagementModeEnabled)
                 {
-                    config.PrimaryRole = role;
-                    config.EnabledRoles |= role; // Primary always enabled
-                    config.Save();
+                    ImGui.BeginDisabled();
+                    ImGui.RadioButton($"{role} 🔒", isPrimary);
+                    ImGui.EndDisabled();
+                }
+                else
+                {
+                    if (ImGui.RadioButton(role.ToString(), isPrimary))
+                    {
+                        config.PrimaryRole = role;
+                        config.EnabledRoles |= role;
+                        config.Save();
+                    }
+                }
+            }
+
+            // Password unlock for protected roles
+            if (!_rolePasswordUnlocked && !config.IsManagementModeEnabled)
+            {
+                ImGui.Spacing();
+                ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "🔒 Owner & Management require a passcode.");
+                ImGui.SetNextItemWidth(160);
+                if (ImGui.InputTextWithHint("##rolePw", "Enter Passcode", ref _rolePassword, 30, ImGuiInputTextFlags.Password | ImGuiInputTextFlags.EnterReturnsTrue))
+                {
+                    if (_rolePassword == ProtectedRolePassword)
+                    {
+                        _rolePasswordUnlocked = true;
+                        config.IsManagementModeEnabled = true;
+                        config.Save();
+                    }
+                    _rolePassword = string.Empty;
                 }
             }
 
@@ -274,7 +314,6 @@ public class MainWindow : Window, IDisposable
                 config.MultiRoleEnabled = multiRole;
                 if (!multiRole)
                 {
-                    // Reset to primary only
                     config.EnabledRoles = config.PrimaryRole;
                 }
                 config.Save();
@@ -287,13 +326,24 @@ public class MainWindow : Window, IDisposable
                 {
                     if (role == StaffRole.None || role == config.PrimaryRole) continue;
                     bool enabled = config.EnabledRoles.HasFlag(role);
-                    if (ImGui.Checkbox($"{role}##secondary", ref enabled))
+                    bool isProtected = role == StaffRole.Owner || role == StaffRole.Management;
+
+                    if (isProtected && !_rolePasswordUnlocked && !config.IsManagementModeEnabled)
                     {
-                        if (enabled)
-                            config.EnabledRoles |= role;
-                        else
-                            config.EnabledRoles &= ~role;
-                        config.Save();
+                        ImGui.BeginDisabled();
+                        ImGui.Checkbox($"{role} 🔒##secondary", ref enabled);
+                        ImGui.EndDisabled();
+                    }
+                    else
+                    {
+                        if (ImGui.Checkbox($"{role}##secondary", ref enabled))
+                        {
+                            if (enabled)
+                                config.EnabledRoles |= role;
+                            else
+                                config.EnabledRoles &= ~role;
+                            config.Save();
+                        }
                     }
                 }
                 ImGui.Unindent();
