@@ -5,7 +5,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Newtonsoft.Json;
 using ECommons.DalamudServices;
+using CandyCoat.Data;
 
 namespace CandyCoat.Services;
 
@@ -36,6 +38,7 @@ public class SyncService : IDisposable
     public List<SyncedEarning> Earnings { get; private set; } = new();
     public List<SyncedMenuItem> Menu { get; private set; } = new();
     public List<SyncedGambaPreset> GambaPresets { get; private set; } = new();
+    public Dictionary<string, CosmeticProfile> Cosmetics { get; private set; } = new();
 
     // Connection state
     public bool IsConnected { get; private set; } = false;
@@ -144,6 +147,28 @@ public class SyncService : IDisposable
         {
             Rooms = await GetAsync<List<SyncedRoom>>("api/rooms") ?? Rooms;
             OnlineStaff = await GetAsync<List<SyncedStaff>>("api/staff/online") ?? OnlineStaff;
+            
+            var newCosmetics = await GetAsync<List<SyncedCosmeticEnvelope>>("api/cosmetics");
+            if (newCosmetics != null)
+            {
+                foreach (var env in newCosmetics)
+                {
+                    try
+                    {
+                        using var ms = new System.IO.MemoryStream(env.BrotliBlob);
+                        using var bs = new System.IO.Compression.BrotliStream(ms, System.IO.Compression.CompressionMode.Decompress);
+                        using var reader = new System.IO.StreamReader(bs);
+                        var json = await reader.ReadToEndAsync();
+                        var profile = JsonConvert.DeserializeObject<CosmeticProfile>(json);
+                        if (profile != null)
+                        {
+                            Cosmetics[env.CharacterHash] = profile;
+                        }
+                    }
+                    catch { /* Ignore decoding errors */ }
+                }
+            }
+
             IsConnected = true;
             LastError = null;
         }
@@ -231,6 +256,39 @@ public class SyncService : IDisposable
 
     public async Task ToggleDndAsync(string characterName, bool isDnd) =>
         await PostAsync("api/staff/dnd", new { CharacterName = characterName, IsDnd = isDnd });
+
+    public async Task PushCosmeticsAsync(CosmeticProfile profile)
+    {
+        try
+        {
+            var json = JsonConvert.SerializeObject(profile);
+            var bytes = Encoding.UTF8.GetBytes(json);
+            
+            using var ms = new System.IO.MemoryStream();
+            using (var bs = new System.IO.Compression.BrotliStream(ms, System.IO.Compression.CompressionLevel.Optimal))
+            {
+                await bs.WriteAsync(bytes, 0, bytes.Length);
+            }
+            var compressedBytes = ms.ToArray();
+            
+            var name = _plugin.Configuration.CharacterName ?? "Unknown";
+            var world = _plugin.Configuration.HomeWorld ?? "Unknown";
+            var hash = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{name}@{world}"));
+            
+            var payload = new SyncedCosmeticEnvelope
+            {
+                CharacterHash = hash,
+                BrotliBlob = compressedBytes,
+                LastUpdatedUtc = DateTime.UtcNow
+            };
+            
+            await PostAsync("api/cosmetics", payload);
+        }
+        catch (Exception ex)
+        {
+            Svc.Log.Error($"[SyncService] PushCosmeticsAsync failed: {ex.Message}");
+        }
+    }
 
     // ─── HTTP helpers ───
 
@@ -366,4 +424,11 @@ public class SyncedGambaPreset
     public string Rules { get; set; } = string.Empty;
     public string AnnounceMacro { get; set; } = string.Empty;
     public float DefaultMultiplier { get; set; } = 2.0f;
+}
+
+public class SyncedCosmeticEnvelope
+{
+    public string CharacterHash { get; set; } = string.Empty;
+    public byte[] BrotliBlob { get; set; } = Array.Empty<byte>();
+    public DateTime LastUpdatedUtc { get; set; }
 }

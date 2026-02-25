@@ -325,6 +325,50 @@ app.MapPut("/api/gamba/presets", async (VenueDbContext db, HttpContext ctx, List
     return Results.Ok(presets);
 });
 
+// ═══════════════════════════════════════════
+//  COSMETICS SYNCHRONIZATION
+// ═══════════════════════════════════════════
+
+app.MapGet("/api/cosmetics", async (VenueDbContext db, HttpContext ctx) =>
+{
+    var venueId = GetVenueId(ctx);
+    // Return all cosmetic envelopes for the venue
+    var cosmetics = await db.CosmeticsSync
+        .Where(c => c.VenueId == venueId)
+        .Select(c => new
+        {
+            characterHash = c.CharacterHash,
+            brotliBlob = c.BrotliBlob,
+            lastUpdatedUtc = c.LastUpdatedUtc
+        })
+        .ToListAsync();
+        
+    return Results.Ok(cosmetics);
+});
+
+app.MapPost("/api/cosmetics", async (VenueDbContext db, HttpContext ctx, CosmeticSyncEntity req) =>
+{
+    var venueId = GetVenueId(ctx);
+    
+    var existing = await db.CosmeticsSync.FirstOrDefaultAsync(
+        c => c.VenueId == venueId && c.CharacterHash == req.CharacterHash);
+        
+    if (existing != null)
+    {
+        existing.BrotliBlob = req.BrotliBlob;
+        existing.LastUpdatedUtc = DateTime.UtcNow;
+    }
+    else
+    {
+        req.VenueId = venueId;
+        req.LastUpdatedUtc = DateTime.UtcNow;
+        db.CosmeticsSync.Add(req);
+    }
+    
+    await db.SaveChangesAsync();
+    return Results.Ok();
+});
+
 app.Run();
 
 // ─── Helper: Extract venue ID from venue key config ───

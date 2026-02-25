@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Dalamud.NET.Sdk/14.0.1">
   <PropertyGroup>
-    <Version>0.7.2</Version>
+    <Version>0.8.0</Version>
     <Description>Private venue assistant for Sugar.</Description>
     <PackageProjectUrl>https://github.com/NightmareXIV/CandyCoat</PackageProjectUrl>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
@@ -24,5 +24,11 @@
     <Reference Include="Dalamud.Bindings.ImGui" Private="false" />
     <ProjectReference Include="ECommons\ECommons\ECommons.csproj" />
     <ProjectReference Include="OtterGui\OtterGui.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="images\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>

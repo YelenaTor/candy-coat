@@ -18,6 +18,7 @@ public class MainWindow : Window, IDisposable
     private readonly Plugin plugin;
     private readonly VenueService venueService;
     private readonly PatronDetailsWindow detailsWindow;
+    private readonly CosmeticDrawerTab cosmeticTab;
 
     private readonly List<ITab> dashboardTabs = new();
     private readonly List<IToolboxPanel> srtPanels = new();
@@ -71,6 +72,8 @@ public class MainWindow : Window, IDisposable
         srtPanels.Add(new DJPanel(plugin));
         srtPanels.Add(new ManagementPanel(plugin));
         srtPanels.Add(new OwnerPanel(plugin));
+        
+        cosmeticTab = new CosmeticDrawerTab(plugin);
     }
 
     private void OnPatronSelected(Data.Patron? patron)
@@ -334,6 +337,24 @@ public class MainWindow : Window, IDisposable
         ImGui.Separator();
         ImGui.Spacing();
 
+        if (ImGui.BeginTabBar("SettingsTabBar"))
+        {
+            if (ImGui.BeginTabItem("General"))
+            {
+                DrawGeneralSettings();
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("Cosmetic Drawer"))
+            {
+                cosmeticTab.DrawContent();
+                ImGui.EndTabItem();
+            }
+            ImGui.EndTabBar();
+        }
+    }
+
+    private void DrawGeneralSettings()
+    {
         var config = plugin.Configuration;
 
         // ── Role Management ──

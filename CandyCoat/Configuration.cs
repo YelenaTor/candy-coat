@@ -22,6 +22,7 @@ public class Configuration : IPluginConfiguration
     public bool EnableGlamourer { get; set; } = true;
     public bool EnableChatTwo { get; set; } = true;
     public bool IsConfigWindowMovable { get; set; } = true;
+    public CosmeticProfile CosmeticProfile { get; set; } = new();
 
     // SRT Role Config
     public StaffRole PrimaryRole { get; set; } = StaffRole.None;

@@ -45,6 +45,7 @@ public sealed class Plugin : IDalamudPlugin
     private CandyCoat.Windows.SetupWindow SetupWindow { get; init; }
     private CandyCoat.Windows.PatronDetailsWindow PatronDetailsWindow { get; init; }
     private CandyCoat.IPC.ChatTwoIpc ChatTwoIpc { get; init; }
+    private CandyCoat.UI.NameplateRenderer NameplateRenderer { get; init; }
 
     public Plugin()
     {
@@ -84,6 +85,8 @@ public sealed class Plugin : IDalamudPlugin
         // Initialize Setup Window (needs IPCs)
         SetupWindow = new CandyCoat.Windows.SetupWindow(this, glamourerIpc, ChatTwoIpc);
         WindowSystem.AddWindow(SetupWindow);
+
+        NameplateRenderer = new UI.NameplateRenderer(this);
 
         // Startup Logic
         if (!Configuration.IsSetupComplete)
@@ -128,7 +131,8 @@ public sealed class Plugin : IDalamudPlugin
         WindowSystem.RemoveAllWindows();
 
         ChatTwoIpc?.Disable();
-        ChatTwoIpc?.Dispose();
+        ChatTwoIpc.Dispose();
+        NameplateRenderer.Dispose();
         
         MainWindow.Dispose();
         PatronDetailsWindow.Dispose();
