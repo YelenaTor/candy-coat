@@ -4,4 +4,5 @@ public interface ITab
 {
     string Name { get; }
     void Draw();
+    void DrawContent();
 }

@@ -6,6 +6,7 @@ using Dalamud.Interface.Utility.Raii;
 using Dalamud.Bindings.ImGui;
 using ECommons.DalamudServices;
 using CandyCoat.IPC;
+using CandyCoat.Data;
 
 namespace CandyCoat.Windows;
 
@@ -24,6 +25,12 @@ public class SetupWindow : Window, IDisposable
 
     // Step 2: Dependencies
     private bool _glamourerDetected = false;
+    private bool _chatTwoDetected = false;
+
+    // Step 3: Role Selection
+    private StaffRole _selectedPrimaryRole = StaffRole.None;
+    private StaffRole _selectedSecondaryRoles = StaffRole.None;
+    private bool _multiRoleToggle = false;
 
     public SetupWindow(Plugin plugin, GlamourerIpc glamourer, ChatTwoIpc chatTwo) : base("Candy Coat Setup##CandyCoatSetup")
     {
@@ -33,8 +40,8 @@ public class SetupWindow : Window, IDisposable
 
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(400, 300),
-            MaximumSize = new Vector2(600, 450)
+            MinimumSize = new Vector2(450, 380),
+            MaximumSize = new Vector2(650, 550)
         };
 
         Flags |= ImGuiWindowFlags.NoCollapse;
@@ -58,10 +65,13 @@ public class SetupWindow : Window, IDisposable
                 DrawStep2_Dependencies();
                 break;
             case 2:
-                DrawStep3_Configuration();
+                DrawStep3_RoleSelection();
                 break;
             case 3:
-                DrawStep4_Finish();
+                DrawStep4_Configuration();
+                break;
+            case 4:
+                DrawStep5_Finish();
                 break;
         }
 
@@ -79,13 +89,14 @@ public class SetupWindow : Window, IDisposable
             ImGui.SameLine();
         }
 
-        if (_currentStep < 3)
+        if (_currentStep < 4)
         {
             var canProceed = _currentStep switch
             {
                 0 => !string.IsNullOrWhiteSpace(_firstName) && !string.IsNullOrWhiteSpace(_lastName) && !string.IsNullOrWhiteSpace(_homeWorld),
-                1 => _glamourerDetected, // Glamourer is required? User said "Glamourer*needed"
-                2 => true,
+                1 => _glamourerDetected,
+                2 => _selectedPrimaryRole != StaffRole.None,
+                3 => true,
                 _ => false
             };
             
@@ -129,7 +140,7 @@ public class SetupWindow : Window, IDisposable
     private void CheckDependencies()
     {
         _glamourerDetected = _glamourer.IsAvailable();
-        _glamourerDetected = _glamourer.IsAvailable();
+        _chatTwoDetected = _chatTwo.IsAvailable();
     }
 
     private void DrawStep2_Dependencies()
@@ -147,7 +158,10 @@ public class SetupWindow : Window, IDisposable
         ImGui.Spacing();
         ImGui.Text("ChatTwo (Optional):");
         ImGui.SameLine();
-        ImGui.TextDisabled("Detection unavailable (Optional)");
+        if (_chatTwoDetected)
+            ImGui.TextColored(new Vector4(0f, 1f, 0f, 1f), "Detected via IPC");
+        else
+            ImGui.TextColored(new Vector4(1f, 0.8f, 0f, 1f), "Not Detected (Optional)");
 
         ImGui.Spacing();
         if (ImGui.Button("Re-check Dependencies"))
@@ -156,12 +170,80 @@ public class SetupWindow : Window, IDisposable
         }
     }
 
-    private void DrawStep3_Configuration()
+    private void DrawStep3_RoleSelection()
     {
-        ImGui.TextWrapped("Step 3: Initial Configuration");
+        ImGui.TextWrapped("Step 3: Choose Your Role");
+        ImGui.TextWrapped("Select your primary role at the venue. This determines which toolbox you'll see in the Sugar Role Toolbox (SRT).");
         ImGui.Spacing();
 
-        ImGui.TextWrapped("You can configure detailed settings later in the main menu.");
+        // Role descriptions
+        var roles = new (StaffRole Role, string Icon, string Desc)[]
+        {
+            (StaffRole.Sweetheart,  "♥",  "Entertainer / Companion"),
+            (StaffRole.CandyHeart,  "💗", "Greeter / Welcome team"),
+            (StaffRole.Bartender,   "🍸", "Bar / drink service"),
+            (StaffRole.Gamba,       "🎲", "Gambling / games host"),
+            (StaffRole.DJ,          "🎵", "Music / performance"),
+            (StaffRole.Management,  "📋", "Staff oversight"),
+            (StaffRole.Owner,       "👑", "Venue-wide admin"),
+        };
+
+        ImGui.Text("Primary Role:");
+        ImGui.Spacing();
+
+        foreach (var (role, icon, desc) in roles)
+        {
+            bool isSelected = _selectedPrimaryRole == role;
+            
+            if (isSelected)
+                ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.4f, 0.2f, 0.5f, 1f));
+            
+            if (ImGui.Selectable($"  {icon}  {role} — {desc}##role{role}", isSelected, ImGuiSelectableFlags.None, new Vector2(0, 24)))
+            {
+                _selectedPrimaryRole = role;
+                // Always include primary in secondary
+                _selectedSecondaryRoles |= role;
+            }
+            
+            if (isSelected)
+                ImGui.PopStyleColor();
+        }
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        // Multi-role toggle
+        ImGui.Checkbox("I regularly do more than one role", ref _multiRoleToggle);
+        
+        if (_multiRoleToggle && _selectedPrimaryRole != StaffRole.None)
+        {
+            ImGui.Indent();
+            ImGui.TextDisabled("Select additional roles:");
+            ImGui.Spacing();
+
+            foreach (var (role, icon, desc) in roles)
+            {
+                if (role == _selectedPrimaryRole) continue;
+                bool enabled = _selectedSecondaryRoles.HasFlag(role);
+                if (ImGui.Checkbox($"{icon} {role}##sec{role}", ref enabled))
+                {
+                    if (enabled)
+                        _selectedSecondaryRoles |= role;
+                    else
+                        _selectedSecondaryRoles &= ~role;
+                }
+            }
+            ImGui.Unindent();
+        }
+    }
+
+    private void DrawStep4_Configuration()
+    {
+        ImGui.TextWrapped("Step 4: Initial Configuration");
+        ImGui.Spacing();
+
+        ImGui.TextWrapped("You can configure detailed settings later in the Settings panel.");
         
         var enableGlam = _plugin.Configuration.EnableGlamourer;
         if (ImGui.Checkbox("Enable Glamourer Integration", ref enableGlam))
@@ -176,11 +258,16 @@ public class SetupWindow : Window, IDisposable
         }
     }
 
-    private void DrawStep4_Finish()
+    private void DrawStep5_Finish()
     {
         ImGui.TextWrapped("You're all set!");
         ImGui.Spacing();
         ImGui.Text($"Character: {_firstName} {_lastName} @ {_homeWorld}");
+        ImGui.Text($"Primary Role: {_selectedPrimaryRole}");
+        if (_multiRoleToggle)
+        {
+            ImGui.Text($"Additional Roles: {_selectedSecondaryRoles & ~_selectedPrimaryRole}");
+        }
         ImGui.Spacing();
 
         if (ImGui.Button("Finish & Launch Candy Coat"))
@@ -188,6 +275,11 @@ public class SetupWindow : Window, IDisposable
             // Save Config
             _plugin.Configuration.CharacterName = $"{_firstName} {_lastName}";
             _plugin.Configuration.HomeWorld = _homeWorld;
+            _plugin.Configuration.PrimaryRole = _selectedPrimaryRole;
+            _plugin.Configuration.MultiRoleEnabled = _multiRoleToggle;
+            _plugin.Configuration.EnabledRoles = _multiRoleToggle 
+                ? (_selectedSecondaryRoles | _selectedPrimaryRole)
+                : _selectedPrimaryRole;
             _plugin.Configuration.IsSetupComplete = true;
             _plugin.Configuration.Save();
 

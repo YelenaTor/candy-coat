@@ -83,6 +83,17 @@ public class LocatorService : IDisposable
         NearbyRegulars = newCache;
     }
 
+    public int GetNearbyCount()
+    {
+        int count = 0;
+        foreach (var obj in Svc.Objects)
+        {
+            if (obj is Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter)
+                count++;
+        }
+        return count;
+    }
+
     public void Dispose()
     {
         Svc.Framework.Update -= OnFrameworkUpdate;

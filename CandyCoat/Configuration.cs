@@ -22,7 +22,28 @@ public class Configuration : IPluginConfiguration
     public bool EnableGlamourer { get; set; } = true;
     public bool EnableChatTwo { get; set; } = true;
     public bool IsConfigWindowMovable { get; set; } = true;
-    public bool SomePropertyToBeSavedAndWithADefault { get; set; } = true;
+
+    // SRT Role Config
+    public StaffRole PrimaryRole { get; set; } = StaffRole.None;
+    public StaffRole EnabledRoles { get; set; } = StaffRole.None;
+    public bool MultiRoleEnabled { get; set; } = false;
+
+    // Venue-wide (Owner configures)
+    public List<ServiceMenuItem> ServiceMenu { get; set; } = new();
+    public List<VenueRoom> Rooms { get; set; } = new();
+    public string VenueName { get; set; } = string.Empty;
+
+    // Per-role data
+    public List<PatronNote> PatronNotes { get; set; } = new();
+    public List<EarningsEntry> Earnings { get; set; } = new();
+
+    // Gamba presets
+    public List<GambaGamePreset> GambaPresets { get; set; } = new();
+
+    // Per-role Quick-Tell templates
+    public List<Data.MacroTemplate> SweetheartMacros { get; set; } = new();
+    public List<Data.MacroTemplate> CandyHeartMacros { get; set; } = new();
+    public List<Data.MacroTemplate> BartenderMacros { get; set; } = new();
 
     // The below exist just to make saving less cumbersome
     public void Save()

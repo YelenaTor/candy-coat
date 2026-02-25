@@ -21,7 +21,11 @@ public class OverviewTab : ITab
     {
         using var tab = ImRaii.TabItem(Name);
         if (!tab) return;
+        DrawContent();
+    }
 
+    public void DrawContent()
+    {
         ImGui.TextUnformatted("Welcome to Candy Coat!");
         ImGui.Spacing();
         

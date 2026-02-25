@@ -31,3 +31,4 @@ bld/
 # Ignore custom artifacts/temp dumps
 DumpSig/
 GetSig.cs
+CLAUDE.md

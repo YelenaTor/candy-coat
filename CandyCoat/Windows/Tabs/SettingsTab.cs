@@ -22,7 +22,11 @@ public class SettingsTab : ITab
     {
         using var tab = ImRaii.TabItem(Name);
         if (!tab) return;
+        DrawContent();
+    }
 
+    public void DrawContent()
+    {
         ImGui.TextUnformatted("Global Config");
         ImGui.Spacing();
 

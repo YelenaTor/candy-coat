@@ -24,10 +24,7 @@ public class ChatTwoIpc : IDisposable
 
     // The registration ID.
     private string? _id;
-    
-    private const string LabelInvoke = "ChatTwo.Invoke";
 
-    private readonly ICallGateSubscriber<string, object?> _invokeSubscriber;
     // Callback action when menu item is clicked
     private readonly Action<string> _onStartCapture;
 
@@ -38,32 +35,15 @@ public class ChatTwoIpc : IDisposable
         this.Unregister = inter.GetIpcSubscriber<string, object?>("ChatTwo.Unregister");
         this.Invoke = inter.GetIpcSubscriber<string, PlayerPayload?, ulong, Payload?, SeString?, SeString?, object?>("ChatTwo.Invoke");
         this.Available = inter.GetIpcSubscriber<object?>("ChatTwo.Available");
-        
-        _invokeSubscriber = Svc.PluginInterface.GetIpcSubscriber<string, object?>(LabelInvoke);
+
         this._onStartCapture = onStartCapture;
     }
 
     public bool IsAvailable()
     {
-        // Simple check if we can resolve the registration IPC
-        try
-        {
-            // We can't easily invoke because Register requires string arg and returns void/string?
-            // Actually, best check is probably just seeing if the plugin is loaded via internal Dalamud lists if possible,
-            // or just assuming false if we haven't received 'Available' event?
-            // But 'Available' event only fires on load/enable.
-            // Let's rely on the wizard's "Check" button to try to Register and see if it succeeds?
-            // Or just return true for now and let user verify.
-            // Actually, if we just try to get the subscriber, it doesn't fail.
-            // Let's return false and let the user manually confirm, or implement a ping if we had control over ChatTwo.
-            // For now, I'll return false to be safe, or maybe check something else?
-            // Actually, ECommons might have a helper.
-            return false; 
-        }
-        catch
-        {
-            return false;
-        }
+        // If DoRegister() succeeded, _id will be non-null.
+        // This is also refreshed via the Available event when ChatTwo loads/reloads.
+        return _id != null;
     }
 
     public void Enable() {

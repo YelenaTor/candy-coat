@@ -14,6 +14,11 @@ public static class StyleManager
     private static readonly Vector4 PastelBg = new(0.12f, 0.10f, 0.15f, 0.95f); // Dark but soft purple-ish base
     private static readonly Vector4 PastelText = new(0.95f, 0.90f, 0.95f, 1.0f);
 
+    // Sidebar-specific
+    private static readonly Vector4 SidebarBg = new(0.08f, 0.07f, 0.11f, 0.95f);
+    private static readonly Vector4 SelectableActive = new(0.35f, 0.2f, 0.45f, 1.0f);
+    private static readonly Vector4 SelectableHover = new(0.25f, 0.15f, 0.35f, 1.0f);
+
     public static void PushStyles()
     {
         // Colors
@@ -30,16 +35,24 @@ public static class StyleManager
         ImGui.PushStyleColor(ImGuiCol.Tab, new Vector4(0.2f, 0.15f, 0.25f, 1.0f));
         ImGui.PushStyleColor(ImGuiCol.TabHovered, PastelPinkHover);
         ImGui.PushStyleColor(ImGuiCol.TabActive, PastelPink);
+
+        // Sidebar selectable styles
+        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, SelectableHover);
+        ImGui.PushStyleColor(ImGuiCol.HeaderActive, SelectableActive);
+        
+        // Separator style
+        ImGui.PushStyleColor(ImGuiCol.Separator, new Vector4(0.3f, 0.2f, 0.35f, 0.6f));
         
         // Variables (Rounding)
         ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 12f);
         ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 6f);
         ImGui.PushStyleVar(ImGuiStyleVar.TabRounding, 6f);
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 6f);
     }
 
     public static void PopStyles()
     {
-        ImGui.PopStyleVar(3);
-        ImGui.PopStyleColor(9);
+        ImGui.PopStyleVar(4);
+        ImGui.PopStyleColor(13);
     }
 }

@@ -34,7 +34,11 @@ public class BookingsTab : ITab
     {
         using var tab = ImRaii.TabItem(Name);
         if (!tab) return;
+        DrawContent();
+    }
 
+    public void DrawContent()
+    {
         ImGui.TextUnformatted("New Booking");
         ImGui.Separator();
 

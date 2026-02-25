@@ -16,4 +16,8 @@ public class Patron
     public List<Guid> QuickSwitchDesignIds { get; set; } = new();
     public DateTime LastSeen { get; set; } = DateTime.Now;
     public DateTime LastVisitDate { get; set; } = DateTime.Now;
+    public int VisitCount { get; set; } = 0;
+    public string BlacklistReason { get; set; } = string.Empty;
+    public DateTime? BlacklistDate { get; set; }
+    public string BlacklistFlaggedBy { get; set; } = string.Empty;
 }

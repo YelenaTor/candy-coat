@@ -22,7 +22,11 @@ public class StaffTab : ITab
     {
         using var tab = ImRaii.TabItem(Name);
         if (!tab) return;
+        DrawContent();
+    }
 
+    public void DrawContent()
+    {
         ImGui.TextUnformatted("Shift Management");
         ImGui.Spacing();
 
