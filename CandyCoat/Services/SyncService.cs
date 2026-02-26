@@ -60,7 +60,7 @@ public class SyncService : IDisposable
     /// </summary>
     public async Task WakeAsync()
     {
-        if (_isAwake || !_plugin.Configuration.EnableSync) return;
+        if (_isAwake || IsWaking || !_plugin.Configuration.EnableSync) return;
         if (string.IsNullOrEmpty(_plugin.Configuration.ApiUrl)) return;
 
         IsWaking = true;
@@ -121,15 +121,16 @@ public class SyncService : IDisposable
 
     private async Task FetchAllAsync()
     {
+        var ct = _cts?.Token ?? CancellationToken.None;
         try
         {
-            Rooms = await GetAsync<List<SyncedRoom>>("api/rooms") ?? new();
-            OnlineStaff = await GetAsync<List<SyncedStaff>>("api/staff/online") ?? new();
-            Patrons = await GetAsync<List<SyncedPatron>>("api/patrons") ?? new();
-            PatronNotes = await GetAsync<List<SyncedPatronNote>>("api/notes") ?? new();
-            Earnings = await GetAsync<List<SyncedEarning>>("api/earnings") ?? new();
-            Menu = await GetAsync<List<SyncedMenuItem>>("api/menu") ?? new();
-            GambaPresets = await GetAsync<List<SyncedGambaPreset>>("api/gamba/presets") ?? new();
+            Rooms = await GetAsync<List<SyncedRoom>>("api/rooms", ct) ?? new();
+            OnlineStaff = await GetAsync<List<SyncedStaff>>("api/staff/online", ct) ?? new();
+            Patrons = await GetAsync<List<SyncedPatron>>("api/patrons", ct) ?? new();
+            PatronNotes = await GetAsync<List<SyncedPatronNote>>("api/notes", ct) ?? new();
+            Earnings = await GetAsync<List<SyncedEarning>>("api/earnings", ct) ?? new();
+            Menu = await GetAsync<List<SyncedMenuItem>>("api/menu", ct) ?? new();
+            GambaPresets = await GetAsync<List<SyncedGambaPreset>>("api/gamba/presets", ct) ?? new();
             _lastEarningsSync = DateTime.UtcNow;
             _lastNotesSync = DateTime.UtcNow;
         }
@@ -295,11 +296,11 @@ public class SyncService : IDisposable
 
     // ─── HTTP helpers ───
 
-    private async Task<T?> GetAsync<T>(string path)
+    private async Task<T?> GetAsync<T>(string path, CancellationToken ct = default)
     {
-        var response = await _httpClient.GetAsync(path);
+        var response = await _httpClient.GetAsync(path, ct);
         response.EnsureSuccessStatusCode();
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(ct);
         return JsonConvert.DeserializeObject<T>(json);
     }
 
