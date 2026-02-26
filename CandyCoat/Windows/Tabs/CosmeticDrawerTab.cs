@@ -1,171 +1,345 @@
 using System;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
+using CandyCoat.UI;
 
 namespace CandyCoat.Windows.Tabs;
 
 public class CosmeticDrawerTab
 {
-    private readonly Plugin plugin;
-    private DateTime lastEditTime = DateTime.MinValue;
+    private readonly Plugin _plugin;
+    private readonly CosmeticFontManager _fontManager;
+    private readonly CosmeticBadgeManager _badgeManager;
+    private DateTime _lastEditTime = DateTime.MinValue;
 
-    public CosmeticDrawerTab(Plugin plugin)
+    private static readonly string[] GradientModeNames  = { "Static", "Sweep", "Rainbow" };
+    private static readonly string[] SparkleStyleNames  = { "Orbital", "Rising", "Burst" };
+    private static readonly string[] BackgroundStyleNames = { "None", "Solid", "Gradient", "Shimmer" };
+    private static readonly string[] OutlineModeNames   = { "Hard", "Soft" };
+    private static readonly string[] BadgePositionNames = { "Left", "Right", "Above" };
+
+    public CosmeticDrawerTab(Plugin plugin, CosmeticFontManager fontManager, CosmeticBadgeManager badgeManager)
     {
-        this.plugin = plugin;
+        _plugin = plugin;
+        _fontManager = fontManager;
+        _badgeManager = badgeManager;
     }
 
     public void DrawContent()
     {
-        var profile = plugin.Configuration.CosmeticProfile;
-        
+        var profile = _plugin.Configuration.CosmeticProfile;
+
         ImGui.TextColored(new Vector4(1f, 0.6f, 0.8f, 1f), "Custom Nameplates & Overlays");
         ImGui.Spacing();
-        ImGui.TextWrapped("Customize how your nameplate appears to other Sugar staff. These settings are instantly synced to all connected staff members.");
+        ImGui.TextWrapped("Customize how your nameplate appears to other Sugar staff. Changes sync automatically.");
         ImGui.Spacing();
         ImGui.Separator();
-        
-        // ── Preview Panel ──
+
+        // ── Live Preview ──────────────────────────────────────────────────────
         ImGui.Spacing();
-        ImGui.TextDisabled("Live Preview:");
-        
-        var drawList = ImGui.GetWindowDrawList();
-        var cursorPos = ImGui.GetCursorScreenPos();
+        ImGui.TextDisabled("Live Preview");
+
+        var drawList    = ImGui.GetWindowDrawList();
+        var cursorPos   = ImGui.GetCursorScreenPos();
         var regionAvail = ImGui.GetContentRegionAvail();
-        
-        // Draw a dark mock background for the preview
-        var previewRectMin = cursorPos;
-        var previewRectMax = new Vector2(cursorPos.X + regionAvail.X, cursorPos.Y + 100);
-        drawList.AddRectFilled(previewRectMin, previewRectMax, ImGui.GetColorU32(new Vector4(0.05f, 0.05f, 0.08f, 1f)), 8f);
-        
-        ImGui.Dummy(new Vector2(regionAvail.X, 100)); // Claim the space
-        
-        // Mock Nameplate Logic
-        var mockCenter = new Vector2(previewRectMin.X + regionAvail.X / 2, previewRectMin.Y + 50);
-        var mockText = $"« {plugin.Configuration.CharacterName ?? "Your Name"} »";
-        var textSize = ImGui.CalcTextSize(mockText);
-        var textPos = new Vector2(mockCenter.X - textSize.X / 2, mockCenter.Y - textSize.Y / 2);
-        
-        // Draw Glow (Multiple offset renders)
-        if (profile.EnableGlow)
-        {
-            var glowColor = ImGui.GetColorU32(profile.GlowColor);
-            float offset = 2f + (float)Math.Sin(ImGui.GetTime() * 3f) * 1f; // Pulsing effect
-            drawList.AddText(new Vector2(textPos.X - offset, textPos.Y), glowColor, mockText);
-            drawList.AddText(new Vector2(textPos.X + offset, textPos.Y), glowColor, mockText);
-            drawList.AddText(new Vector2(textPos.X, textPos.Y - offset), glowColor, mockText);
-            drawList.AddText(new Vector2(textPos.X, textPos.Y + offset), glowColor, mockText);
-        }
-        
-        // Draw Drop Shadow
-        if (profile.EnableDropShadow)
-        {
-            drawList.AddText(new Vector2(textPos.X + 1, textPos.Y + 2), ImGui.GetColorU32(new Vector4(0f, 0f, 0f, 0.8f)), mockText);
-        }
-        
-        // Base Text
-        drawList.AddText(textPos, ImGui.GetColorU32(profile.BaseColor), mockText);
+
+        const float previewHeight = 120f;
+        var previewMin = cursorPos;
+        var previewMax = new Vector2(cursorPos.X + regionAvail.X, cursorPos.Y + previewHeight);
+        drawList.AddRectFilled(previewMin, previewMax,
+            ImGui.GetColorU32(new Vector4(0.05f, 0.04f, 0.08f, 1f)), 8f);
+
+        ImGui.Dummy(new Vector2(regionAvail.X, previewHeight));
+
+        var previewCenter = new Vector2(previewMin.X + regionAvail.X / 2f, previewMin.Y + previewHeight / 2f);
+        var previewText   = $"« {(_plugin.Configuration.CharacterName is { Length: > 0 } n ? n : "Your Name")} »";
+        int previewSeed   = _plugin.Configuration.CharacterName?.GetHashCode() ?? 0;
+
+        CosmeticRenderer.Render(drawList, profile, previewText, previewCenter, 1f, _fontManager, _badgeManager, previewSeed);
 
         ImGui.Spacing();
         ImGui.Separator();
         ImGui.Spacing();
 
-        // ── Controls ──
         bool changed = false;
 
-        float columnWidth = regionAvail.X / 2 - 10;
-        ImGui.BeginChild("CosmeticControls", new Vector2(0, 0), false);
-        
-        ImGui.Columns(2, "CosmeticColumns", false);
-        ImGui.SetColumnWidth(0, columnWidth);
-        
-        // Left Column: Toggles
-        ImGui.Text("Features");
-        ImGui.Spacing();
-        
-        var enableGlow = profile.EnableGlow;
-        if (ImGui.Checkbox("Enable Pulsing Glow", ref enableGlow)) { profile.EnableGlow = enableGlow; changed = true; }
-        
-        var enableShadow = profile.EnableDropShadow;
-        if (ImGui.Checkbox("Enable Drop Shadow", ref enableShadow)) { profile.EnableDropShadow = enableShadow; changed = true; }
-        
-        var enableSfwNsfw = profile.EnableSfwNsfwTint;
-        if (ImGui.Checkbox("Auto SFW/NSFW Tinting", ref enableSfwNsfw)) { profile.EnableSfwNsfwTint = enableSfwNsfw; changed = true; }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Tints nameplate blue if LFM (Looking for Meld), or red if LFP (Looking for Party).");
-        
-        var enableClock = profile.EnableClockInAlpha;
-        if (ImGui.Checkbox("Clock-In Opacity Fade", ref enableClock)) { profile.EnableClockInAlpha = enableClock; changed = true; }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Fades opacity to 30% when you are not officially clocked into a shift.");
-        
-        var enableIcons = profile.EnableRoleIcon;
-        if (ImGui.Checkbox("Draw Role Icon", ref enableIcons)) { profile.EnableRoleIcon = enableIcons; changed = true; }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Draws a high-res class icon next to your name based on your active role.");
-        
-        ImGui.NextColumn();
-        
-        // Right Column: Colors
-        ImGui.Text("Colors");
-        ImGui.Spacing();
-        
-        var baseColor = profile.BaseColor;
-        if (ImGui.ColorEdit4("Base Text Color", ref baseColor, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+        using var child = ImRaii.Child("CosmeticControls", new Vector2(0, 0), false);
+
+        // ── Text & Colors ─────────────────────────────────────────────────────
+        if (ImGui.CollapsingHeader("Text & Colors", ImGuiTreeNodeFlags.DefaultOpen))
         {
-            profile.BaseColor = baseColor;
-            changed = true;
-        }
-        
-        if (profile.EnableGlow)
-        {
-            var glowColor = profile.GlowColor;
-            if (ImGui.ColorEdit4("Glow Color", ref glowColor, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+            ImGui.Indent();
+            ImGui.Spacing();
+
+            // Font
+            int fontIdx = Array.IndexOf(CosmeticFontManager.AvailableFonts, profile.FontName);
+            if (fontIdx < 0) fontIdx = 0;
+            ImGui.SetNextItemWidth(160);
+            if (ImGui.Combo("Font##font", ref fontIdx, CosmeticFontManager.AvailableFonts, CosmeticFontManager.AvailableFonts.Length))
+            { profile.FontName = CosmeticFontManager.AvailableFonts[fontIdx]; changed = true; }
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Place .ttf files in {PluginDir}/Fonts/ to unlock custom fonts.");
+
+            ImGui.Spacing();
+
+            // Base color
+            var baseColor = profile.BaseColor;
+            if (ImGui.ColorEdit4("Base Color##base", ref baseColor, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+            { profile.BaseColor = baseColor; changed = true; }
+
+            ImGui.Spacing();
+
+            // Glow
+            var enableGlow = profile.EnableGlow;
+            if (ImGui.Checkbox("Pulsing Glow##glow", ref enableGlow)) { profile.EnableGlow = enableGlow; changed = true; }
+            if (profile.EnableGlow)
             {
-                profile.GlowColor = glowColor;
-                changed = true;
+                ImGui.SameLine();
+                var glowColor = profile.GlowColor;
+                if (ImGui.ColorEdit4("##glowcol", ref glowColor, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+                { profile.GlowColor = glowColor; changed = true; }
             }
-        }
-        
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
-        ImGui.Text("Asset Selectors");
-        ImGui.Spacing();
-        
-        var iconTemplates = new[] { "Heart", "Star", "Crown" };
-        int currentIconIndex = Array.IndexOf(iconTemplates, profile.RoleIconTemplate);
-        if (currentIconIndex == -1) currentIconIndex = 0;
-        
-        if (ImGui.Combo("Role Icon", ref currentIconIndex, iconTemplates, iconTemplates.Length))
-        {
-            profile.RoleIconTemplate = iconTemplates[currentIconIndex];
-            changed = true;
-        }
-        
-        var bgTemplates = new[] { "None", "Pastel Gradient" };
-        int currentBgIndex = Array.IndexOf(bgTemplates, profile.BackgroundTexture);
-        if (currentBgIndex == -1) currentBgIndex = 0;
-        
-        if (ImGui.Combo("Background", ref currentBgIndex, bgTemplates, bgTemplates.Length))
-        {
-            profile.BackgroundTexture = bgTemplates[currentBgIndex];
-            changed = true;
+
+            ImGui.Spacing();
+
+            // Gradient
+            var enableGrad = profile.EnableGradient;
+            if (ImGui.Checkbox("Gradient Text##grad", ref enableGrad)) { profile.EnableGradient = enableGrad; changed = true; }
+            if (profile.EnableGradient)
+            {
+                ImGui.Indent();
+                int gradMode = (int)profile.GradientMode;
+                ImGui.SetNextItemWidth(120);
+                if (ImGui.Combo("Mode##gradmode", ref gradMode, GradientModeNames, GradientModeNames.Length))
+                { profile.GradientMode = (GradientMode)gradMode; changed = true; }
+
+                if (profile.GradientMode != GradientMode.Rainbow)
+                {
+                    ImGui.SameLine();
+                    var gc1 = profile.GradientColor1;
+                    if (ImGui.ColorEdit4("##gc1", ref gc1, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+                    { profile.GradientColor1 = gc1; changed = true; }
+                    ImGui.SameLine();
+                    var gc2 = profile.GradientColor2;
+                    if (ImGui.ColorEdit4("##gc2", ref gc2, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+                    { profile.GradientColor2 = gc2; changed = true; }
+                }
+
+                if (profile.GradientMode != GradientMode.Static)
+                {
+                    var gspeed = profile.GradientSpeed;
+                    ImGui.SetNextItemWidth(150);
+                    if (ImGui.SliderFloat("Speed##gspeed", ref gspeed, 0.1f, 5f))
+                    { profile.GradientSpeed = gspeed; changed = true; }
+                }
+                ImGui.Unindent();
+            }
+
+            ImGui.Spacing();
+            ImGui.Unindent();
         }
 
-        ImGui.Columns(1);
-        ImGui.EndChild();
+        // ── Effects ───────────────────────────────────────────────────────────
+        if (ImGui.CollapsingHeader("Effects", ImGuiTreeNodeFlags.DefaultOpen))
+        {
+            ImGui.Indent();
+            ImGui.Spacing();
 
-        // ── Debounce Save Logic ──
+            // Drop Shadow
+            var enableShadow = profile.EnableDropShadow;
+            if (ImGui.Checkbox("Drop Shadow##shadow", ref enableShadow)) { profile.EnableDropShadow = enableShadow; changed = true; }
+
+            ImGui.Spacing();
+
+            // Outline
+            var enableOutline = profile.EnableOutline;
+            if (ImGui.Checkbox("Outline##outline", ref enableOutline)) { profile.EnableOutline = enableOutline; changed = true; }
+            if (profile.EnableOutline)
+            {
+                ImGui.Indent();
+                int outlineMode = (int)profile.OutlineMode;
+                ImGui.SetNextItemWidth(100);
+                if (ImGui.Combo("Mode##outlinemode", ref outlineMode, OutlineModeNames, OutlineModeNames.Length))
+                { profile.OutlineMode = (OutlineMode)outlineMode; changed = true; }
+                ImGui.SameLine();
+                var outlineColor = profile.OutlineColor;
+                if (ImGui.ColorEdit4("##outlinecol", ref outlineColor, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+                { profile.OutlineColor = outlineColor; changed = true; }
+                ImGui.Unindent();
+            }
+
+            ImGui.Spacing();
+
+            // Aura
+            var enableAura = profile.EnableAura;
+            if (ImGui.Checkbox("Aura Ring##aura", ref enableAura)) { profile.EnableAura = enableAura; changed = true; }
+            if (profile.EnableAura)
+            {
+                ImGui.Indent();
+                var auraColor = profile.AuraColor;
+                if (ImGui.ColorEdit4("Color##auracol", ref auraColor, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+                { profile.AuraColor = auraColor; changed = true; }
+
+                var auraRadius = profile.AuraRadius;
+                ImGui.SetNextItemWidth(150);
+                if (ImGui.SliderFloat("Radius##aurarad", ref auraRadius, 10f, 100f))
+                { profile.AuraRadius = auraRadius; changed = true; }
+
+                var auraThick = profile.AuraThickness;
+                ImGui.SetNextItemWidth(150);
+                if (ImGui.SliderFloat("Thickness##aurathick", ref auraThick, 0.5f, 8f))
+                { profile.AuraThickness = auraThick; changed = true; }
+                ImGui.Unindent();
+            }
+
+            ImGui.Spacing();
+
+            // Sparkles
+            var enableSparkles = profile.EnableSparkles;
+            if (ImGui.Checkbox("Sparkles##sparkles", ref enableSparkles)) { profile.EnableSparkles = enableSparkles; changed = true; }
+            if (profile.EnableSparkles)
+            {
+                ImGui.Indent();
+                int sparkleStyle = (int)profile.SparkleStyle;
+                ImGui.SetNextItemWidth(110);
+                if (ImGui.Combo("Style##sparklestyle", ref sparkleStyle, SparkleStyleNames, SparkleStyleNames.Length))
+                { profile.SparkleStyle = (SparkleStyle)sparkleStyle; changed = true; }
+                ImGui.SameLine();
+                var sparkleColor = profile.SparkleColor;
+                if (ImGui.ColorEdit4("##sparklecol", ref sparkleColor, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+                { profile.SparkleColor = sparkleColor; changed = true; }
+
+                var sparkleCount = profile.SparkleCount;
+                ImGui.SetNextItemWidth(150);
+                if (ImGui.SliderInt("Count##sparklecount", ref sparkleCount, 1, 32))
+                { profile.SparkleCount = sparkleCount; changed = true; }
+
+                var sparkleSpeed = profile.SparkleSpeed;
+                ImGui.SetNextItemWidth(150);
+                if (ImGui.SliderFloat("Speed##sparklespeed", ref sparkleSpeed, 0.1f, 5f))
+                { profile.SparkleSpeed = sparkleSpeed; changed = true; }
+
+                var sparkleRadius = profile.SparkleRadius;
+                ImGui.SetNextItemWidth(150);
+                if (ImGui.SliderFloat("Radius##sparkleradius", ref sparkleRadius, 5f, 80f))
+                { profile.SparkleRadius = sparkleRadius; changed = true; }
+                ImGui.Unindent();
+            }
+
+            ImGui.Spacing();
+            ImGui.Unindent();
+        }
+
+        // ── Background ────────────────────────────────────────────────────────
+        if (ImGui.CollapsingHeader("Background", ImGuiTreeNodeFlags.DefaultOpen))
+        {
+            ImGui.Indent();
+            ImGui.Spacing();
+
+            int bgStyle = (int)profile.BackgroundStyle;
+            ImGui.SetNextItemWidth(120);
+            if (ImGui.Combo("Style##bgstyle", ref bgStyle, BackgroundStyleNames, BackgroundStyleNames.Length))
+            { profile.BackgroundStyle = (BackgroundStyle)bgStyle; changed = true; }
+
+            if (profile.BackgroundStyle != BackgroundStyle.None)
+            {
+                var bc1 = profile.BackgroundColor1;
+                if (ImGui.ColorEdit4("Color 1##bc1", ref bc1, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+                { profile.BackgroundColor1 = bc1; changed = true; }
+
+                if (profile.BackgroundStyle is BackgroundStyle.Gradient or BackgroundStyle.Shimmer)
+                {
+                    var bc2 = profile.BackgroundColor2;
+                    if (ImGui.ColorEdit4("Color 2##bc2", ref bc2, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar))
+                    { profile.BackgroundColor2 = bc2; changed = true; }
+                }
+
+                var bgPad = profile.BackgroundPadding;
+                ImGui.SetNextItemWidth(150);
+                if (ImGui.SliderFloat("Padding##bgpad", ref bgPad, 0f, 20f))
+                { profile.BackgroundPadding = bgPad; changed = true; }
+            }
+
+            ImGui.Spacing();
+            ImGui.Unindent();
+        }
+
+        // ── Badges ────────────────────────────────────────────────────────────
+        if (ImGui.CollapsingHeader("Badges", ImGuiTreeNodeFlags.DefaultOpen))
+        {
+            ImGui.Indent();
+            ImGui.Spacing();
+
+            // Role icon (slot 1, always Left)
+            var enableIcon = profile.EnableRoleIcon;
+            if (ImGui.Checkbox("Role Icon (Slot 1)##roleicon", ref enableIcon)) { profile.EnableRoleIcon = enableIcon; changed = true; }
+            if (profile.EnableRoleIcon)
+            {
+                ImGui.Indent();
+                int iconIdx = Array.IndexOf(CosmeticRenderer.BadgeTemplates, profile.RoleIconTemplate);
+                if (iconIdx < 1) iconIdx = 1;
+                ImGui.SetNextItemWidth(110);
+                if (ImGui.Combo("Icon##roletemplate", ref iconIdx, CosmeticRenderer.BadgeTemplates, CosmeticRenderer.BadgeTemplates.Length))
+                { profile.RoleIconTemplate = CosmeticRenderer.BadgeTemplates[iconIdx]; changed = true; }
+                ImGui.SameLine();
+                ImGui.TextDisabled("(always Left)");
+                ImGui.Unindent();
+            }
+
+            ImGui.Spacing();
+
+            // Badge slot 2
+            int badge2Idx = Array.IndexOf(CosmeticRenderer.BadgeTemplates, profile.BadgeSlot2Template);
+            if (badge2Idx < 0) badge2Idx = 0;
+            ImGui.SetNextItemWidth(110);
+            if (ImGui.Combo("Badge Slot 2##badge2", ref badge2Idx, CosmeticRenderer.BadgeTemplates, CosmeticRenderer.BadgeTemplates.Length))
+            { profile.BadgeSlot2Template = CosmeticRenderer.BadgeTemplates[badge2Idx]; changed = true; }
+
+            if (profile.BadgeSlot2Template != "None")
+            {
+                ImGui.Indent();
+                int badgePos = (int)profile.BadgePosition;
+                ImGui.SetNextItemWidth(100);
+                if (ImGui.Combo("Position##badgepos", ref badgePos, BadgePositionNames, BadgePositionNames.Length))
+                { profile.BadgePosition = (BadgePosition)badgePos; changed = true; }
+                ImGui.Unindent();
+            }
+
+            ImGui.Spacing();
+            ImGui.Unindent();
+        }
+
+        // ── Behavior ──────────────────────────────────────────────────────────
+        if (ImGui.CollapsingHeader("Behavior"))
+        {
+            ImGui.Indent();
+            ImGui.Spacing();
+
+            var enableSfwNsfw = profile.EnableSfwNsfwTint;
+            if (ImGui.Checkbox("Auto SFW/NSFW Tinting##sfwnsfw", ref enableSfwNsfw)) { profile.EnableSfwNsfwTint = enableSfwNsfw; changed = true; }
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Blue tint when LFM (SFW). Red tint when LFP (NSFW).");
+
+            var enableClock = profile.EnableClockInAlpha;
+            if (ImGui.Checkbox("Clock-In Opacity Fade##clockalpha", ref enableClock)) { profile.EnableClockInAlpha = enableClock; changed = true; }
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Fades nameplate to 30% when not clocked in.");
+
+            ImGui.Spacing();
+            ImGui.Unindent();
+        }
+
+        // ── Debounce save / sync push ─────────────────────────────────────────
         if (changed)
         {
             profile.IsDirty = true;
-            lastEditTime = DateTime.UtcNow;
-            plugin.Configuration.Save(); // Save to local disk immediately for safety
+            _lastEditTime = DateTime.UtcNow;
+            _plugin.Configuration.Save();
         }
 
-        // If 1.5 seconds have passed since the last edit and it's dirty, compress and push to Sync API
-        if (profile.IsDirty && (DateTime.UtcNow - lastEditTime).TotalSeconds > 1.5)
+        if (profile.IsDirty && (DateTime.UtcNow - _lastEditTime).TotalSeconds > 1.5)
         {
             profile.IsDirty = false;
-            _ = plugin.SyncService.PushCosmeticsAsync(profile);
+            _ = _plugin.SyncService.PushCosmeticsAsync(profile);
         }
     }
 }

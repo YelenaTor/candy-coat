@@ -36,7 +36,7 @@ public class MainWindow : Window, IDisposable
 
     private const float SidebarWidth = 160f;
 
-    public MainWindow(Plugin plugin, VenueService venueService, WaitlistManager waitlistManager, ShiftManager shiftManager, PatronDetailsWindow detailsWindow, string goatImagePath)
+    public MainWindow(Plugin plugin, VenueService venueService, WaitlistManager waitlistManager, ShiftManager shiftManager, PatronDetailsWindow detailsWindow, string goatImagePath, CandyCoat.UI.CosmeticFontManager fontManager, CandyCoat.UI.CosmeticBadgeManager badgeManager)
         : base("Candy Coat - Sugar##CandyCoatMain", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
     {
         SizeConstraints = new WindowSizeConstraints
@@ -73,7 +73,7 @@ public class MainWindow : Window, IDisposable
         srtPanels.Add(new ManagementPanel(plugin));
         srtPanels.Add(new OwnerPanel(plugin));
         
-        cosmeticTab = new CosmeticDrawerTab(plugin);
+        cosmeticTab = new CosmeticDrawerTab(plugin, fontManager, badgeManager);
     }
 
     private void OnPatronSelected(Data.Patron? patron)

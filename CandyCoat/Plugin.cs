@@ -44,6 +44,9 @@ public sealed class Plugin : IDalamudPlugin
     public ShiftManager ShiftManager { get; init; }
     public SyncService SyncService { get; init; }
 
+    public CosmeticFontManager CosmeticFontManager { get; init; }
+    public CosmeticBadgeManager CosmeticBadgeManager { get; init; }
+
     private SessionWindow SessionWindow { get; init; }
     private SetupWindow SetupWindow { get; init; }
     private PatronDetailsWindow PatronDetailsWindow { get; init; }
@@ -59,6 +62,9 @@ public sealed class Plugin : IDalamudPlugin
         // You might normally want to embed resources and load them from the manifest stream
         var goatImagePath = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "goat.png");
 
+        CosmeticFontManager = new CosmeticFontManager();
+        CosmeticBadgeManager = new CosmeticBadgeManager();
+
         // Initialize Services
         SessionManager = new SessionManager();
         VenueService = new VenueService(this);
@@ -70,7 +76,7 @@ public sealed class Plugin : IDalamudPlugin
         var glamourerIpc = new GlamourerIpc();
 
         PatronDetailsWindow = new PatronDetailsWindow(this, glamourerIpc);
-        MainWindow = new MainWindow(this, VenueService, WaitlistManager, ShiftManager, PatronDetailsWindow, goatImagePath);
+        MainWindow = new MainWindow(this, VenueService, WaitlistManager, ShiftManager, PatronDetailsWindow, goatImagePath, CosmeticFontManager, CosmeticBadgeManager);
         SessionWindow = new SessionWindow(SessionManager);
         
         WindowSystem.AddWindow(PatronDetailsWindow);
@@ -89,7 +95,7 @@ public sealed class Plugin : IDalamudPlugin
         SetupWindow = new SetupWindow(this, glamourerIpc, ChatTwoIpc);
         WindowSystem.AddWindow(SetupWindow);
 
-        NameplateRenderer = new UI.NameplateRenderer(this);
+        NameplateRenderer = new NameplateRenderer(this, CosmeticFontManager, CosmeticBadgeManager);
 
         // Startup Logic
         if (!Configuration.IsSetupComplete)
@@ -146,6 +152,8 @@ public sealed class Plugin : IDalamudPlugin
         LocatorService?.Dispose();
         TradeMonitorService?.Dispose();
         SyncService?.Dispose();
+        CosmeticFontManager?.Dispose();
+        CosmeticBadgeManager?.Dispose();
 
         CommandManager.RemoveHandler(MainCommandName);
     }
