@@ -24,10 +24,12 @@ public class NameplateRenderer : IDisposable
 
     private void DrawNameplates()
     {
-        if (!_plugin.Configuration.EnableSync || !_plugin.SyncService.IsConnected)
+        if (!_plugin.Configuration.EnableSync)
             return;
 
         var drawList = ImGui.GetBackgroundDrawList();
+        var localName  = _plugin.Configuration.CharacterName;
+        var localWorld = _plugin.Configuration.HomeWorld;
 
         foreach (var obj in Svc.Objects)
         {
@@ -37,8 +39,16 @@ public class NameplateRenderer : IDisposable
             var world = pc.HomeWorld.Value.Name.ToString();
             var hash  = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{name}@{world}"));
 
-            if (!_plugin.SyncService.Cosmetics.TryGetValue(hash, out var profile))
-                continue;
+            // Synced profile takes priority when connected
+            CosmeticProfile? profile = null;
+            if (_plugin.SyncService.IsConnected)
+                _plugin.SyncService.Cosmetics.TryGetValue(hash, out profile);
+
+            // Local player falls back to their own configured profile
+            if (profile == null && name == localName && world == localWorld)
+                profile = _plugin.Configuration.CosmeticProfile;
+
+            if (profile == null) continue;
 
             var staffMatch  = _plugin.SyncService.OnlineStaff.Find(s => s.CharacterName == name && s.HomeWorld == world);
             bool isClockedIn = staffMatch?.ShiftStart != null;

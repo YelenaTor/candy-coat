@@ -51,6 +51,7 @@ public class Configuration : IPluginConfiguration
     public string VenueKey { get; set; } = string.Empty;
     public string VenueId { get; set; } = string.Empty; // Future: multi-venue
     public bool EnableSync { get; set; } = false;
+    public bool CosmeticAutoRedraw { get; set; } = false;
     public DateTime LastSyncTimestamp { get; set; } = DateTime.MinValue;
 
     // The below exist just to make saving less cumbersome
