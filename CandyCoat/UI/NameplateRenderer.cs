@@ -18,8 +18,8 @@ public class NameplateRenderer : IDisposable
     private readonly CosmeticFontManager _fontManager;
     private readonly CosmeticBadgeManager _badgeManager;
 
-    // hash → stable pointer to game's NamePlateObject; populated by OnNamePlateUpdate
-    private readonly Dictionary<string, nint> _nameplateAddresses = new();
+    // hash → nameplate text-centre in screen space; refreshed every frame by OnNamePlateUpdate
+    private readonly Dictionary<string, Vector2> _nameplatePositions = new();
 
     public NameplateRenderer(Plugin plugin, CosmeticFontManager fontManager, CosmeticBadgeManager badgeManager)
     {
@@ -51,9 +51,26 @@ public class NameplateRenderer : IDisposable
 
             if (!hasProfile) continue;
 
-            // Store the game's nameplate object address so DrawNameplates can read its
-            // screen position each frame without re-doing any world-to-screen math.
-            _nameplateAddresses[hash] = handler.NamePlateObjectAddress;
+            // Read the game's pre-calculated nameplate screen position NOW, before RemoveField
+            // zeroes out the node.  ScreenX/Y are valid here because the game has just computed
+            // them for this frame with full content; Width/Height give the rendered component size.
+            if (handler.NamePlateObjectAddress != 0)
+            {
+                unsafe
+                {
+                    var npObj = (AddonNamePlate.NamePlateObject*)handler.NamePlateObjectAddress;
+                    if (npObj->RootComponentNode != null)
+                    {
+                        var node = (AtkResNode*)npObj->RootComponentNode;
+                        if (node->ScreenY != 0)   // Y == 0 only on the very first frame for a new entry
+                        {
+                            _nameplatePositions[hash] = new Vector2(
+                                node->ScreenX + node->Width  / 2f,
+                                node->ScreenY + node->Height / 2f);
+                        }
+                    }
+                }
+            }
 
             handler.RemoveField(NamePlateStringField.Name);
             handler.RemoveField(NamePlateStringField.Title);
@@ -95,11 +112,14 @@ public class NameplateRenderer : IDisposable
             var staffMatch  = _plugin.SyncService.OnlineStaff.Find(s => s.CharacterName == name && s.HomeWorld == world);
             bool isClockedIn = staffMatch?.ShiftStart != null;
 
-            if (!TryGetNameplateScreenPos(hash, out var screenPos))
+            if (!_nameplatePositions.TryGetValue(hash, out var screenPos))
             {
-                // Fallback for characters whose OnNamePlateUpdate hasn't fired yet
-                if (!Svc.GameGui.WorldToScreen(pc.Position, out var feet)) continue;
-                screenPos = new Vector2(feet.X, feet.Y - 80f);
+                // First-frame fallback: character visible but OnNamePlateUpdate hasn't provided
+                // a position yet.  Use WorldToScreen + a fixed head-height offset.
+                if (!Svc.GameGui.WorldToScreen(
+                        new System.Numerics.Vector3(pc.Position.X, pc.Position.Y + 2.0f, pc.Position.Z),
+                        out var headScreen)) continue;
+                screenPos = new Vector2(headScreen.X, headScreen.Y);
             }
             screenPos = new Vector2(screenPos.X + profile.OffsetX, screenPos.Y + profile.OffsetY);
 
@@ -127,26 +147,6 @@ public class NameplateRenderer : IDisposable
                 _badgeManager,
                 name.GetHashCode());
         }
-    }
-
-    private unsafe bool TryGetNameplateScreenPos(string hash, out Vector2 pos)
-    {
-        pos = default;
-        if (!_nameplateAddresses.TryGetValue(hash, out var addr) || addr == 0) return false;
-
-        var npObj = (AddonNamePlate.NamePlateObject*)addr;
-        if (npObj->RootComponentNode == null) return false;
-
-        // AtkResNode is the first member of AtkComponentNode — cast is valid
-        var node = (AtkResNode*)npObj->RootComponentNode;
-        if (node->ScreenX == 0 && node->ScreenY == 0) return false;
-
-        // ScreenX/Y is the top-left of the component node.
-        // CosmeticRenderer.Render expects a center point. The root node encompasses the full
-        // nameplate area (HP gauge, icons, etc.), so its geometric center sits ~70 px right and
-        // ~100 px below the name-text centre. Subtract those to land on the text.
-        pos = new Vector2(node->ScreenX + node->Width / 2f - 70f, node->ScreenY + node->Height / 2f - 100f);
-        return true;
     }
 
     private static CosmeticProfile ShallowClone(CosmeticProfile p) => new()
