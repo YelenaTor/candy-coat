@@ -33,10 +33,7 @@ public static class CosmeticRenderer
         IDisposable? fontScope = null;
         fontManager?.TryPushFont(profile.FontName, out fontScope);
 
-        // Only honour the size override when a custom font was actually pushed.
-        // Scaling the default ImGui font (rasterised at ~13 px) up to 20 px via
-        // the explicit AddText(font, size, …) overload produces a blurry result.
-        float fontSize = fontScope != null && profile.FontSizeOverride > 0
+        float fontSize = profile.FontSizeOverride > 0
             ? profile.FontSizeOverride
             : ImGui.GetFontSize();
 

@@ -142,8 +142,10 @@ public class NameplateRenderer : IDisposable
         if (node->ScreenX == 0 && node->ScreenY == 0) return false;
 
         // ScreenX/Y is the top-left of the component node.
-        // CosmeticRenderer.Render expects a center point, so shift by half the node dimensions.
-        pos = new Vector2(node->ScreenX + node->Width / 2f, node->ScreenY + node->Height / 2f);
+        // CosmeticRenderer.Render expects a center point. The root node encompasses the full
+        // nameplate area (HP gauge, icons, etc.), so its geometric center sits ~70 px right and
+        // ~100 px below the name-text centre. Subtract those to land on the text.
+        pos = new Vector2(node->ScreenX + node->Width / 2f - 70f, node->ScreenY + node->Height / 2f - 100f);
         return true;
     }
 
