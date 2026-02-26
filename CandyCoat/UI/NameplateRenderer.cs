@@ -7,8 +7,6 @@ using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Gui.NamePlate;
 using ECommons.DalamudServices;
 using CandyCoat.Data;
-using FFXIVClientStructs.FFXIV.Client.UI;
-using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace CandyCoat.UI;
 
@@ -17,9 +15,6 @@ public class NameplateRenderer : IDisposable
     private readonly Plugin _plugin;
     private readonly CosmeticFontManager _fontManager;
     private readonly CosmeticBadgeManager _badgeManager;
-
-    // hash → nameplate text-centre in screen space; refreshed every frame by OnNamePlateUpdate
-    private readonly Dictionary<string, Vector2> _nameplatePositions = new();
 
     public NameplateRenderer(Plugin plugin, CosmeticFontManager fontManager, CosmeticBadgeManager badgeManager)
     {
@@ -50,27 +45,6 @@ public class NameplateRenderer : IDisposable
                 (name == _plugin.Configuration.CharacterName && world == _plugin.Configuration.HomeWorld);
 
             if (!hasProfile) continue;
-
-            // Read the game's pre-calculated nameplate screen position NOW, before RemoveField
-            // zeroes out the node.  ScreenX/Y are valid here because the game has just computed
-            // them for this frame with full content; Width/Height give the rendered component size.
-            if (handler.NamePlateObjectAddress != 0)
-            {
-                unsafe
-                {
-                    var npObj = (AddonNamePlate.NamePlateObject*)handler.NamePlateObjectAddress;
-                    if (npObj->RootComponentNode != null)
-                    {
-                        var node = (AtkResNode*)npObj->RootComponentNode;
-                        if (node->ScreenY != 0)   // Y == 0 only on the very first frame for a new entry
-                        {
-                            _nameplatePositions[hash] = new Vector2(
-                                node->ScreenX + node->Width  / 2f,
-                                node->ScreenY + node->Height / 2f);
-                        }
-                    }
-                }
-            }
 
             handler.RemoveField(NamePlateStringField.Name);
             handler.RemoveField(NamePlateStringField.Title);
@@ -112,16 +86,10 @@ public class NameplateRenderer : IDisposable
             var staffMatch  = _plugin.SyncService.OnlineStaff.Find(s => s.CharacterName == name && s.HomeWorld == world);
             bool isClockedIn = staffMatch?.ShiftStart != null;
 
-            if (!_nameplatePositions.TryGetValue(hash, out var screenPos))
-            {
-                // First-frame fallback: character visible but OnNamePlateUpdate hasn't provided
-                // a position yet.  Use WorldToScreen + a fixed head-height offset.
-                if (!Svc.GameGui.WorldToScreen(
-                        new System.Numerics.Vector3(pc.Position.X, pc.Position.Y + 2.0f, pc.Position.Z),
-                        out var headScreen)) continue;
-                screenPos = new Vector2(headScreen.X, headScreen.Y);
-            }
-            screenPos = new Vector2(screenPos.X + profile.OffsetX, screenPos.Y + profile.OffsetY);
+            if (!Svc.GameGui.WorldToScreen(
+                    new Vector3(pc.Position.X, pc.Position.Y + 2.3f, pc.Position.Z),
+                    out var headScreen)) continue;
+            var screenPos = new Vector2(headScreen.X + profile.OffsetX, headScreen.Y + profile.OffsetY);
 
             float alphaMult = profile.EnableClockInAlpha && !isClockedIn ? 0.3f : 1f;
 
