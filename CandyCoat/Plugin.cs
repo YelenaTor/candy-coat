@@ -46,6 +46,7 @@ public sealed class Plugin : IDalamudPlugin
 
     public CosmeticFontManager CosmeticFontManager { get; init; }
     public CosmeticBadgeManager CosmeticBadgeManager { get; init; }
+    public CosmeticWindow CosmeticWindow { get; init; }
 
     private SessionWindow SessionWindow { get; init; }
     private SetupWindow SetupWindow { get; init; }
@@ -64,6 +65,7 @@ public sealed class Plugin : IDalamudPlugin
 
         CosmeticFontManager = new CosmeticFontManager();
         CosmeticBadgeManager = new CosmeticBadgeManager();
+        CosmeticWindow = new CosmeticWindow(this, CosmeticFontManager, CosmeticBadgeManager);
 
         // Initialize Services
         SessionManager = new SessionManager();
@@ -76,12 +78,13 @@ public sealed class Plugin : IDalamudPlugin
         var glamourerIpc = new GlamourerIpc();
 
         PatronDetailsWindow = new PatronDetailsWindow(this, glamourerIpc);
-        MainWindow = new MainWindow(this, VenueService, WaitlistManager, ShiftManager, PatronDetailsWindow, goatImagePath, CosmeticFontManager, CosmeticBadgeManager);
+        MainWindow = new MainWindow(this, VenueService, WaitlistManager, ShiftManager, PatronDetailsWindow, goatImagePath, CosmeticWindow);
         SessionWindow = new SessionWindow(SessionManager);
         
         WindowSystem.AddWindow(PatronDetailsWindow);
         WindowSystem.AddWindow(MainWindow);
         WindowSystem.AddWindow(SessionWindow);
+        WindowSystem.AddWindow(CosmeticWindow);
 
         // Initialize IPC
         ChatTwoIpc = new ChatTwoIpc((targetName) =>
@@ -154,6 +157,7 @@ public sealed class Plugin : IDalamudPlugin
         SyncService?.Dispose();
         CosmeticFontManager?.Dispose();
         CosmeticBadgeManager?.Dispose();
+        CosmeticWindow?.Dispose();
 
         CommandManager.RemoveHandler(MainCommandName);
     }

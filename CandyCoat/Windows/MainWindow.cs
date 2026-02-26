@@ -18,7 +18,7 @@ public class MainWindow : Window, IDisposable
     private readonly Plugin plugin;
     private readonly VenueService venueService;
     private readonly PatronDetailsWindow detailsWindow;
-    private readonly CosmeticDrawerTab cosmeticTab;
+    private readonly CosmeticWindow _cosmeticWindow;
 
     private readonly List<ITab> dashboardTabs = new();
     private readonly List<IToolboxPanel> srtPanels = new();
@@ -36,7 +36,7 @@ public class MainWindow : Window, IDisposable
 
     private const float SidebarWidth = 160f;
 
-    public MainWindow(Plugin plugin, VenueService venueService, WaitlistManager waitlistManager, ShiftManager shiftManager, PatronDetailsWindow detailsWindow, string goatImagePath, CandyCoat.UI.CosmeticFontManager fontManager, CandyCoat.UI.CosmeticBadgeManager badgeManager)
+    public MainWindow(Plugin plugin, VenueService venueService, WaitlistManager waitlistManager, ShiftManager shiftManager, PatronDetailsWindow detailsWindow, string goatImagePath, CosmeticWindow cosmeticWindow)
         : base("Candy Coat - Sugar##CandyCoatMain", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
     {
         SizeConstraints = new WindowSizeConstraints
@@ -49,6 +49,7 @@ public class MainWindow : Window, IDisposable
         this.plugin = plugin;
         this.venueService = venueService;
         this.detailsWindow = detailsWindow;
+        _cosmeticWindow = cosmeticWindow;
 
         // Initialize Dashboard Tabs
         var bookingsTab = new BookingsTab(plugin, venueService);
@@ -73,7 +74,6 @@ public class MainWindow : Window, IDisposable
         srtPanels.Add(new ManagementPanel(plugin));
         srtPanels.Add(new OwnerPanel(plugin));
         
-        cosmeticTab = new CosmeticDrawerTab(plugin, fontManager, badgeManager);
     }
 
     private void OnPatronSelected(Data.Patron? patron)
@@ -201,10 +201,10 @@ public class MainWindow : Window, IDisposable
             ImGui.TextDisabled("  Set up in Settings.");
         }
 
-        // ── Sync Status + Settings (pinned to bottom) ──
+        // ── Sync Status + Cosmetics + Settings (pinned to bottom) ──
         var syncService = plugin.SyncService;
         var syncHeight = plugin.Configuration.EnableSync ? ImGui.GetFrameHeightWithSpacing() : 0;
-        var footerHeight = ImGui.GetFrameHeightWithSpacing() + ImGui.GetStyle().ItemSpacing.Y + syncHeight;
+        var footerHeight = ImGui.GetFrameHeightWithSpacing() * 2 + ImGui.GetStyle().ItemSpacing.Y + syncHeight;
         ImGui.SetCursorPosY(ImGui.GetWindowHeight() - footerHeight - ImGui.GetStyle().WindowPadding.Y);
 
         if (plugin.Configuration.EnableSync)
@@ -219,14 +219,22 @@ public class MainWindow : Window, IDisposable
 
         ImGui.Separator();
 
+        bool cosmeticsOpen = _cosmeticWindow.IsOpen;
+        if (cosmeticsOpen)
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.7f, 0.9f, 1f));
+
+        if (ImGui.Selectable("✨ Cosmetics", cosmeticsOpen))
+            _cosmeticWindow.Toggle();
+
+        if (cosmeticsOpen)
+            ImGui.PopStyleColor();
+
         bool settingsSelected = _activeSection == SidebarSection.Settings;
         if (settingsSelected)
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.8f, 0.8f, 1f, 1f));
-        
+
         if (ImGui.Selectable("⚙ Settings", settingsSelected))
-        {
             _activeSection = SidebarSection.Settings;
-        }
 
         if (settingsSelected)
             ImGui.PopStyleColor();
@@ -336,21 +344,7 @@ public class MainWindow : Window, IDisposable
         ImGui.TextColored(new Vector4(1f, 0.6f, 0.8f, 1f), "Settings");
         ImGui.Separator();
         ImGui.Spacing();
-
-        if (ImGui.BeginTabBar("SettingsTabBar"))
-        {
-            if (ImGui.BeginTabItem("General"))
-            {
-                DrawGeneralSettings();
-                ImGui.EndTabItem();
-            }
-            if (ImGui.BeginTabItem("Cosmetic Drawer"))
-            {
-                cosmeticTab.DrawContent();
-                ImGui.EndTabItem();
-            }
-            ImGui.EndTabBar();
-        }
+        DrawGeneralSettings();
     }
 
     private void DrawGeneralSettings()
