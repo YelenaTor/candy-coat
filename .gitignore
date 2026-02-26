@@ -35,3 +35,9 @@ CLAUDE.md
 
 # API secrets
 .env
+
+# Claude Code session/memory files
+.claude/
+
+# Release archives
+*.zip
