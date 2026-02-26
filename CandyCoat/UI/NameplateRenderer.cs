@@ -7,6 +7,8 @@ using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Gui.NamePlate;
 using ECommons.DalamudServices;
 using CandyCoat.Data;
+using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace CandyCoat.UI;
 
@@ -15,6 +17,9 @@ public class NameplateRenderer : IDisposable
     private readonly Plugin _plugin;
     private readonly CosmeticFontManager _fontManager;
     private readonly CosmeticBadgeManager _badgeManager;
+
+    // hash → stable pointer to game's NamePlateObject; populated by OnNamePlateUpdate
+    private readonly Dictionary<string, nint> _nameplateAddresses = new();
 
     public NameplateRenderer(Plugin plugin, CosmeticFontManager fontManager, CosmeticBadgeManager badgeManager)
     {
@@ -45,6 +50,10 @@ public class NameplateRenderer : IDisposable
                 (name == _plugin.Configuration.CharacterName && world == _plugin.Configuration.HomeWorld);
 
             if (!hasProfile) continue;
+
+            // Store the game's nameplate object address so DrawNameplates can read its
+            // screen position each frame without re-doing any world-to-screen math.
+            _nameplateAddresses[hash] = handler.NamePlateObjectAddress;
 
             handler.RemoveField(NamePlateStringField.Name);
             handler.RemoveField(NamePlateStringField.Title);
@@ -86,22 +95,13 @@ public class NameplateRenderer : IDisposable
             var staffMatch  = _plugin.SyncService.OnlineStaff.Find(s => s.CharacterName == name && s.HomeWorld == world);
             bool isClockedIn = staffMatch?.ShiftStart != null;
 
-            // Anchor to the character's foot position in screen space.
-            // Sample one world-unit above to compute px-per-unit at the current zoom/angle,
-            // then clamp to [15, 65] so the nameplate tracks the character without
-            // flying off screen when the camera goes overhead or very close.
-            var feetWorldPos  = pc.Position;
-            var aboveWorldPos = new Vector3(feetWorldPos.X, feetWorldPos.Y + 1f, feetWorldPos.Z);
-
-            if (!Svc.GameGui.WorldToScreen(feetWorldPos, out var feetScreen)) continue;
-
-            float pxPerUnit = 40f; // sensible default if second projection fails
-            if (Svc.GameGui.WorldToScreen(aboveWorldPos, out var aboveScreen))
-                pxPerUnit = Math.Clamp(feetScreen.Y - aboveScreen.Y, 15f, 65f);
-
-            var screenPos = new Vector2(
-                feetScreen.X + profile.OffsetX,
-                feetScreen.Y - pxPerUnit * 2.3f + profile.OffsetY);
+            if (!TryGetNameplateScreenPos(hash, out var screenPos))
+            {
+                // Fallback for characters whose OnNamePlateUpdate hasn't fired yet
+                if (!Svc.GameGui.WorldToScreen(pc.Position, out var feet)) continue;
+                screenPos = new Vector2(feet.X, feet.Y - 80f);
+            }
+            screenPos = new Vector2(screenPos.X + profile.OffsetX, screenPos.Y + profile.OffsetY);
 
             float alphaMult = profile.EnableClockInAlpha && !isClockedIn ? 0.3f : 1f;
 
@@ -127,6 +127,22 @@ public class NameplateRenderer : IDisposable
                 _badgeManager,
                 name.GetHashCode());
         }
+    }
+
+    private unsafe bool TryGetNameplateScreenPos(string hash, out Vector2 pos)
+    {
+        pos = default;
+        if (!_nameplateAddresses.TryGetValue(hash, out var addr) || addr == 0) return false;
+
+        var npObj = (AddonNamePlate.NamePlateObject*)addr;
+        if (npObj->RootComponentNode == null) return false;
+
+        // AtkResNode is the first member of AtkComponentNode — cast is valid
+        var node = (AtkResNode*)npObj->RootComponentNode;
+        if (node->ScreenX == 0 && node->ScreenY == 0) return false;
+
+        pos = new Vector2(node->ScreenX, node->ScreenY);
+        return true;
     }
 
     private static CosmeticProfile ShallowClone(CosmeticProfile p) => new()
