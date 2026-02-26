@@ -90,6 +90,8 @@ public class NameplateRenderer : IDisposable
             if (!Svc.GameGui.WorldToScreen(headPos, out var screenPos))
                 continue;
 
+            screenPos = new Vector2(screenPos.X + profile.OffsetX, screenPos.Y + profile.OffsetY);
+
             float alphaMult = profile.EnableClockInAlpha && !isClockedIn ? 0.3f : 1f;
 
             // SFW/NSFW tint: clone profile so the cached original is never mutated
@@ -151,6 +153,9 @@ public class NameplateRenderer : IDisposable
         BadgePosition      = p.BadgePosition,
         EnableSfwNsfwTint  = p.EnableSfwNsfwTint,
         EnableClockInAlpha = p.EnableClockInAlpha,
+        FontSizeOverride   = p.FontSizeOverride,
+        OffsetX            = p.OffsetX,
+        OffsetY            = p.OffsetY,
     };
 
     public void Dispose()

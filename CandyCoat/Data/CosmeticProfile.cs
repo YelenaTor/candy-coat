@@ -56,6 +56,11 @@ public class CosmeticProfile
     public string BadgeSlot2Template { get; set; } = "None";
     public BadgePosition BadgePosition { get; set; } = BadgePosition.Right;
 
+    // ─── Adjustments ───
+    public int FontSizeOverride { get; set; } = 20; // px; matches default load size (8–40)
+    public float OffsetX { get; set; } = 0f;        // screen-space pixel nudge
+    public float OffsetY { get; set; } = 0f;
+
     // ─── Behavior ───
     public bool EnableSfwNsfwTint { get; set; } = true;
     public bool EnableClockInAlpha { get; set; } = true;

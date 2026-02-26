@@ -33,9 +33,13 @@ public static class CosmeticRenderer
         IDisposable? fontScope = null;
         fontManager?.TryPushFont(profile.FontName, out fontScope);
 
+        float fontSize = profile.FontSizeOverride > 0
+            ? profile.FontSizeOverride
+            : ImGui.GetFontSize();
+
         try
         {
-            RenderCore(drawList, profile, text, center, alphaMult, badgeManager, characterSeed);
+            RenderCore(drawList, profile, text, center, alphaMult, badgeManager, characterSeed, fontSize);
         }
         finally
         {
@@ -54,9 +58,10 @@ public static class CosmeticRenderer
         Vector2 center,
         float alphaMult,
         CosmeticBadgeManager? badgeManager,
-        int characterSeed)
+        int characterSeed,
+        float fontSize)
     {
-        var textSize = ImGui.CalcTextSize(text);
+        var textSize = MeasureText(text, fontSize);
         var textPos  = new Vector2(center.X - textSize.X / 2f, center.Y - textSize.Y / 2f);
 
         var baseColor    = ApplyAlpha(profile.BaseColor,    alphaMult);
@@ -73,24 +78,24 @@ public static class CosmeticRenderer
 
         // 3. Outline (under glow + main text)
         if (profile.EnableOutline)
-            DrawOutline(drawList, textPos, text, outlineColor, profile.OutlineMode);
+            DrawOutline(drawList, textPos, text, outlineColor, profile.OutlineMode, fontSize);
 
         // 4. Pulsing glow
         if (profile.EnableGlow)
-            DrawGlow(drawList, textPos, text, glowColor);
+            DrawGlow(drawList, textPos, text, glowColor, fontSize);
 
         // 5. Drop shadow
         if (profile.EnableDropShadow)
-            drawList.AddText(
+            AddText(drawList, fontSize,
                 new Vector2(textPos.X + 1, textPos.Y + 2),
                 ImGui.GetColorU32(new Vector4(0f, 0f, 0f, 0.8f * alphaMult)),
                 text);
 
         // 6. Main text — gradient or solid
         if (profile.EnableGradient)
-            DrawGradientText(drawList, textPos, text, profile, alphaMult);
+            DrawGradientText(drawList, textPos, text, profile, alphaMult, fontSize);
         else
-            drawList.AddText(textPos, ImGui.GetColorU32(baseColor), text);
+            AddText(drawList, fontSize, textPos, ImGui.GetColorU32(baseColor), text);
 
         // 7. Sparkle particles
         if (profile.EnableSparkles)
@@ -161,21 +166,21 @@ public static class CosmeticRenderer
 
     // ─── Glow ───────────────────────────────────────────────────────────────
 
-    private static void DrawGlow(ImDrawListPtr drawList, Vector2 textPos, string text, Vector4 glowColor)
+    private static void DrawGlow(ImDrawListPtr drawList, Vector2 textPos, string text, Vector4 glowColor, float fontSize)
     {
         float offset = 2f + MathF.Sin((float)ImGui.GetTime() * 3f) * 1f;
         uint col = ImGui.GetColorU32(glowColor);
-        drawList.AddText(new Vector2(textPos.X - offset, textPos.Y), col, text);
-        drawList.AddText(new Vector2(textPos.X + offset, textPos.Y), col, text);
-        drawList.AddText(new Vector2(textPos.X,          textPos.Y - offset), col, text);
-        drawList.AddText(new Vector2(textPos.X,          textPos.Y + offset), col, text);
+        AddText(drawList, fontSize, new Vector2(textPos.X - offset, textPos.Y), col, text);
+        AddText(drawList, fontSize, new Vector2(textPos.X + offset, textPos.Y), col, text);
+        AddText(drawList, fontSize, new Vector2(textPos.X,          textPos.Y - offset), col, text);
+        AddText(drawList, fontSize, new Vector2(textPos.X,          textPos.Y + offset), col, text);
     }
 
     // ─── Outline ────────────────────────────────────────────────────────────
 
     private static void DrawOutline(
         ImDrawListPtr drawList, Vector2 textPos,
-        string text, Vector4 outlineColor, OutlineMode mode)
+        string text, Vector4 outlineColor, OutlineMode mode, float fontSize)
     {
         uint col = ImGui.GetColorU32(outlineColor);
 
@@ -186,16 +191,16 @@ public static class CosmeticRenderer
             for (int dy = -1; dy <= 1; dy++)
             {
                 if (dx == 0 && dy == 0) continue;
-                drawList.AddText(new Vector2(textPos.X + dx, textPos.Y + dy), col, text);
+                AddText(drawList, fontSize, new Vector2(textPos.X + dx, textPos.Y + dy), col, text);
             }
         }
         else // Soft
         {
             const float o = 1.5f;
-            drawList.AddText(new Vector2(textPos.X - o, textPos.Y), col, text);
-            drawList.AddText(new Vector2(textPos.X + o, textPos.Y), col, text);
-            drawList.AddText(new Vector2(textPos.X, textPos.Y - o), col, text);
-            drawList.AddText(new Vector2(textPos.X, textPos.Y + o), col, text);
+            AddText(drawList, fontSize, new Vector2(textPos.X - o, textPos.Y), col, text);
+            AddText(drawList, fontSize, new Vector2(textPos.X + o, textPos.Y), col, text);
+            AddText(drawList, fontSize, new Vector2(textPos.X, textPos.Y - o), col, text);
+            AddText(drawList, fontSize, new Vector2(textPos.X, textPos.Y + o), col, text);
         }
     }
 
@@ -203,7 +208,7 @@ public static class CosmeticRenderer
 
     private static void DrawGradientText(
         ImDrawListPtr drawList, Vector2 textPos,
-        string text, CosmeticProfile profile, float alphaMult)
+        string text, CosmeticProfile profile, float alphaMult, float fontSize)
     {
         float t     = (float)ImGui.GetTime() * profile.GradientSpeed;
         float charX = textPos.X;
@@ -225,9 +230,9 @@ public static class CosmeticRenderer
                     LerpColor(profile.GradientColor1, profile.GradientColor2, frac),
             };
 
-            drawList.AddText(new Vector2(charX, textPos.Y),
+            AddText(drawList, fontSize, new Vector2(charX, textPos.Y),
                 ImGui.GetColorU32(ApplyAlpha(col, alphaMult)), ch);
-            charX += ImGui.CalcTextSize(ch).X;
+            charX += MeasureText(ch, fontSize).X;
         }
     }
 
@@ -334,6 +339,18 @@ public static class CosmeticRenderer
     }
 
     // ─── Utilities ──────────────────────────────────────────────────────────
+
+    /// <summary>Renders text at an explicit font size using the currently-pushed font.</summary>
+    private static void AddText(ImDrawListPtr dl, float size, Vector2 pos, uint col, string text) =>
+        dl.AddText(ImGui.GetFont(), size, pos, col, text);
+
+    /// <summary>Measures text, scaling proportionally when size differs from the active font size.</summary>
+    private static Vector2 MeasureText(string text, float size)
+    {
+        var raw = ImGui.CalcTextSize(text);
+        float defaultSize = ImGui.GetFontSize();
+        return defaultSize > 0f ? raw * (size / defaultSize) : raw;
+    }
 
     private static Vector4 ApplyAlpha(Vector4 c, float a) =>
         new(c.X, c.Y, c.Z, c.W * a);

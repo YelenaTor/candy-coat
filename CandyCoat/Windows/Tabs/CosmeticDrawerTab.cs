@@ -310,6 +310,34 @@ public class CosmeticDrawerTab
             ImGui.Unindent();
         }
 
+        // ── Adjustments ───────────────────────────────────────────────────────
+        if (ImGui.CollapsingHeader("Adjustments"))
+        {
+            ImGui.Indent();
+            ImGui.Spacing();
+
+            var fontSz = profile.FontSizeOverride;
+            ImGui.SetNextItemWidth(160);
+            if (ImGui.SliderInt("Font Size##adjfontsize", ref fontSz, 8, 40))
+            { profile.FontSizeOverride = fontSz; changed = true; }
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Overrides the rendered font size. Default is 20.");
+
+            ImGui.Spacing();
+
+            var offX = profile.OffsetX;
+            ImGui.SetNextItemWidth(160);
+            if (ImGui.SliderFloat("Offset X##adjoffx", ref offX, -200f, 200f, "%.0f px"))
+            { profile.OffsetX = offX; changed = true; }
+
+            var offY = profile.OffsetY;
+            ImGui.SetNextItemWidth(160);
+            if (ImGui.SliderFloat("Offset Y##adjoffy", ref offY, -200f, 200f, "%.0f px"))
+            { profile.OffsetY = offY; changed = true; }
+
+            ImGui.Spacing();
+            ImGui.Unindent();
+        }
+
         // ── Behavior ──────────────────────────────────────────────────────────
         if (ImGui.CollapsingHeader("Behavior"))
         {
