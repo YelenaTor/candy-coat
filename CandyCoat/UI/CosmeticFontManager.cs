@@ -26,9 +26,9 @@ public class CosmeticFontManager : IDisposable
             Plugin.PluginInterface.AssemblyLocation.Directory!.FullName,
             "Fonts");
 
-        RegisterFont(fontDir, "Script", "Script.ttf", 14f);
-        RegisterFont(fontDir, "Bold",   "Bold.ttf",   14f);
-        RegisterFont(fontDir, "Pixel",  "Pixel.ttf",  12f);
+        RegisterFont(fontDir, "Script", "Script.ttf", 20f);
+        RegisterFont(fontDir, "Bold",   "Bold.ttf",   20f);
+        RegisterFont(fontDir, "Pixel",  "Pixel.ttf",  16f);
     }
 
     private void RegisterFont(string fontDir, string name, string filename, float sizePx)

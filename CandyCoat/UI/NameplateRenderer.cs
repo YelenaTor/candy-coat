@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using System.Text;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Game.Gui.NamePlate;
 using ECommons.DalamudServices;
 using CandyCoat.Data;
 
@@ -20,6 +22,37 @@ public class NameplateRenderer : IDisposable
         _fontManager = fontManager;
         _badgeManager = badgeManager;
         Svc.PluginInterface.UiBuilder.Draw += DrawNameplates;
+        Plugin.NamePlateGui.OnNamePlateUpdate += OnNamePlateUpdate;
+    }
+
+    private void OnNamePlateUpdate(
+        INamePlateUpdateContext context,
+        IReadOnlyList<INamePlateUpdateHandler> handlers)
+    {
+        if (!_plugin.Configuration.EnableSync) return;
+
+        foreach (var handler in handlers)
+        {
+            var pc = handler.PlayerCharacter;
+            if (pc == null) continue;
+
+            var name  = pc.Name.ToString();
+            var world = pc.HomeWorld.Value.Name.ToString();
+            var hash  = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{name}@{world}"));
+
+            bool hasProfile =
+                (_plugin.SyncService.IsConnected && _plugin.SyncService.Cosmetics.ContainsKey(hash)) ||
+                (name == _plugin.Configuration.CharacterName && world == _plugin.Configuration.HomeWorld);
+
+            if (!hasProfile) continue;
+
+            handler.RemoveField(NamePlateStringField.Name);
+            handler.RemoveField(NamePlateStringField.Title);
+            handler.RemoveField(NamePlateStringField.FreeCompanyTag);
+            handler.RemoveField(NamePlateStringField.StatusPrefix);
+            handler.NameIconId   = 0;
+            handler.MarkerIconId = 0;
+        }
     }
 
     private void DrawNameplates()
@@ -53,7 +86,7 @@ public class NameplateRenderer : IDisposable
             var staffMatch  = _plugin.SyncService.OnlineStaff.Find(s => s.CharacterName == name && s.HomeWorld == world);
             bool isClockedIn = staffMatch?.ShiftStart != null;
 
-            var headPos = new Vector3(pc.Position.X, pc.Position.Y + 2.1f, pc.Position.Z);
+            var headPos = new Vector3(pc.Position.X, pc.Position.Y + 2.3f, pc.Position.Z);
             if (!Svc.GameGui.WorldToScreen(headPos, out var screenPos))
                 continue;
 
@@ -123,5 +156,6 @@ public class NameplateRenderer : IDisposable
     public void Dispose()
     {
         Svc.PluginInterface.UiBuilder.Draw -= DrawNameplates;
+        Plugin.NamePlateGui.OnNamePlateUpdate -= OnNamePlateUpdate;
     }
 }
