@@ -86,19 +86,22 @@ public class NameplateRenderer : IDisposable
             var staffMatch  = _plugin.SyncService.OnlineStaff.Find(s => s.CharacterName == name && s.HomeWorld == world);
             bool isClockedIn = staffMatch?.ShiftStart != null;
 
-            // Project both the feet and one world-unit above to derive how many
-            // screen pixels equal one world unit at the current zoom / camera angle.
-            // This keeps the nameplate locked to the correct height regardless of zoom.
+            // Anchor to the character's foot position in screen space.
+            // Sample one world-unit above to compute px-per-unit at the current zoom/angle,
+            // then clamp to [15, 65] so the nameplate tracks the character without
+            // flying off screen when the camera goes overhead or very close.
             var feetWorldPos  = pc.Position;
             var aboveWorldPos = new Vector3(feetWorldPos.X, feetWorldPos.Y + 1f, feetWorldPos.Z);
 
-            if (!Svc.GameGui.WorldToScreen(feetWorldPos,  out var feetScreen))  continue;
-            if (!Svc.GameGui.WorldToScreen(aboveWorldPos, out var aboveScreen)) continue;
+            if (!Svc.GameGui.WorldToScreen(feetWorldPos, out var feetScreen)) continue;
 
-            float pxPerUnit = feetScreen.Y - aboveScreen.Y; // +ve: screen Y grows downward
+            float pxPerUnit = 40f; // sensible default if second projection fails
+            if (Svc.GameGui.WorldToScreen(aboveWorldPos, out var aboveScreen))
+                pxPerUnit = Math.Clamp(feetScreen.Y - aboveScreen.Y, 15f, 65f);
+
             var screenPos = new Vector2(
-                feetScreen.X  + profile.OffsetX,
-                feetScreen.Y  - pxPerUnit * 2.3f + profile.OffsetY);
+                feetScreen.X + profile.OffsetX,
+                feetScreen.Y - pxPerUnit * 2.3f + profile.OffsetY);
 
             float alphaMult = profile.EnableClockInAlpha && !isClockedIn ? 0.3f : 1f;
 
