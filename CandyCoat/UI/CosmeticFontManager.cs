@@ -1,24 +1,23 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Dalamud.Interface.ManagedFontAtlas;
 using ECommons.DalamudServices;
 
 namespace CandyCoat.UI;
 
 /// <summary>
-/// Manages custom TTF font handles for the Cosmetic Drawer.
-/// Place .ttf files at: {PluginDirectory}/Fonts/{Name}.ttf
-///   e.g.  Fonts/Script.ttf   → selectable as "Script"
-///         Fonts/Bold.ttf     → selectable as "Bold"
-///         Fonts/Pixel.ttf    → selectable as "Pixel"
+/// Manages custom font handles for the Cosmetic Drawer.
+/// Drop any .ttf or .otf file into {PluginDirectory}/Fonts/ and it will appear
+/// in the font selector automatically, registered under its filename (no extension).
 /// </summary>
 public class CosmeticFontManager : IDisposable
 {
     private readonly Dictionary<string, IFontHandle> _handles = new();
 
-    /// <summary>Font names shown in the UI. "Default" uses the standard ImGui font.</summary>
-    public static readonly string[] AvailableFonts = { "Default", "Script", "Bold", "Pixel" };
+    /// <summary>Font names shown in the UI. Always starts with "Default"; rest are discovered from disk.</summary>
+    public string[] AvailableFonts { get; private set; } = ["Default"];
 
     public CosmeticFontManager()
     {
@@ -26,16 +25,23 @@ public class CosmeticFontManager : IDisposable
             Plugin.PluginInterface.AssemblyLocation.Directory!.FullName,
             "Fonts");
 
-        RegisterFont(fontDir, "Script", "Script.ttf", 20f);
-        RegisterFont(fontDir, "Bold",   "Bold.ttf",   20f);
-        RegisterFont(fontDir, "Pixel",  "Pixel.ttf",  16f);
+        if (Directory.Exists(fontDir))
+        {
+            var files = Directory.GetFiles(fontDir, "*.ttf")
+                .Concat(Directory.GetFiles(fontDir, "*.otf"))
+                .OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var file in files)
+                RegisterFont(file, Path.GetFileNameWithoutExtension(file), 20f);
+        }
+
+        AvailableFonts = new[] { "Default" }
+            .Concat(_handles.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+            .ToArray();
     }
 
-    private void RegisterFont(string fontDir, string name, string filename, float sizePx)
+    private void RegisterFont(string path, string name, float sizePx)
     {
-        var path = Path.Combine(fontDir, filename);
-        if (!File.Exists(path)) return;
-
         try
         {
             _handles[name] = Plugin.PluginInterface.UiBuilder.FontAtlas.NewDelegateFontHandle(
@@ -49,9 +55,9 @@ public class CosmeticFontManager : IDisposable
     }
 
     /// <summary>
-    /// Pushes the named font onto the ImGui font stack if it is loaded and available.
-    /// Returns true and a disposable scope that pops the font when disposed.
-    /// Returns false (scope = null) for "Default" or unloaded fonts.
+    /// Pushes the named font onto the ImGui font stack if loaded and available.
+    /// Returns true + a disposable scope that pops the font.
+    /// Returns false (scope = null) for "Default" or any unloaded font.
     /// </summary>
     public bool TryPushFont(string fontName, out IDisposable? scope)
     {

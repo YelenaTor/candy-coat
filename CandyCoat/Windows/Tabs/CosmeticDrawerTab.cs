@@ -74,11 +74,12 @@ public class CosmeticDrawerTab
             ImGui.Spacing();
 
             // Font
-            int fontIdx = Array.IndexOf(CosmeticFontManager.AvailableFonts, profile.FontName);
+            var availFonts = _fontManager.AvailableFonts;
+            int fontIdx = Array.IndexOf(availFonts, profile.FontName);
             if (fontIdx < 0) fontIdx = 0;
             ImGui.SetNextItemWidth(160);
-            if (ImGui.Combo("Font##font", ref fontIdx, CosmeticFontManager.AvailableFonts, CosmeticFontManager.AvailableFonts.Length))
-            { profile.FontName = CosmeticFontManager.AvailableFonts[fontIdx]; changed = true; }
+            if (ImGui.Combo("Font##font", ref fontIdx, availFonts, availFonts.Length))
+            { profile.FontName = availFonts[fontIdx]; changed = true; }
             if (ImGui.IsItemHovered()) ImGui.SetTooltip("Place .ttf files in {PluginDir}/Fonts/ to unlock custom fonts.");
 
             ImGui.Spacing();

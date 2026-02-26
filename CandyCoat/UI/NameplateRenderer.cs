@@ -86,11 +86,19 @@ public class NameplateRenderer : IDisposable
             var staffMatch  = _plugin.SyncService.OnlineStaff.Find(s => s.CharacterName == name && s.HomeWorld == world);
             bool isClockedIn = staffMatch?.ShiftStart != null;
 
-            var headPos = new Vector3(pc.Position.X, pc.Position.Y + 2.3f, pc.Position.Z);
-            if (!Svc.GameGui.WorldToScreen(headPos, out var screenPos))
-                continue;
+            // Project both the feet and one world-unit above to derive how many
+            // screen pixels equal one world unit at the current zoom / camera angle.
+            // This keeps the nameplate locked to the correct height regardless of zoom.
+            var feetWorldPos  = pc.Position;
+            var aboveWorldPos = new Vector3(feetWorldPos.X, feetWorldPos.Y + 1f, feetWorldPos.Z);
 
-            screenPos = new Vector2(screenPos.X + profile.OffsetX, screenPos.Y + profile.OffsetY);
+            if (!Svc.GameGui.WorldToScreen(feetWorldPos,  out var feetScreen))  continue;
+            if (!Svc.GameGui.WorldToScreen(aboveWorldPos, out var aboveScreen)) continue;
+
+            float pxPerUnit = feetScreen.Y - aboveScreen.Y; // +ve: screen Y grows downward
+            var screenPos = new Vector2(
+                feetScreen.X  + profile.OffsetX,
+                feetScreen.Y  - pxPerUnit * 2.3f + profile.OffsetY);
 
             float alphaMult = profile.EnableClockInAlpha && !isClockedIn ? 0.3f : 1f;
 
