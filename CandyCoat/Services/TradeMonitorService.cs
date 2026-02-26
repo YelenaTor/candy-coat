@@ -21,22 +21,21 @@ public class TradeMonitorService : IDisposable
         Svc.Chat.ChatMessage += OnChatMessage;
     }
 
+    private static bool TryParseGilAmount(string raw, out int amount) =>
+        int.TryParse(raw.Replace(",", ""), out amount);
+
     private void OnChatMessage(XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled)
     {
         // System messages for trades are usually System messages (type 57 or something similar)
         if (type != XivChatType.SystemMessage) return;
 
         var text = message.TextValue;
-        
+
         var incomingMatch = IncomingTradeRegex.Match(text);
         if (incomingMatch.Success)
         {
-            var patronName = incomingMatch.Groups["name"].Value;
-            var amountStr = incomingMatch.Groups["amount"].Value.Replace(",", "");
-            if (int.TryParse(amountStr, out int amount))
-            {
-                HandleTrade(patronName, amount);
-            }
+            if (TryParseGilAmount(incomingMatch.Groups["amount"].Value, out int amount))
+                HandleTrade(incomingMatch.Groups["name"].Value, amount);
             return;
         }
 
@@ -44,12 +43,8 @@ public class TradeMonitorService : IDisposable
         if (outgoingMatch.Success)
         {
             // For venues, you rarely pay the patron, but capturing it just in case
-            var patronName = outgoingMatch.Groups["name"].Value;
-            var amountStr = outgoingMatch.Groups["amount"].Value.Replace(",", "");
-            if (int.TryParse(amountStr, out int amount))
-            {
-                Svc.Log.Info($"[CandyCoat] Outgoing trade detected to {patronName} for {amount} Gil.");
-            }
+            if (TryParseGilAmount(outgoingMatch.Groups["amount"].Value, out int amount))
+                Svc.Log.Info($"[CandyCoat] Outgoing trade detected to {outgoingMatch.Groups["name"].Value} for {amount} Gil.");
         }
     }
 
@@ -81,8 +76,6 @@ public class TradeMonitorService : IDisposable
         {
             activeShift.GilEarned += amount;
         }
-        
-        _plugin.Configuration.Save();
 
         foreach (var booking in _plugin.Configuration.Bookings)
         {
@@ -95,15 +88,14 @@ public class TradeMonitorService : IDisposable
                     if (amount >= booking.Gil)
                     {
                         booking.State = Data.BookingState.CompletedPaid;
-                        _plugin.Configuration.Save();
                         Svc.Log.Info($"[CandyCoat] Automatically marked booking for {booking.PatronName} as Completed (Paid).");
-                        
-                        // Optional: Play a sound or notify UI
-                        return;
+                        break;
                     }
                 }
             }
         }
+
+        _plugin.Configuration.Save();
     }
 
     public void Dispose()

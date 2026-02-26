@@ -11,6 +11,9 @@ using Dalamud.Game.ClientState.Objects.Enums;
 using System.Linq;
 using CandyCoat.Windows;
 using CandyCoat.Data;
+using CandyCoat.Services;
+using CandyCoat.IPC;
+using CandyCoat.UI;
 
 using ECommons;
 using ECommons.DalamudServices;
@@ -33,19 +36,19 @@ public sealed class Plugin : IDalamudPlugin
     public readonly WindowSystem WindowSystem = new("CandyCoat");
     private MainWindow MainWindow { get; init; }
 
-    public CandyCoat.Services.SessionManager SessionManager { get; init; }
-    public CandyCoat.Services.VenueService VenueService { get; init; }
-    public CandyCoat.Services.LocatorService LocatorService { get; init; }
-    public CandyCoat.Services.TradeMonitorService TradeMonitorService { get; init; }
-    public CandyCoat.Services.WaitlistManager WaitlistManager { get; init; }
-    public CandyCoat.Services.ShiftManager ShiftManager { get; init; }
-    public CandyCoat.Services.SyncService SyncService { get; init; }
+    public SessionManager SessionManager { get; init; }
+    public VenueService VenueService { get; init; }
+    public LocatorService LocatorService { get; init; }
+    public TradeMonitorService TradeMonitorService { get; init; }
+    public WaitlistManager WaitlistManager { get; init; }
+    public ShiftManager ShiftManager { get; init; }
+    public SyncService SyncService { get; init; }
 
-    private CandyCoat.Windows.SessionWindow SessionWindow { get; init; }
-    private CandyCoat.Windows.SetupWindow SetupWindow { get; init; }
-    private CandyCoat.Windows.PatronDetailsWindow PatronDetailsWindow { get; init; }
-    private CandyCoat.IPC.ChatTwoIpc ChatTwoIpc { get; init; }
-    private CandyCoat.UI.NameplateRenderer NameplateRenderer { get; init; }
+    private SessionWindow SessionWindow { get; init; }
+    private SetupWindow SetupWindow { get; init; }
+    private PatronDetailsWindow PatronDetailsWindow { get; init; }
+    private ChatTwoIpc ChatTwoIpc { get; init; }
+    private NameplateRenderer NameplateRenderer { get; init; }
 
     public Plugin()
     {
@@ -57,33 +60,33 @@ public sealed class Plugin : IDalamudPlugin
         var goatImagePath = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "goat.png");
 
         // Initialize Services
-        SessionManager = new CandyCoat.Services.SessionManager();
-        VenueService = new CandyCoat.Services.VenueService(this);
-        LocatorService = new CandyCoat.Services.LocatorService(this);
-        TradeMonitorService = new CandyCoat.Services.TradeMonitorService(this);
-        WaitlistManager = new CandyCoat.Services.WaitlistManager();
-        ShiftManager = new CandyCoat.Services.ShiftManager(this);
-        SyncService = new CandyCoat.Services.SyncService(this);
-        var glamourerIpc = new CandyCoat.IPC.GlamourerIpc();
+        SessionManager = new SessionManager();
+        VenueService = new VenueService(this);
+        LocatorService = new LocatorService(this);
+        TradeMonitorService = new TradeMonitorService(this);
+        WaitlistManager = new WaitlistManager();
+        ShiftManager = new ShiftManager(this);
+        SyncService = new SyncService(this);
+        var glamourerIpc = new GlamourerIpc();
 
-        PatronDetailsWindow = new CandyCoat.Windows.PatronDetailsWindow(this, glamourerIpc);
+        PatronDetailsWindow = new PatronDetailsWindow(this, glamourerIpc);
         MainWindow = new MainWindow(this, VenueService, WaitlistManager, ShiftManager, PatronDetailsWindow, goatImagePath);
-        SessionWindow = new CandyCoat.Windows.SessionWindow(SessionManager);
+        SessionWindow = new SessionWindow(SessionManager);
         
         WindowSystem.AddWindow(PatronDetailsWindow);
         WindowSystem.AddWindow(MainWindow);
         WindowSystem.AddWindow(SessionWindow);
 
         // Initialize IPC
-        ChatTwoIpc = new CandyCoat.IPC.ChatTwoIpc((targetName) => 
+        ChatTwoIpc = new ChatTwoIpc((targetName) =>
         {
             SessionManager.StartCapture(targetName);
             SessionWindow.IsOpen = true;
         });
         ChatTwoIpc.Enable();
-        
+
         // Initialize Setup Window (needs IPCs)
-        SetupWindow = new CandyCoat.Windows.SetupWindow(this, glamourerIpc, ChatTwoIpc);
+        SetupWindow = new SetupWindow(this, glamourerIpc, ChatTwoIpc);
         WindowSystem.AddWindow(SetupWindow);
 
         NameplateRenderer = new UI.NameplateRenderer(this);
@@ -131,7 +134,7 @@ public sealed class Plugin : IDalamudPlugin
         WindowSystem.RemoveAllWindows();
 
         ChatTwoIpc?.Disable();
-        ChatTwoIpc.Dispose();
+        ChatTwoIpc?.Dispose();
         NameplateRenderer.Dispose();
         
         MainWindow.Dispose();

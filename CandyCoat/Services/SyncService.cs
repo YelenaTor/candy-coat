@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using Newtonsoft.Json;
 using ECommons.DalamudServices;
 using CandyCoat.Data;
 
@@ -153,19 +152,8 @@ public class SyncService : IDisposable
             {
                 foreach (var env in newCosmetics)
                 {
-                    try
-                    {
-                        using var ms = new System.IO.MemoryStream(env.BrotliBlob);
-                        using var bs = new System.IO.Compression.BrotliStream(ms, System.IO.Compression.CompressionMode.Decompress);
-                        using var reader = new System.IO.StreamReader(bs);
-                        var json = await reader.ReadToEndAsync();
-                        var profile = JsonConvert.DeserializeObject<CosmeticProfile>(json);
-                        if (profile != null)
-                        {
-                            Cosmetics[env.CharacterHash] = profile;
-                        }
-                    }
-                    catch { /* Ignore decoding errors */ }
+                    var profile = await TryDecompressCosmeticAsync(env.BrotliBlob);
+                    if (profile != null) Cosmetics[env.CharacterHash] = profile;
                 }
             }
 
@@ -290,6 +278,21 @@ public class SyncService : IDisposable
         }
     }
 
+    // ─── Private helpers ───
+
+    private static async Task<CosmeticProfile?> TryDecompressCosmeticAsync(byte[] blob)
+    {
+        try
+        {
+            using var ms = new System.IO.MemoryStream(blob);
+            using var bs = new System.IO.Compression.BrotliStream(ms, System.IO.Compression.CompressionMode.Decompress);
+            using var reader = new System.IO.StreamReader(bs);
+            var json = await reader.ReadToEndAsync();
+            return JsonConvert.DeserializeObject<CosmeticProfile>(json);
+        }
+        catch { return null; }
+    }
+
     // ─── HTTP helpers ───
 
     private async Task<T?> GetAsync<T>(string path)
@@ -300,21 +303,17 @@ public class SyncService : IDisposable
         return JsonConvert.DeserializeObject<T>(json);
     }
 
-    private async Task PostAsync<T>(string path, T body)
+    private async Task SendBodyAsync<T>(HttpMethod method, string path, T body)
     {
         var json = JsonConvert.SerializeObject(body);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await _httpClient.PostAsync(path, content);
+        using var request = new HttpRequestMessage(method, path) { Content = content };
+        var response = await _httpClient.SendAsync(request);
         response.EnsureSuccessStatusCode();
     }
 
-    private async Task PutAsync<T>(string path, T body)
-    {
-        var json = JsonConvert.SerializeObject(body);
-        var content = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await _httpClient.PutAsync(path, content);
-        response.EnsureSuccessStatusCode();
-    }
+    private Task PostAsync<T>(string path, T body) => SendBodyAsync(HttpMethod.Post, path, body);
+    private Task PutAsync<T>(string path, T body)  => SendBodyAsync(HttpMethod.Put,  path, body);
 
     private async Task DeleteAsync(string path)
     {
