@@ -5,6 +5,7 @@ using OtterGui.Widgets;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
 using CandyCoat.Services;
+using CandyCoat.UI;
 
 namespace CandyCoat.Windows.Tabs;
 
@@ -132,7 +133,9 @@ public class BookingsTab : ITab
                 
                 if (timeRemaining.TotalMinutes <= 0)
                 {
-                    ImGui.TextColored(new Vector4(1.0f, 0.0f, 0.0f, 1.0f), "OVERDUE");
+                    ImGui.TextColored(StyleManager.SyncError, "OVERDUE");
+                    if (ImGui.IsItemHovered())
+                        ImGui.SetTooltip($"Overdue by {Math.Abs(timeRemaining.TotalMinutes):F0} minutes");
                 }
                 else if (timeRemaining.TotalMinutes <= 5)
                 {
@@ -162,11 +165,11 @@ public class BookingsTab : ITab
             ImGui.TableNextColumn();
             var stateColor = booking.State switch
             {
-                BookingState.Active => new Vector4(0.0f, 1.0f, 0.0f, 1.0f),
-                BookingState.Inactive => new Vector4(0.5f, 0.5f, 0.5f, 1.0f),
-                BookingState.CompletedPaid => new Vector4(0.0f, 0.8f, 1.0f, 1.0f),
-                BookingState.CompletedUnpaid => new Vector4(1.0f, 0.0f, 0.0f, 1.0f),
-                _ => Vector4.One
+                BookingState.Active        => StyleManager.SyncOk,
+                BookingState.Inactive      => new Vector4(0.5f, 0.5f, 0.5f, 1.0f),
+                BookingState.CompletedPaid => new Vector4(0.6f, 0.75f, 1f, 1.0f), // lavender-blue
+                BookingState.CompletedUnpaid => StyleManager.SyncError,
+                _                          => Vector4.One
             };
             ImGui.TextColored(stateColor, booking.State.ToString());
 

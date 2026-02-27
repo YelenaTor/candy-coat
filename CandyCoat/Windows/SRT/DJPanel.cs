@@ -4,6 +4,7 @@ using System.Numerics;
 using System.Collections.Generic;
 using Dalamud.Bindings.ImGui;
 using CandyCoat.Data;
+using CandyCoat.UI;
 using ECommons.DalamudServices;
 
 namespace CandyCoat.Windows.SRT;
@@ -44,7 +45,7 @@ public class DJPanel : IToolboxPanel
 
     public void DrawContent()
     {
-        ImGui.TextColored(new Vector4(0.6f, 0.4f, 1f, 1f), "🎵 DJ Toolbox");
+        ImGui.TextColored(StyleManager.SectionHeader, "🎵 DJ Toolbox");
         ImGui.Separator();
         ImGui.Spacing();
 
@@ -73,7 +74,7 @@ public class DJPanel : IToolboxPanel
             var total = DateTime.Now - _performanceStart;
             var segElapsed = DateTime.Now - _segmentStart;
 
-            ImGui.TextColored(new Vector4(0.2f, 1f, 0.2f, 1f),
+            ImGui.TextColored(StyleManager.SyncOk,
                 $"LIVE — {total.Hours:D2}:{total.Minutes:D2}:{total.Seconds:D2}");
             ImGui.Text($"Current segment: {segElapsed.Minutes:D2}:{segElapsed.Seconds:D2}");
 

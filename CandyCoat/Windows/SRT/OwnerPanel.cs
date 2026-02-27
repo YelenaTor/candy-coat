@@ -3,7 +3,9 @@ using System.Linq;
 using System.Numerics;
 using System.Collections.Generic;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
+using CandyCoat.UI;
 using ECommons.DalamudServices;
 
 namespace CandyCoat.Windows.SRT;
@@ -40,7 +42,7 @@ public class OwnerPanel : IToolboxPanel
 
     public void DrawContent()
     {
-        ImGui.TextColored(new Vector4(1f, 0.85f, 0.3f, 1f), "👑 Owner Toolbox");
+        ImGui.TextColored(StyleManager.SectionHeader, "👑 Owner Toolbox");
         ImGui.Separator();
         ImGui.Spacing();
 
@@ -119,17 +121,18 @@ public class OwnerPanel : IToolboxPanel
             var dayEntries = config.Earnings.Where(e => e.Timestamp.Date == date).Sum(e => e.Amount);
             var combined = daily + dayEntries;
             if (combined != 0)
-                ImGui.BulletText($"{date:MM/dd (ddd)}: {combined:N0} Gil");
+                ImGui.BulletText($"{date:MM/dd} ({date.ToString("ddd", System.Globalization.CultureInfo.InvariantCulture)}): {combined:N0} Gil");
         }
     }
 
     private void DrawStaffLeaderboard()
     {
-        ImGui.Text("Staff Leaderboard");
+        ImGui.Text("Earnings by Role");
         if (_plugin.SyncService.IsConnected)
-            ImGui.TextColored(new Vector4(0.2f, 1f, 0.4f, 1f), "🟢 Leaderboard showing synced data.");
+            ImGui.TextColored(StyleManager.SyncOk, "🟢 Leaderboard showing synced data.");
         else
             ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ Leaderboard shows local data only. Enable sync in Settings.");
+        ImGui.TextDisabled("Per-staff breakdown requires sync.");
 
         var myEarnings = _plugin.Configuration.Earnings
             .GroupBy(e => e.Role)
@@ -233,10 +236,10 @@ public class OwnerPanel : IToolboxPanel
             var room = rooms[i];
             var color = room.Status switch
             {
-                RoomStatus.Available => new Vector4(0.2f, 1f, 0.2f, 1f),
-                RoomStatus.Occupied => new Vector4(1f, 0.4f, 0.4f, 1f),
-                RoomStatus.Reserved => new Vector4(1f, 0.8f, 0.2f, 1f),
-                _ => new Vector4(0.5f, 0.5f, 0.5f, 1f),
+                RoomStatus.Available => StyleManager.SyncOk,
+                RoomStatus.Occupied  => new Vector4(1f, 0.4f, 0.4f, 1f),
+                RoomStatus.Reserved  => new Vector4(1f, 0.8f, 0.2f, 1f),
+                _                    => new Vector4(0.5f, 0.5f, 0.5f, 1f),
             };
             ImGui.PushID($"rm{i}");
             ImGui.TextColored(color, $"• {room.Name}: {room.Status}");
@@ -299,6 +302,7 @@ public class OwnerPanel : IToolboxPanel
             return;
         }
 
+        using var blScroll = ImRaii.Child("BLList", new Vector2(0, 150), true);
         foreach (var p in blacklisted)
         {
             ImGui.PushID($"bl{p.Name}");
@@ -373,6 +377,7 @@ public class OwnerPanel : IToolboxPanel
             return;
         }
 
+        using var scroll = ImRaii.Child("OwnerNotes", new Vector2(0, 150), true);
         foreach (var n in notes)
         {
             ImGui.TextDisabled($"[{n.Timestamp:MM/dd HH:mm}] [{n.AuthorRole}] {n.AuthorName}");

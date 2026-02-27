@@ -2,6 +2,7 @@ using Dalamud.Bindings.ImGui;
 using System.Numerics;
 using Dalamud.Interface.Utility.Raii;
 using ECommons.DalamudServices;
+using CandyCoat.UI;
 
 namespace CandyCoat.Windows.Tabs;
 
@@ -33,7 +34,7 @@ public class SessionTab : ITab
 
         if (manager.IsCapturing)
         {
-            ImGui.TextColored(new Vector4(0.0f, 1.0f, 0.0f, 1.0f), $"Capturing: {manager.TargetName}");
+            ImGui.TextColored(StyleManager.SyncOk, $"Capturing: {manager.TargetName}");
             
             if (ImGui.Button("Stop Capture"))
             {

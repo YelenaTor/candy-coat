@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using CandyCoat.Data;
 
 namespace CandyCoat.Services;
@@ -14,6 +15,10 @@ public class ShiftManager
     }
     
     public Shift? CurrentShift => _plugin.Configuration.StaffShifts.LastOrDefault(s => s.IsActive);
+
+    public IEnumerable<Shift> ShiftHistory => _plugin.Configuration.StaffShifts
+        .Where(s => !s.IsActive)
+        .OrderByDescending(s => s.StartTime);
     
     public void ClockIn()
     {

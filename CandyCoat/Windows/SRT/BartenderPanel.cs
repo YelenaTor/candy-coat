@@ -4,6 +4,7 @@ using System.Numerics;
 using System.Collections.Generic;
 using Dalamud.Bindings.ImGui;
 using CandyCoat.Data;
+using CandyCoat.UI;
 using ECommons.DalamudServices;
 
 namespace CandyCoat.Windows.SRT;
@@ -24,6 +25,7 @@ public class BartenderPanel : IToolboxPanel
 
     // Tab system
     private readonly Dictionary<string, int> _tabs = new();
+    private string? _pendingCloseTab = null;
 
     // Macro input
     private string _newMacroTitle = string.Empty;
@@ -36,7 +38,7 @@ public class BartenderPanel : IToolboxPanel
 
     public void DrawContent()
     {
-        ImGui.TextColored(new Vector4(0.9f, 0.7f, 0.4f, 1f), "🍸 Bartender Toolbox");
+        ImGui.TextColored(StyleManager.SectionHeader, "🍸 Bartender Toolbox");
         ImGui.Separator();
         ImGui.Spacing();
 
@@ -157,9 +159,9 @@ public class BartenderPanel : IToolboxPanel
             var statusColor = status switch
             {
                 OrderStatus.Pending => new Vector4(1f, 0.8f, 0.2f, 1f),
-                OrderStatus.Making => new Vector4(0.4f, 0.8f, 1f, 1f),
-                OrderStatus.Served => new Vector4(0.2f, 1f, 0.2f, 1f),
-                _ => Vector4.One,
+                OrderStatus.Making  => new Vector4(0.4f, 0.8f, 1f, 1f),
+                OrderStatus.Served  => StyleManager.SyncOk,
+                _                   => Vector4.One,
             };
 
             ImGui.PushID($"ord{i}");
@@ -202,18 +204,46 @@ public class BartenderPanel : IToolboxPanel
             ImGui.SameLine();
             if (ImGui.SmallButton($"Close Tab##{patron}"))
             {
-                _plugin.Configuration.Earnings.Add(new EarningsEntry
-                {
-                    Role = StaffRole.Bartender,
-                    Type = EarningsType.Drink,
-                    PatronName = patron,
-                    Description = "Tab close",
-                    Amount = total,
-                });
-                _plugin.Configuration.Save();
-                _tabs.Remove(patron);
-                break;
+                _pendingCloseTab = patron;
+                ImGui.OpenPopup("ConfirmCloseTab##BA");
             }
+        }
+
+        // Confirmation modal
+        if (ImGui.BeginPopupModal("ConfirmCloseTab##BA", ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            if (_pendingCloseTab != null && _tabs.TryGetValue(_pendingCloseTab, out var pendingTotal))
+            {
+                ImGui.Text($"Close {_pendingCloseTab}'s tab and log {pendingTotal:N0} Gil?");
+                ImGui.Spacing();
+                if (ImGui.Button("Yes, Close", new Vector2(100, 0)))
+                {
+                    _plugin.Configuration.Earnings.Add(new EarningsEntry
+                    {
+                        Role = StaffRole.Bartender,
+                        Type = EarningsType.Drink,
+                        PatronName = _pendingCloseTab,
+                        Description = "Tab close",
+                        Amount = pendingTotal,
+                    });
+                    _plugin.Configuration.Save();
+                    _tabs.Remove(_pendingCloseTab);
+                    _pendingCloseTab = null;
+                    ImGui.CloseCurrentPopup();
+                }
+                ImGui.SameLine();
+                if (ImGui.Button("Cancel", new Vector2(80, 0)))
+                {
+                    _pendingCloseTab = null;
+                    ImGui.CloseCurrentPopup();
+                }
+            }
+            else
+            {
+                _pendingCloseTab = null;
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.EndPopup();
         }
     }
 

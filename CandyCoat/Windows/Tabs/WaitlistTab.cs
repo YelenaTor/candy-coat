@@ -52,57 +52,78 @@ public class WaitlistTab : ITab
             return;
         }
 
-        if (ImGui.BeginTable("WaitlistTable", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+        // Explicit block so EndTable fires before Clear All button
         {
-            ImGui.TableSetupColumn("Pos", ImGuiTableColumnFlags.WidthFixed, 30f);
-            ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch);
-            ImGui.TableSetupColumn("Time Waited", ImGuiTableColumnFlags.WidthFixed, 100f);
-            ImGui.TableHeadersRow();
-
-            for (int i = 0; i < _manager.Entries.Count; i++)
+            using var table = ImRaii.Table("WaitlistTable", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg);
+            if (table)
             {
-                var entry = _manager.Entries[i];
-                ImGui.TableNextRow();
+                ImGui.TableSetupColumn("Pos", ImGuiTableColumnFlags.WidthFixed, 30f);
+                ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch);
+                ImGui.TableSetupColumn("Time Waited", ImGuiTableColumnFlags.WidthFixed, 100f);
+                ImGui.TableHeadersRow();
 
-                ImGui.TableNextColumn();
-                ImGui.Text($"#{i + 1}");
-
-                ImGui.TableNextColumn();
-                ImGui.Text(entry.PatronName);
-
-                ImGui.TableNextColumn();
-                var time = entry.TimeWaited;
-                ImGui.Text($"{time.Minutes}m {time.Seconds}s");
-
-                // Context menu for each item
-                if (ImGui.BeginPopupContextItem($"WaitlistCtx{i}"))
+                for (int i = 0; i < _manager.Entries.Count; i++)
                 {
-                    if (ImGui.Selectable("Remove from Queue"))
+                    var entry = _manager.Entries[i];
+                    ImGui.TableNextRow();
+
+                    ImGui.TableNextColumn();
+                    ImGui.Text($"#{i + 1}");
+
+                    ImGui.TableNextColumn();
+                    ImGui.Text(entry.PatronName);
+
+                    ImGui.TableNextColumn();
+                    var time = entry.TimeWaited;
+                    ImGui.Text($"{time.Minutes}m {time.Seconds}s");
+
+                    // Context menu for each item
+                    if (ImGui.BeginPopupContextItem($"WaitlistCtx{i}"))
                     {
-                        _manager.RemoveFromQueue(entry);
-                        ImGui.EndPopup();
-                        break; // Stop iteration as collection modified
-                    }
-                    if (ImGui.Selectable("Notify Ready (Tell)"))
-                    {
-                        ECommons.DalamudServices.Svc.Chat.Print(new Dalamud.Game.Text.XivChatEntry
+                        if (ImGui.Selectable("Remove from Queue"))
                         {
-                            Type = Dalamud.Game.Text.XivChatType.Echo,
-                            Message = $"[CandyCoat Macro executed: /t {entry.PatronName} You're up!]"
-                        });
-                        ECommons.DalamudServices.Svc.Commands.ProcessCommand($"/t {entry.PatronName} We are ready for you! Please head to the venue.");
+                            _manager.RemoveFromQueue(entry);
+                            ImGui.EndPopup();
+                            break; // Stop iteration as collection modified
+                        }
+                        if (ImGui.Selectable("Notify Ready (Tell)"))
+                        {
+                            ECommons.DalamudServices.Svc.Chat.Print(new Dalamud.Game.Text.XivChatEntry
+                            {
+                                Type = Dalamud.Game.Text.XivChatType.Echo,
+                                Message = $"[CandyCoat Macro executed: /t {entry.PatronName} You're up!]"
+                            });
+                            ECommons.DalamudServices.Svc.Commands.ProcessCommand($"/t {entry.PatronName} We are ready for you! Please head to the venue.");
+                            ImGui.EndPopup();
+                        }
                         ImGui.EndPopup();
                     }
-                    ImGui.EndPopup();
                 }
             }
-            ImGui.EndTable();
-        }
-        
+        } // EndTable called here
+
         ImGui.Spacing();
         if (ImGui.Button("Clear All"))
         {
-            _manager.ClearQueue();
+            ImGui.OpenPopup("ConfirmClearAll##WL");
+        }
+
+        // Confirmation modal
+        if (ImGui.BeginPopupModal("ConfirmClearAll##WL", ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            ImGui.Text("Clear all waitlist entries?");
+            ImGui.Spacing();
+            if (ImGui.Button("Yes, Clear", new Vector2(100, 0)))
+            {
+                _manager.ClearQueue();
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Cancel", new Vector2(80, 0)))
+            {
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.EndPopup();
         }
     }
 }

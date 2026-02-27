@@ -4,6 +4,7 @@ using System.Numerics;
 using System.Collections.Generic;
 using Dalamud.Bindings.ImGui;
 using CandyCoat.Data;
+using CandyCoat.UI;
 using ECommons.DalamudServices;
 
 namespace CandyCoat.Windows.SRT;
@@ -39,7 +40,7 @@ public class CandyHeartPanel : IToolboxPanel
 
     public void DrawContent()
     {
-        ImGui.TextColored(new Vector4(1f, 0.8f, 0.9f, 1f), "💗 Candy Heart Toolbox");
+        ImGui.TextColored(StyleManager.SectionHeader, "💗 Candy Heart Toolbox");
         ImGui.Separator();
         ImGui.Spacing();
 
@@ -151,7 +152,7 @@ public class CandyHeartPanel : IToolboxPanel
     {
         ImGui.Text("Escort Handoff");
         if (_plugin.SyncService.IsConnected)
-            ImGui.TextColored(new Vector4(0.2f, 1f, 0.4f, 1f), "🟢 Handoff will be synced to receiving staffer.");
+            ImGui.TextColored(StyleManager.SyncOk, "🟢 Handoff will be synced to receiving staffer.");
         else
             ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ Handoff is local-only. Enable sync in Settings.");
 
@@ -281,7 +282,7 @@ public class CandyHeartPanel : IToolboxPanel
         {
             ImGui.TextDisabled("No rooms defined.");
             if (_plugin.SyncService.IsConnected)
-                ImGui.TextColored(new Vector4(0.2f, 1f, 0.4f, 1f), "🟢 Room status synced.");
+                ImGui.TextColored(StyleManager.SyncOk, "🟢 Room status synced.");
             else
                 ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ Room status is local-only. Enable sync in Settings.");
             return;
@@ -291,10 +292,10 @@ public class CandyHeartPanel : IToolboxPanel
         {
             var color = room.Status switch
             {
-                RoomStatus.Available => new Vector4(0.2f, 1f, 0.2f, 1f),
-                RoomStatus.Occupied => new Vector4(1f, 0.4f, 0.4f, 1f),
-                RoomStatus.Reserved => new Vector4(1f, 0.8f, 0.2f, 1f),
-                _ => new Vector4(0.5f, 0.5f, 0.5f, 1f),
+                RoomStatus.Available => StyleManager.SyncOk,
+                RoomStatus.Occupied  => new Vector4(1f, 0.4f, 0.4f, 1f),
+                RoomStatus.Reserved  => new Vector4(1f, 0.8f, 0.2f, 1f),
+                _                    => new Vector4(0.5f, 0.5f, 0.5f, 1f),
             };
             ImGui.TextColored(color, $"• {room.Name}: {room.Status}");
             if (room.Status == RoomStatus.Occupied && !string.IsNullOrEmpty(room.OccupiedBy))

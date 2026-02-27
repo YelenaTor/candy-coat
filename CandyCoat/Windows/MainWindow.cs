@@ -107,23 +107,21 @@ public class MainWindow : Window, IDisposable
             // ═══════════════════════════════════════════
             //  LEFT SIDEBAR
             // ═══════════════════════════════════════════
-            ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.08f, 0.07f, 0.11f, 0.95f));
-            ImGui.BeginChild("##Sidebar", new Vector2(SidebarWidth, contentRegion.Y), true);
-            ImGui.PopStyleColor();
-            
-            DrawSidebar();
-            
-            ImGui.EndChild();
+            ImGui.PushStyleColor(ImGuiCol.ChildBg, CandyCoat.UI.StyleManager.SidebarBg);
+            {
+                using var sidebar = ImRaii.Child("##Sidebar", new Vector2(SidebarWidth, contentRegion.Y), true);
+                ImGui.PopStyleColor();
+                DrawSidebar();
+            }
 
             // ═══════════════════════════════════════════
             //  RIGHT CONTENT PANEL
             // ═══════════════════════════════════════════
             ImGui.SameLine();
-            ImGui.BeginChild("##Content", new Vector2(0, contentRegion.Y));
-            
-            DrawContentPanel();
-            
-            ImGui.EndChild();
+            {
+                using var content = ImRaii.Child("##Content", new Vector2(0, contentRegion.Y));
+                DrawContentPanel();
+            }
         }
         finally
         {
@@ -180,7 +178,7 @@ public class MainWindow : Window, IDisposable
                     bool isSelected = _activeSection == SidebarSection.SRT && _selectedSrtIndex == i;
 
                     if (isSelected)
-                        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.6f, 0.9f, 1f, 1f));
+                        ImGui.PushStyleColor(ImGuiCol.Text, CandyCoat.UI.StyleManager.SectionHeader);
 
                     if (ImGui.Selectable($"  {visiblePanels[i].Name}##srt{i}", isSelected))
                     {
@@ -212,9 +210,9 @@ public class MainWindow : Window, IDisposable
             if (syncService.IsWaking)
                 ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⏳ Connecting...");
             else if (syncService.IsConnected)
-                ImGui.TextColored(new Vector4(0.2f, 1f, 0.4f, 1f), "🟢 Synced");
+                ImGui.TextColored(CandyCoat.UI.StyleManager.SyncOk, "🟢 Synced");
             else
-                ImGui.TextColored(new Vector4(1f, 0.3f, 0.3f, 1f), "🔴 Offline");
+                ImGui.TextColored(CandyCoat.UI.StyleManager.SyncError, "🔴 Offline");
         }
 
         ImGui.Separator();
@@ -510,7 +508,7 @@ public class MainWindow : Window, IDisposable
                 if (sync.IsWaking)
                     ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⏳ Connecting...");
                 else if (sync.IsConnected)
-                    ImGui.TextColored(new Vector4(0.2f, 1f, 0.4f, 1f), "🟢 Connected");
+                    ImGui.TextColored(CandyCoat.UI.StyleManager.SyncOk, "🟢 Connected");
                 else if (!string.IsNullOrEmpty(sync.LastError))
                     ImGui.TextColored(new Vector4(1f, 0.3f, 0.3f, 1f), $"🔴 {sync.LastError}");
                 else
@@ -569,7 +567,7 @@ public class MainWindow : Window, IDisposable
             ImGui.Spacing();
             if (config.IsManagementModeEnabled)
             {
-                ImGui.TextColored(new Vector4(0f, 1f, 0f, 1f), "✔️ Management Mode Active");
+                ImGui.TextColored(CandyCoat.UI.StyleManager.SyncOk, "✔️ Management Mode Active");
             }
             else
             {
@@ -577,7 +575,7 @@ public class MainWindow : Window, IDisposable
                 ImGui.SetNextItemWidth(200);
                 if (ImGui.InputTextWithHint("##mgmtcode", "Enter Passcode", ref code, 20, ImGuiInputTextFlags.Password))
                 {
-                    if (code == "pixie13!?")
+                    if (code == ProtectedRolePassword)
                     {
                         config.IsManagementModeEnabled = true;
                         config.Save();

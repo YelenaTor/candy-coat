@@ -137,6 +137,8 @@ public class LocatorTab : ITab
         ImGui.Spacing();
         ImGui.Separator();
         ImGui.Text("Regulars & Tracked List:");
+
+        using var patronList = ImRaii.Child("PatronList", new Vector2(0, 180), true);
         foreach (var p in _plugin.Configuration.Patrons)
         {
             if (ImGui.Selectable($"- {p.Name}##{p.Name}", SelectedPatron == p))
@@ -150,7 +152,7 @@ public class LocatorTab : ITab
                 if (ImGui.Selectable("Remove"))
                 {
                     _venueService.UntrackPatron(p);
-                    if (SelectedPatron == p) 
+                    if (SelectedPatron == p)
                     {
                         SelectedPatron = null;
                         OnPatronSelected?.Invoke(null);

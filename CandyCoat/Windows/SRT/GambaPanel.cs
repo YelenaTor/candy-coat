@@ -3,7 +3,9 @@ using System.Linq;
 using System.Numerics;
 using System.Collections.Generic;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
+using CandyCoat.UI;
 using ECommons.DalamudServices;
 
 namespace CandyCoat.Windows.SRT;
@@ -39,7 +41,7 @@ public class GambaPanel : IToolboxPanel
 
     public void DrawContent()
     {
-        ImGui.TextColored(new Vector4(0.4f, 1f, 0.6f, 1f), "🎲 Gamba Toolbox");
+        ImGui.TextColored(StyleManager.SectionHeader, "🎲 Gamba Toolbox");
         ImGui.Separator();
         ImGui.Spacing();
 
@@ -197,6 +199,7 @@ public class GambaPanel : IToolboxPanel
         if (_rollHistory.Count > 0)
         {
             ImGui.TextDisabled("Roll History:");
+            using var rollScroll = ImRaii.Child("RollHistory", new Vector2(0, 100), true);
             foreach (var r in _rollHistory.AsEnumerable().Reverse().Take(10))
             {
                 ImGui.BulletText($"{r.PlayerName}: {r.Roll} ({r.Timestamp:HH:mm:ss})");
@@ -208,10 +211,14 @@ public class GambaPanel : IToolboxPanel
     {
         ImGui.Text("Payout Calculator");
         var presets = _plugin.Configuration.GambaPresets;
-        float mult = _selectedPresetIndex >= 0 && _selectedPresetIndex < presets.Count
-            ? presets[_selectedPresetIndex].DefaultMultiplier : 2.0f;
+        bool hasPreset = _selectedPresetIndex >= 0 && _selectedPresetIndex < presets.Count;
+        float mult = hasPreset ? presets[_selectedPresetIndex].DefaultMultiplier : 2.0f;
 
-        ImGui.SliderFloat("Multiplier##Calc", ref mult, 1.0f, 10.0f, "%.1fx");
+        if (ImGui.SliderFloat("Multiplier##Calc", ref mult, 1.0f, 10.0f, "%.1fx") && hasPreset)
+        {
+            presets[_selectedPresetIndex].DefaultMultiplier = mult;
+            _plugin.Configuration.Save();
+        }
 
         foreach (var p in _players)
         {
@@ -240,7 +247,7 @@ public class GambaPanel : IToolboxPanel
     {
         ImGui.Text("House Bank");
         var net = _bankIn - _bankOut;
-        var color = net >= 0 ? new Vector4(0.2f, 1f, 0.2f, 1f) : new Vector4(1f, 0.3f, 0.3f, 1f);
+        var color = net >= 0 ? StyleManager.SyncOk : StyleManager.SyncError;
 
         ImGui.Text($"Bets In:     {_bankIn:N0} Gil");
         ImGui.Text($"Payouts Out: {_bankOut:N0} Gil");

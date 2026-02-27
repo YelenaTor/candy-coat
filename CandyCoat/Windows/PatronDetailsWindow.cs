@@ -171,7 +171,8 @@ public class PatronDetailsWindow : Window, IDisposable
 
         ImGui.Separator();
         ImGui.Text("All Designs");
-        
+
+        using var designList = ImRaii.Child("DesignList", new Vector2(0, 200), true);
         foreach (var kvp in allDesigns)
         {
             if (ImGui.Selectable(kvp.Value))
@@ -198,26 +199,28 @@ public class PatronDetailsWindow : Window, IDisposable
 
     private unsafe string? ScrapeSearchInfo()
     {
-        var addonPtr = ECommons.DalamudServices.Svc.GameGui.GetAddonByName("CharacterInspect", 1);
-        var addon = (AtkUnitBase*)addonPtr.Address;
-        if (addon == null || !addon->IsVisible) return null;
-
-        // Iterate backwards to find the longest text node (usually the bio)
-        string longestText = "";
-        for (int i = 0; i < addon->UldManager.NodeListCount; i++)
+        try
         {
-            var node = addon->UldManager.NodeList[i];
-            if (node->Type == NodeType.Text)
+            var addonPtr = ECommons.DalamudServices.Svc.GameGui.GetAddonByName("CharacterInspect", 1);
+            var addon = (AtkUnitBase*)addonPtr.Address;
+            if (addon == null || !addon->IsVisible) return null;
+
+            string longestText = "";
+            for (int i = 0; i < addon->UldManager.NodeListCount; i++)
             {
+                var node = addon->UldManager.NodeList[i];
+                if (node == null || node->Type != NodeType.Text) continue;
                 var textNode = (AtkTextNode*)node;
                 var rawText = textNode->NodeText.ToString();
                 if (rawText.Length > longestText.Length)
-                {
                     longestText = rawText;
-                }
             }
+            return string.IsNullOrWhiteSpace(longestText) ? null : longestText;
         }
-
-        return string.IsNullOrWhiteSpace(longestText) ? null : longestText;
+        catch (Exception ex)
+        {
+            ECommons.DalamudServices.Svc.Log.Warning($"[PatronDetailsWindow] ScrapeSearchInfo failed: {ex.Message}");
+            return null;
+        }
     }
 }

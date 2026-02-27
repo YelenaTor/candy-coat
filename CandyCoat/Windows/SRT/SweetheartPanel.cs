@@ -4,6 +4,7 @@ using System.Numerics;
 using System.Collections.Generic;
 using Dalamud.Bindings.ImGui;
 using CandyCoat.Data;
+using CandyCoat.UI;
 using ECommons.DalamudServices;
 
 namespace CandyCoat.Windows.SRT;
@@ -43,7 +44,7 @@ public class SweetheartPanel : IToolboxPanel
 
     public void DrawContent()
     {
-        ImGui.TextColored(new Vector4(1f, 0.6f, 0.8f, 1f), "♥ Sweetheart Toolbox");
+        ImGui.TextColored(StyleManager.SectionHeader, "♥ Sweetheart Toolbox");
         ImGui.Separator();
         ImGui.Spacing();
 
@@ -66,7 +67,7 @@ public class SweetheartPanel : IToolboxPanel
 
     private void DrawSessionTimer()
     {
-        ImGui.Text("Session Timer");
+        ImGui.TextColored(StyleManager.SectionHeader, "Session Timer");
         ImGui.Spacing();
 
         if (_sessionActive)
@@ -74,7 +75,7 @@ public class SweetheartPanel : IToolboxPanel
             var elapsed = DateTime.Now - _sessionStart;
             var remaining = TimeSpan.FromMinutes(_sessionDurationMin) - elapsed;
 
-            ImGui.TextColored(new Vector4(0.2f, 1f, 0.2f, 1f), $"IN SESSION — {_sessionPatron}");
+            ImGui.TextColored(StyleManager.SyncOk, $"IN SESSION — {_sessionPatron}");
             ImGui.Text($"Elapsed: {elapsed.Hours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}");
 
             if (remaining.TotalSeconds > 0)
@@ -154,7 +155,7 @@ public class SweetheartPanel : IToolboxPanel
             if (_dndToggle)
             {
                 if (_plugin.SyncService.IsConnected)
-                    ImGui.TextColored(new Vector4(0.2f, 1f, 0.4f, 1f), "🟢 DND status synced to other staff.");
+                    ImGui.TextColored(StyleManager.SyncOk, "🟢 DND status synced to other staff.");
                 else
                     ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ DND is local-only. Enable sync in Settings.");
             }
@@ -220,7 +221,7 @@ public class SweetheartPanel : IToolboxPanel
 
     private void DrawQuickTells()
     {
-        ImGui.Text("Quick-Tell Templates");
+        ImGui.TextColored(StyleManager.SectionHeader, "Quick-Tell Templates");
         var macros = _plugin.Configuration.SweetheartMacros;
 
         foreach (var m in macros)
@@ -274,7 +275,7 @@ public class SweetheartPanel : IToolboxPanel
 
     private void DrawEarningsLog()
     {
-        ImGui.Text("Log Earnings");
+        ImGui.TextColored(StyleManager.SectionHeader, "Log Earnings");
         ImGui.SetNextItemWidth(120);
         ImGui.InputInt("Gil##EarnAmt", ref _earningsAmount, 10000);
         ImGui.SameLine();
