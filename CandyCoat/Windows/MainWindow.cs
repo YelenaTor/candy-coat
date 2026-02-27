@@ -210,7 +210,7 @@ public class MainWindow : Window, IDisposable
         // ── Sync Status + Cosmetics + Settings (pinned to bottom) ──
         var syncService = plugin.SyncService;
         var syncHeight = plugin.Configuration.EnableSync ? ImGui.GetFrameHeightWithSpacing() : 0;
-        var footerHeight = ImGui.GetFrameHeightWithSpacing() * 2 + ImGui.GetStyle().ItemSpacing.Y + syncHeight;
+        var footerHeight = ImGui.GetFrameHeightWithSpacing() * 3 + ImGui.GetStyle().ItemSpacing.Y + syncHeight;
         ImGui.SetCursorPosY(ImGui.GetWindowHeight() - footerHeight - ImGui.GetStyle().WindowPadding.Y);
 
         if (plugin.Configuration.EnableSync)
@@ -244,6 +244,11 @@ public class MainWindow : Window, IDisposable
 
         if (settingsSelected)
             ImGui.PopStyleColor();
+
+        ImGui.PushStyleColor(ImGuiCol.Text, CandyCoat.UI.StyleManager.SyncWarn);
+        if (ImGui.Selectable("☕ Support on Ko-Fi"))
+            ECommons.GenericHelpers.ShellStart("https://ko-fi.com/yorudev");
+        ImGui.PopStyleColor();
     }
 
     private void DrawContentPanel()
