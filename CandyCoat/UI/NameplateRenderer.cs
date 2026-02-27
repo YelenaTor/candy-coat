@@ -98,7 +98,7 @@ public class NameplateRenderer : IDisposable
 
             var screenPos = new Vector2(
                 MathF.Round(feetScreen.X + profile.OffsetX),
-                MathF.Round(feetScreen.Y - pixelLift + profile.OffsetY));
+                MathF.Round(feetScreen.Y - pixelLift + profile.OffsetY + 30f));
 
             float alphaMult = profile.EnableClockInAlpha && !isClockedIn ? 0.3f : 1f;
 

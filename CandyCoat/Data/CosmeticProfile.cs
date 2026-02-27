@@ -57,7 +57,7 @@ public class CosmeticProfile
     public BadgePosition BadgePosition { get; set; } = BadgePosition.Right;
 
     // ─── Adjustments ───
-    public int FontSizeOverride { get; set; } = 40; // px; 2× default ImGui size
+    public int FontSizeOverride { get; set; } = 30; // px
     public float OffsetX { get; set; } = 0f;        // screen-space pixel nudge
     public float OffsetY { get; set; } = 0f;
 
