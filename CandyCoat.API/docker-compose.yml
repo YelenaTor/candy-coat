@@ -1,0 +1,35 @@
+services:
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: candycoat
+      POSTGRES_USER: candy
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U candy -d candycoat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      # Overrides appsettings.json — host must match the service name above
+      ConnectionStrings__Default: "Host=db;Database=candycoat;Username=candy;Password=${DB_PASSWORD}"
+      VENUE_KEY: ${VENUE_KEY}
+      ASPNETCORE_ENVIRONMENT: Production
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
