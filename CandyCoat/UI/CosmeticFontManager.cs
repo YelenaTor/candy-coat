@@ -19,11 +19,15 @@ public class CosmeticFontManager : IDisposable
     /// <summary>Font names shown in the UI. Always starts with "Default"; rest are discovered from disk.</summary>
     public string[] AvailableFonts { get; private set; } = ["Default"];
 
+    /// <summary>The resolved Fonts directory that was scanned at startup.</summary>
+    public string FontDirectory { get; private set; } = string.Empty;
+
     public CosmeticFontManager()
     {
         var fontDir = Path.Combine(
             Plugin.PluginInterface.AssemblyLocation.Directory!.FullName,
             "Fonts");
+        FontDirectory = fontDir;
 
         Svc.Log.Information($"[CosmeticFontManager] Font dir: {fontDir} | Exists: {Directory.Exists(fontDir)}");
 

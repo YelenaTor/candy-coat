@@ -80,7 +80,13 @@ public class CosmeticDrawerTab
             ImGui.SetNextItemWidth(160);
             if (ImGui.Combo("Font##font", ref fontIdx, availFonts, availFonts.Length))
             { profile.FontName = availFonts[fontIdx]; changed = true; }
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Place .ttf files in {PluginDir}/Fonts/ to unlock custom fonts.");
+            if (ImGui.IsItemHovered())
+            {
+                var dir = _fontManager.FontDirectory;
+                var exists = System.IO.Directory.Exists(dir);
+                var count = _fontManager.AvailableFonts.Length - 1; // exclude "Default"
+                ImGui.SetTooltip($"Fonts dir: {dir}\nExists: {exists}  |  Loaded: {count} font(s)\nDrop .ttf/.otf files there to add fonts.");
+            }
 
             ImGui.Spacing();
 
