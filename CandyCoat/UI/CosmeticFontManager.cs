@@ -25,12 +25,16 @@ public class CosmeticFontManager : IDisposable
             Plugin.PluginInterface.AssemblyLocation.Directory!.FullName,
             "Fonts");
 
+        Svc.Log.Information($"[CosmeticFontManager] Font dir: {fontDir} | Exists: {Directory.Exists(fontDir)}");
+
         if (Directory.Exists(fontDir))
         {
             var files = Directory.GetFiles(fontDir, "*.ttf")
                 .Concat(Directory.GetFiles(fontDir, "*.otf"))
-                .OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
+                .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
+            Svc.Log.Information($"[CosmeticFontManager] Found {files.Count} font file(s).");
             foreach (var file in files)
                 RegisterFont(file, Path.GetFileNameWithoutExtension(file), 30f);
         }
@@ -50,8 +54,9 @@ public class CosmeticFontManager : IDisposable
         }
         catch (Exception ex)
         {
-            Svc.Log.Warning($"[CosmeticFontManager] Failed to register font '{name}': {ex.Message}");
+            Svc.Log.Warning($"[CosmeticFontManager] Failed to register font '{name}': {ex}");
         }
+        Svc.Log.Information($"[CosmeticFontManager] Registered font '{name}' from {path}");
     }
 
     /// <summary>
