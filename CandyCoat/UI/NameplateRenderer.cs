@@ -86,10 +86,19 @@ public class NameplateRenderer : IDisposable
             var staffMatch  = _plugin.SyncService.OnlineStaff.Find(s => s.CharacterName == name && s.HomeWorld == world);
             bool isClockedIn = staffMatch?.ShiftStart != null;
 
+            // Project feet and 1 world-unit above to get pixels-per-world-unit at
+            // the current camera distance/FOV, then lift by ~head height (1.7 world units).
+            if (!Svc.GameGui.WorldToScreen(pc.Position, out var feetScreen)) continue;
             if (!Svc.GameGui.WorldToScreen(
-                    new Vector3(pc.Position.X, pc.Position.Y + 2.3f, pc.Position.Z),
-                    out var headScreen)) continue;
-            var screenPos = new Vector2(headScreen.X + profile.OffsetX, headScreen.Y + profile.OffsetY);
+                    new Vector3(pc.Position.X, pc.Position.Y + 1f, pc.Position.Z),
+                    out var oneUnitUp)) continue;
+
+            float pxPerUnit = feetScreen.Y - oneUnitUp.Y;   // pixels per 1 world unit
+            float pixelLift = pxPerUnit * 1.7f;             // ~head height above feet
+
+            var screenPos = new Vector2(
+                MathF.Round(feetScreen.X + profile.OffsetX),
+                MathF.Round(feetScreen.Y - pixelLift + profile.OffsetY));
 
             float alphaMult = profile.EnableClockInAlpha && !isClockedIn ? 0.3f : 1f;
 

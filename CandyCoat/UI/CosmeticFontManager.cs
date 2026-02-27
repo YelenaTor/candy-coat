@@ -32,7 +32,7 @@ public class CosmeticFontManager : IDisposable
                 .OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
 
             foreach (var file in files)
-                RegisterFont(file, Path.GetFileNameWithoutExtension(file), 20f);
+                RegisterFont(file, Path.GetFileNameWithoutExtension(file), 40f);
         }
 
         AvailableFonts = new[] { "Default" }
