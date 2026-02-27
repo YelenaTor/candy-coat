@@ -75,13 +75,12 @@ public class ChatTwoIpc : IDisposable
     }
 
     public void Disable() {
-        if (this._id != null) {
-            try 
-            {
-                this.Unregister.InvokeAction(this._id);
-            }
-            catch { /* Ignore */ }
-            this._id = null;
+        var id = _id;
+        _id = null;
+        if (id != null)
+        {
+            try { this.Unregister.InvokeAction(id); }
+            catch { }
         }
 
         this.Invoke.Unsubscribe(this.Integration);

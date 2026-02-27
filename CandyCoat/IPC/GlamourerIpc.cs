@@ -47,41 +47,27 @@ public class GlamourerIpc : IDisposable
 
     public Dictionary<Guid, string> GetDesignList()
     {
-        if (!IsAvailable()) 
-        {
-            Svc.Log.Warning("[CandyCoat] Glamourer IPC is not available or out of date.");
-            return new Dictionary<Guid, string>();
-        }
-
         try
         {
             return _getDesignListSubscriber.InvokeFunc();
         }
         catch (Exception ex)
         {
-            Svc.Log.Error($"[CandyCoat] Failed to get Glamourer design list: {ex.Message}");
+            Svc.Log.Warning($"[GlamourerIpc] GetDesignList failed: {ex.Message}");
             return new Dictionary<Guid, string>();
         }
     }
 
     public void ApplyDesign(Guid designId)
     {
-        if (!IsAvailable()) 
-        {
-            Svc.Log.Warning("[CandyCoat] Glamourer IPC is not available or out of date.");
-            return;
-        }
-
         try
         {
-            // Apply to LocalPlayer (Index 0)
-            // ApplyFlag: 0 (Manual) 
-            _applyDesignSubscriber.InvokeFunc(designId, 0, 0, (uint)0); 
-            Svc.Log.Info($"[CandyCoat] Successfully requested Glamourer to apply design {designId}.");
+            _applyDesignSubscriber.InvokeFunc(designId, 0, 0, (uint)0);
+            Svc.Log.Info($"[GlamourerIpc] Applied design {designId}.");
         }
         catch (Exception ex)
         {
-            Svc.Log.Error($"[CandyCoat] Failed to apply Glamourer design: {ex.Message}");
+            Svc.Log.Warning($"[GlamourerIpc] ApplyDesign failed: {ex.Message}");
         }
     }
 

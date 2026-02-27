@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using Dalamud.Plugin.Services;
 using ECommons.DalamudServices;
@@ -48,7 +49,7 @@ public class LocatorService : IDisposable
 
         foreach (var player in Svc.Objects)
         {
-            // Objects list contains many things, filter by name
+            if (player is not Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter) continue;
             var playerName = player.Name.ToString();
             var patron = _plugin.Configuration.Patrons.Find(p => p.Name == playerName);
             
@@ -58,16 +59,25 @@ public class LocatorService : IDisposable
                 newCache.Add((patron, distance));
                 currentNearbyNames.Add(playerName);
                 
-                if (patron.Status is PatronStatus.Warning or PatronStatus.Blacklisted)
+                if (!_alertedPatrons.Contains(playerName))
                 {
-                    if (!_alertedPatrons.Contains(playerName))
+                    _alertedPatrons.Add(playerName);
+
+                    if (patron.Status is PatronStatus.Warning or PatronStatus.Blacklisted)
                     {
-                        _alertedPatrons.Add(playerName);
                         var alertLevel = patron.Status == PatronStatus.Blacklisted ? "[BLACKLIST]" : "[WARNING]";
                         Svc.Chat.Print(new Dalamud.Game.Text.XivChatEntry
                         {
                             Type = Dalamud.Game.Text.XivChatType.Echo,
                             Message = $"[CandyCoat] {alertLevel} {playerName} is nearby! ({distance:F1}m). Notes: {patron.Notes}"
+                        });
+                    }
+                    else if (patron.Status == PatronStatus.Regular)
+                    {
+                        Svc.Chat.Print(new Dalamud.Game.Text.XivChatEntry
+                        {
+                            Type = Dalamud.Game.Text.XivChatType.Echo,
+                            Message = BuildCrmSummary(patron, distance)
                         });
                     }
                 }
@@ -81,6 +91,32 @@ public class LocatorService : IDisposable
         _alertedPatrons.RemoveWhere(name => !currentNearbyNames.Contains(name));
 
         NearbyRegulars = newCache;
+    }
+
+    private static string BuildCrmSummary(Data.Patron patron, float distance)
+    {
+        var parts = new System.Text.StringBuilder();
+        parts.Append($"[CandyCoat] ♥ {patron.Name} is here! ({distance:F1}m) — ");
+        parts.Append($"{patron.VisitCount} visit{(patron.VisitCount != 1 ? "s" : "")}");
+
+        if (patron.TotalGilSpent > 0)
+            parts.Append($" · {patron.TotalGilSpent:N0} Gil spent");
+
+        if (!string.IsNullOrWhiteSpace(patron.FavoriteDrink))
+            parts.Append($" · Drink: {patron.FavoriteDrink}");
+
+        var lastNote = patron.Notes?.Split('\n', System.StringSplitOptions.RemoveEmptyEntries)
+                                    .FirstOrDefault(l => !string.IsNullOrWhiteSpace(l));
+        if (!string.IsNullOrWhiteSpace(lastNote))
+        {
+            var preview = lastNote.Length > 60 ? lastNote[..60] + "…" : lastNote;
+            parts.Append($" · Note: {preview}");
+        }
+
+        if (patron.LastVisitDate != default && patron.LastVisitDate != patron.LastSeen)
+            parts.Append($" · Last: {patron.LastVisitDate:MM/dd}");
+
+        return parts.ToString();
     }
 
     public int GetNearbyCount()

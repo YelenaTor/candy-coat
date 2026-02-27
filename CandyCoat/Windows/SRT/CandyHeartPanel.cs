@@ -33,9 +33,12 @@ public class CandyHeartPanel : IToolboxPanel
     private int _tipAmount = 0;
     private string _tipPatron = string.Empty;
 
+    private readonly StaffPingWidget _pingWidget;
+
     public CandyHeartPanel(Plugin plugin)
     {
         _plugin = plugin;
+        _pingWidget = new StaffPingWidget(plugin);
     }
 
     public void DrawContent()
@@ -57,6 +60,8 @@ public class CandyHeartPanel : IToolboxPanel
         DrawPatronNotes();
         ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
         DrawRoomStatus();
+        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
+        _pingWidget.Draw();
     }
 
     private void DrawActivePatrons()

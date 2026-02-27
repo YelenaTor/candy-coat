@@ -37,9 +37,12 @@ public class SweetheartPanel : IToolboxPanel
     // Earnings input
     private int _earningsAmount = 0;
 
+    private readonly StaffPingWidget _pingWidget;
+
     public SweetheartPanel(Plugin plugin)
     {
         _plugin = plugin;
+        _pingWidget = new StaffPingWidget(plugin);
     }
 
     public void DrawContent()
@@ -63,6 +66,8 @@ public class SweetheartPanel : IToolboxPanel
         DrawPatronNotes();
         ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
         DrawPatronHistory();
+        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
+        _pingWidget.Draw();
     }
 
     private void DrawSessionTimer()

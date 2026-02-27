@@ -81,6 +81,17 @@ public class NameplateRenderer : IDisposable
             if (profile == null && name == localName && world == localWorld)
                 profile = _plugin.Configuration.CosmeticProfile;
 
+            // Role defaults: give staff with no personal profile a role-based cosmetic
+            if (profile == null && _plugin.SyncService.IsConnected)
+            {
+                var sm = _plugin.SyncService.OnlineStaff.Find(s => s.CharacterName == name && s.HomeWorld == world);
+                if (sm != null
+                    && Enum.TryParse<Data.StaffRole>(sm.Role, out var smRole)
+                    && _plugin.Configuration.RoleDefaults.TryGetValue(smRole, out var rd)
+                    && rd.Enabled)
+                    profile = BuildRoleDefaultProfile(rd);
+            }
+
             if (profile == null) continue;
 
             var staffMatch  = _plugin.SyncService.OnlineStaff.Find(s => s.CharacterName == name && s.HomeWorld == world);
@@ -115,6 +126,23 @@ public class NameplateRenderer : IDisposable
                 };
             }
 
+            // Blend role badge + glow onto profiles that have no badge configured
+            if (staffMatch != null
+                && renderProfile.RoleIconTemplate == "None"
+                && Enum.TryParse<Data.StaffRole>(staffMatch.Role, out var matchRole)
+                && _plugin.Configuration.RoleDefaults.TryGetValue(matchRole, out var roleDefault)
+                && roleDefault.Enabled)
+            {
+                if (ReferenceEquals(renderProfile, profile))
+                    renderProfile = ShallowClone(renderProfile);
+                renderProfile.RoleIconTemplate = roleDefault.BadgeTemplate;
+                if (!renderProfile.EnableGlow)
+                {
+                    renderProfile.EnableGlow = true;
+                    renderProfile.GlowColor = roleDefault.GlowColor;
+                }
+            }
+
             CosmeticRenderer.Render(
                 drawList, renderProfile,
                 $"« {name} »",
@@ -125,6 +153,16 @@ public class NameplateRenderer : IDisposable
                 name.GetHashCode());
         }
     }
+
+    private static CosmeticProfile BuildRoleDefaultProfile(Data.RoleDefaultCosmetic rd) => new()
+    {
+        EnableGlow         = true,
+        GlowColor          = rd.GlowColor,
+        RoleIconTemplate   = rd.BadgeTemplate,
+        EnableRoleIcon     = true,
+        EnableDropShadow   = true,
+        FontSizeOverride   = 30,
+    };
 
     private static CosmeticProfile ShallowClone(CosmeticProfile p) => new()
     {

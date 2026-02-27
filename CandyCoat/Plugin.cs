@@ -80,7 +80,7 @@ public sealed class Plugin : IDalamudPlugin
 
         PatronDetailsWindow = new PatronDetailsWindow(this, glamourerIpc);
         MainWindow = new MainWindow(this, VenueService, WaitlistManager, ShiftManager, PatronDetailsWindow, goatImagePath, CosmeticWindow);
-        SessionWindow = new SessionWindow(SessionManager);
+        SessionWindow = new SessionWindow(SessionManager, PluginInterface.ConfigDirectory.FullName);
         
         WindowSystem.AddWindow(PatronDetailsWindow);
         WindowSystem.AddWindow(MainWindow);
@@ -176,7 +176,9 @@ public sealed class Plugin : IDalamudPlugin
 
         // Wake/sleep sync service based on UI state
         if (MainWindow.IsOpen)
-            _ = SyncService.WakeAsync();
+            _ = SyncService.WakeAsync().ContinueWith(
+                t => Log.Error($"[CandyCoat] WakeAsync threw: {t.Exception}"),
+                System.Threading.Tasks.TaskContinuationOptions.OnlyOnFaulted);
         else
             SyncService.Sleep();
     }

@@ -15,6 +15,9 @@ public class TradeMonitorService : IDisposable
     // Regex for: "Name trades you X Gil."
     private static readonly Regex IncomingTradeRegex = new(@"(?<name>.+) trades you (?<amount>[\d,]+) Gil\.", RegexOptions.Compiled);
 
+    // Fired after each incoming trade: (cleanPatronName, amount, wasLinkedToBooking)
+    public event Action<string, int, bool>? OnTradeDetected;
+
     public TradeMonitorService(Plugin plugin)
     {
         _plugin = plugin;
@@ -77,17 +80,17 @@ public class TradeMonitorService : IDisposable
             activeShift.GilEarned += amount;
         }
 
+        bool linkedToBooking = false;
         foreach (var booking in _plugin.Configuration.Bookings)
         {
             if (booking.State == Data.BookingState.Active && booking.Gil > 0)
             {
-                // Match the name as closely as possible
                 if (booking.PatronName.StartsWith(cleanName, StringComparison.OrdinalIgnoreCase))
                 {
-                    // Check if the amount matches or exceeds
                     if (amount >= booking.Gil)
                     {
                         booking.State = Data.BookingState.CompletedPaid;
+                        linkedToBooking = true;
                         Svc.Log.Info($"[CandyCoat] Automatically marked booking for {booking.PatronName} as Completed (Paid).");
                         break;
                     }
@@ -96,6 +99,7 @@ public class TradeMonitorService : IDisposable
         }
 
         _plugin.Configuration.Save();
+        OnTradeDetected?.Invoke(cleanName, amount, linkedToBooking);
     }
 
     public void Dispose()

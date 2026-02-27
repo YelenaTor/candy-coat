@@ -55,6 +55,15 @@ public class PatronDetailsWindow : Window, IDisposable
 
         // Core details
         ImGui.Text($"Name: {patron.Name}");
+        var tier = _plugin.Configuration.GetTier(patron);
+        var tierColor = tier switch
+        {
+            Data.PatronTier.Elite   => new System.Numerics.Vector4(1f, 0.85f, 0.2f, 1f),
+            Data.PatronTier.Regular => new System.Numerics.Vector4(1f, 0.5f, 0.8f, 1f),
+            _                       => new System.Numerics.Vector4(0.6f, 0.6f, 0.6f, 1f),
+        };
+        ImGui.SameLine();
+        ImGui.TextColored(tierColor, $"[{tier}]");
         ImGui.Text($"Last Visit: {patron.LastVisitDate:d} at {patron.LastVisitDate:t}");
         
         if (_plugin.Configuration.IsManagementModeEnabled)

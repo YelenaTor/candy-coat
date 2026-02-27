@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Text;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using ECommons.DalamudServices;
@@ -50,6 +52,37 @@ public class SessionManager : IDisposable
     {
         Messages.Clear();
         OnMessageAdded?.Invoke();
+    }
+
+    public string GetExportText()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"=== Session with: {TargetName} ===");
+        sb.AppendLine($"Date: {DateTime.Now:yyyy-MM-dd HH:mm}");
+        sb.AppendLine();
+        foreach (var msg in Messages)
+        {
+            var who = msg.IsMe ? "You" : msg.Sender;
+            sb.AppendLine($"[{msg.Timestamp:HH:mm}] [{who}]: {msg.Content.TextValue}");
+        }
+        return sb.ToString();
+    }
+
+    public void SaveToFile(string configDir)
+    {
+        try
+        {
+            var sessionDir = Path.Combine(configDir, "Sessions");
+            Directory.CreateDirectory(sessionDir);
+            var safeName = string.Concat(TargetName.Split(Path.GetInvalidFileNameChars()));
+            var path = Path.Combine(sessionDir, $"Session_{safeName}_{DateTime.Now:yyyyMMdd_HHmm}.txt");
+            File.WriteAllText(path, GetExportText());
+            Svc.Log.Info($"[CandyCoat] Session saved to {path}");
+        }
+        catch (Exception ex)
+        {
+            Svc.Log.Error($"[CandyCoat] Failed to save session: {ex.Message}");
+        }
     }
 
     private void OnChatMessage(XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled)

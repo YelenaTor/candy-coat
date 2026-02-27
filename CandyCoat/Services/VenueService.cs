@@ -14,7 +14,7 @@ public class VenueService
         _plugin = plugin;
     }
 
-    public void AddBooking(string patronName, string service, string room, int gil)
+    public Booking AddBooking(string patronName, string service, string room, int gil)
     {
         var booking = new Booking
         {
@@ -24,12 +24,13 @@ public class VenueService
             Gil = gil,
             Timestamp = DateTime.Now,
             State = BookingState.Active,
-            Duration = TimeSpan.FromMinutes(60) // Default 1 hour for now, will be configurable later
+            Duration = TimeSpan.FromMinutes(60)
         };
-        
+
         _plugin.Configuration.Bookings.Add(booking);
         EnsurePatronExists(patronName);
         _plugin.Configuration.Save();
+        return booking;
     }
 
     public void UpdateBookingState(Booking booking, BookingState newState)

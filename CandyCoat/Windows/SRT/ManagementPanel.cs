@@ -38,9 +38,12 @@ public class ManagementPanel : IToolboxPanel
         RoleLabels = Enum.GetValues<StaffRole>().Where(r => r != StaffRole.None).Select(r => r.ToString()).ToArray();
     }
 
+    private readonly StaffPingWidget _pingWidget;
+
     public ManagementPanel(Plugin plugin)
     {
         _plugin = plugin;
+        _pingWidget = new StaffPingWidget(plugin);
     }
 
     public void DrawContent()
@@ -49,6 +52,8 @@ public class ManagementPanel : IToolboxPanel
         ImGui.Separator();
         ImGui.Spacing();
 
+        DrawLiveFloorBoard();
+        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
         DrawShiftOverview();
         ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
         DrawRoomStatusBoard();
@@ -60,6 +65,111 @@ public class ManagementPanel : IToolboxPanel
         DrawPatronNotes();
         ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
         DrawCapacity();
+        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
+        _pingWidget.Draw();
+    }
+
+    private void DrawLiveFloorBoard()
+    {
+        ImGui.TextColored(StyleManager.SectionHeader, "Live Floor Board");
+        ImGui.Spacing();
+
+        var nearbyCount = _plugin.LocatorService.GetNearbyCount();
+        ImGui.Text($"Nearby Players: ");
+        ImGui.SameLine();
+        var capacityColor = nearbyCount > 48
+            ? new Vector4(1f, 0.8f, 0.2f, 1f)
+            : StyleManager.SyncOk;
+        ImGui.TextColored(capacityColor, $"{nearbyCount}");
+        if (nearbyCount > 48)
+        {
+            ImGui.SameLine();
+            ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "  ⚠ Near capacity");
+        }
+
+        ImGui.Spacing();
+
+        var rooms = _plugin.Configuration.Rooms;
+        var onlineStaff = _plugin.SyncService.OnlineStaff;
+
+        if (rooms.Count == 0)
+        {
+            ImGui.TextDisabled("No rooms configured. Add rooms in Owner > Room Editor.");
+            return;
+        }
+
+        using var table = ImRaii.Table("##FloorBoard", 5,
+            ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingFixedFit);
+        if (!table) return;
+
+        ImGui.TableSetupColumn("Room",   ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.WidthFixed, 80);
+        ImGui.TableSetupColumn("Staff",  ImGuiTableColumnFlags.WidthFixed, 130);
+        ImGui.TableSetupColumn("Patron", ImGuiTableColumnFlags.WidthFixed, 120);
+        ImGui.TableSetupColumn("Time",   ImGuiTableColumnFlags.WidthFixed, 65);
+        ImGui.TableHeadersRow();
+
+        foreach (var room in rooms)
+        {
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn(); ImGui.Text(room.Name);
+
+            ImGui.TableNextColumn();
+            var statusColor = room.Status switch
+            {
+                RoomStatus.Available   => StyleManager.SyncOk,
+                RoomStatus.Occupied    => new Vector4(1f, 0.45f, 0.45f, 1f),
+                RoomStatus.Reserved    => new Vector4(1f, 0.8f, 0.2f, 1f),
+                RoomStatus.Maintenance => new Vector4(0.6f, 0.6f, 0.6f, 1f),
+                _                      => Vector4.One,
+            };
+            ImGui.TextColored(statusColor, room.Status.ToString());
+
+            // Staff in room — match from synced staff or local character
+            ImGui.TableNextColumn();
+            if (!string.IsNullOrEmpty(room.OccupiedBy))
+            {
+                var staffRecord = onlineStaff.Find(s => s.CharacterName == room.OccupiedBy);
+                var roleStr = staffRecord != null ? $" [{staffRecord.Role}]" : string.Empty;
+                ImGui.Text($"{room.OccupiedBy}{roleStr}");
+            }
+            else
+            {
+                ImGui.TextDisabled("—");
+            }
+
+            ImGui.TableNextColumn();
+            ImGui.Text(string.IsNullOrEmpty(room.PatronName) ? "—" : room.PatronName);
+
+            // Timer since occupied
+            ImGui.TableNextColumn();
+            if (room.Status == RoomStatus.Occupied && room.OccupiedSince.HasValue)
+            {
+                var elapsed = DateTime.Now - room.OccupiedSince.Value;
+                ImGui.TextColored(
+                    elapsed.TotalMinutes > 60 ? new Vector4(1f, 0.8f, 0.2f, 1f) : new Vector4(0.8f, 0.8f, 0.8f, 1f),
+                    $"{(int)elapsed.TotalMinutes:D2}:{elapsed.Seconds:D2}");
+            }
+            else
+            {
+                ImGui.TextDisabled("—");
+            }
+        }
+
+        // Staff not in any room
+        ImGui.Spacing();
+        var assignedNames = rooms.Where(r => !string.IsNullOrEmpty(r.OccupiedBy))
+                                  .Select(r => r.OccupiedBy).ToHashSet();
+        var unassigned = onlineStaff.Where(s => !assignedNames.Contains(s.CharacterName)).ToList();
+        if (unassigned.Count > 0)
+        {
+            ImGui.TextDisabled($"Unassigned online staff ({unassigned.Count}):");
+            foreach (var s in unassigned)
+            {
+                var dnd = s.IsDnd ? " [DND]" : string.Empty;
+                ImGui.BulletText($"{s.CharacterName} [{s.Role}]{dnd}");
+            }
+        }
     }
 
     private void DrawShiftOverview()

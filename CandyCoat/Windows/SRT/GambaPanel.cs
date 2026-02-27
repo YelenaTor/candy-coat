@@ -2,7 +2,10 @@ using System;
 using System.Linq;
 using System.Numerics;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Game.Text;
+using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
 using CandyCoat.UI;
@@ -10,10 +13,17 @@ using ECommons.DalamudServices;
 
 namespace CandyCoat.Windows.SRT;
 
-public class GambaPanel : IToolboxPanel
+public class GambaPanel : IToolboxPanel, IDisposable
 {
     public string Name => "Gamba";
     public StaffRole Role => StaffRole.Gamba;
+
+    // Matches "/random" and "/dice" roll output:
+    // "Firstname Lastname rolls a 438 on the 1000-sided die."
+    // "You roll a 438 on the 1000-sided die."
+    private static readonly Regex RollRegex = new(
+        @"^(.+?)\s+rolls?\s+a\s+(\d+)\s+on\s+the",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private readonly Plugin _plugin;
 
@@ -34,9 +44,37 @@ public class GambaPanel : IToolboxPanel
     private string _newPresetRules = string.Empty;
     private string _newPresetAnnounce = string.Empty;
 
+    private readonly StaffPingWidget _pingWidget;
+
     public GambaPanel(Plugin plugin)
     {
         _plugin = plugin;
+        _pingWidget = new StaffPingWidget(plugin);
+        Svc.Chat.ChatMessage += OnChatMessage;
+    }
+
+    public void Dispose()
+    {
+        Svc.Chat.ChatMessage -= OnChatMessage;
+    }
+
+    private void OnChatMessage(XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled)
+    {
+        var text = message.TextValue;
+        var match = RollRegex.Match(text);
+        if (!match.Success) return;
+        if (!int.TryParse(match.Groups[2].Value, out var roll)) return;
+
+        // Try to match roller to a registered player by name
+        var rollerRaw = match.Groups[1].Value;
+        var player = _players.FirstOrDefault(
+            p => rollerRaw.Contains(p.Name, StringComparison.OrdinalIgnoreCase));
+
+        _rollHistory.Add(new GambaRollEntry
+        {
+            PlayerName = player?.Name ?? rollerRaw,
+            Roll = roll,
+        });
     }
 
     public void DrawContent()
@@ -56,6 +94,8 @@ public class GambaPanel : IToolboxPanel
         DrawHouseBank();
         ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
         DrawAnnounceMacros();
+        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
+        _pingWidget.Draw();
     }
 
     private void DrawGameSelector()
@@ -176,6 +216,8 @@ public class GambaPanel : IToolboxPanel
     private void DrawRolls()
     {
         ImGui.Text("Rolls");
+        ImGui.SameLine();
+        ImGui.TextColored(StyleManager.SyncOk, "● Auto-capture active");
         if (ImGui.Button("/random"))
             Svc.Commands.ProcessCommand("/random");
         ImGui.SameLine();

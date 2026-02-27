@@ -38,9 +38,12 @@ public class DJPanel : IToolboxPanel
     private int _tipAmount = 0;
     private string _tipPatron = string.Empty;
 
+    private readonly StaffPingWidget _pingWidget;
+
     public DJPanel(Plugin plugin)
     {
         _plugin = plugin;
+        _pingWidget = new StaffPingWidget(plugin);
     }
 
     public void DrawContent()
@@ -62,6 +65,8 @@ public class DJPanel : IToolboxPanel
         DrawTipsTracker();
         ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
         DrawPerformanceHistory();
+        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
+        _pingWidget.Draw();
     }
 
     private void DrawSetTimer()

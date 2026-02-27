@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
@@ -37,7 +38,8 @@ public class SyncService : IDisposable
     public List<SyncedEarning> Earnings { get; private set; } = new();
     public List<SyncedMenuItem> Menu { get; private set; } = new();
     public List<SyncedGambaPreset> GambaPresets { get; private set; } = new();
-    public Dictionary<string, CosmeticProfile> Cosmetics { get; private set; } = new();
+    public ConcurrentDictionary<string, CosmeticProfile> Cosmetics { get; } = new();
+    public List<SyncedBooking> Bookings { get; private set; } = new();
 
     // Connection state
     public bool IsConnected { get; private set; } = false;
@@ -131,6 +133,7 @@ public class SyncService : IDisposable
             Earnings = await GetAsync<List<SyncedEarning>>("api/earnings", ct) ?? new();
             Menu = await GetAsync<List<SyncedMenuItem>>("api/menu", ct) ?? new();
             GambaPresets = await GetAsync<List<SyncedGambaPreset>>("api/gamba/presets", ct) ?? new();
+            Bookings = await GetAsync<List<SyncedBooking>>("api/bookings", ct) ?? new();
             _lastEarningsSync = DateTime.UtcNow;
             _lastNotesSync = DateTime.UtcNow;
         }
@@ -143,12 +146,13 @@ public class SyncService : IDisposable
 
     private async Task FastPollAsync()
     {
+        var ct = _cts?.Token ?? CancellationToken.None;
         try
         {
-            Rooms = await GetAsync<List<SyncedRoom>>("api/rooms") ?? Rooms;
-            OnlineStaff = await GetAsync<List<SyncedStaff>>("api/staff/online") ?? OnlineStaff;
-            
-            var newCosmetics = await GetAsync<List<SyncedCosmeticEnvelope>>("api/cosmetics");
+            Rooms = await GetAsync<List<SyncedRoom>>("api/rooms", ct) ?? Rooms;
+            OnlineStaff = await GetAsync<List<SyncedStaff>>("api/staff/online", ct) ?? OnlineStaff;
+
+            var newCosmetics = await GetAsync<List<SyncedCosmeticEnvelope>>("api/cosmetics", ct);
             if (newCosmetics != null)
             {
                 foreach (var env in newCosmetics)
@@ -170,26 +174,32 @@ public class SyncService : IDisposable
 
     private async Task SlowPollAsync()
     {
+        var ct = _cts?.Token ?? CancellationToken.None;
         try
         {
             var sinceEarnings = _lastEarningsSync.ToString("o");
             var sinceNotes = _lastNotesSync.ToString("o");
 
-            var newEarnings = await GetAsync<List<SyncedEarning>>($"api/earnings?since={sinceEarnings}");
+            var newEarnings = await GetAsync<List<SyncedEarning>>($"api/earnings?since={sinceEarnings}", ct);
             if (newEarnings?.Count > 0)
             {
-                Earnings.AddRange(newEarnings);
+                var updatedEarnings = new List<SyncedEarning>(Earnings);
+                updatedEarnings.AddRange(newEarnings);
+                Earnings = updatedEarnings;
                 _lastEarningsSync = DateTime.UtcNow;
             }
 
-            var newNotes = await GetAsync<List<SyncedPatronNote>>($"api/notes?since={sinceNotes}");
+            var newNotes = await GetAsync<List<SyncedPatronNote>>($"api/notes?since={sinceNotes}", ct);
             if (newNotes?.Count > 0)
             {
-                PatronNotes.AddRange(newNotes);
+                var updatedNotes = new List<SyncedPatronNote>(PatronNotes);
+                updatedNotes.AddRange(newNotes);
+                PatronNotes = updatedNotes;
                 _lastNotesSync = DateTime.UtcNow;
             }
 
-            Patrons = await GetAsync<List<SyncedPatron>>("api/patrons") ?? Patrons;
+            Patrons = await GetAsync<List<SyncedPatron>>("api/patrons", ct) ?? Patrons;
+            Bookings = await GetAsync<List<SyncedBooking>>("api/bookings", ct) ?? Bookings;
         }
         catch (Exception ex)
         {
@@ -245,6 +255,12 @@ public class SyncService : IDisposable
 
     public async Task ToggleDndAsync(string characterName, bool isDnd) =>
         await PostAsync("api/staff/dnd", new { CharacterName = characterName, IsDnd = isDnd });
+
+    public async Task UpsertBookingAsync(SyncedBooking booking) =>
+        await PostAsync("api/bookings", booking);
+
+    public async Task DeleteBookingAsync(Guid bookingId) =>
+        await DeleteAsync($"api/bookings/{bookingId}");
 
     public async Task PushCosmeticsAsync(CosmeticProfile profile)
     {
@@ -424,6 +440,20 @@ public class SyncedGambaPreset
     public string Rules { get; set; } = string.Empty;
     public string AnnounceMacro { get; set; } = string.Empty;
     public float DefaultMultiplier { get; set; } = 2.0f;
+}
+
+public class SyncedBooking
+{
+    public Guid Id { get; set; }
+    public string PatronName { get; set; } = string.Empty;
+    public string Service { get; set; } = string.Empty;
+    public string Room { get; set; } = string.Empty;
+    public int Gil { get; set; }
+    public string State { get; set; } = "Active";
+    public string StaffName { get; set; } = string.Empty;
+    public DateTime Timestamp { get; set; }
+    public TimeSpan Duration { get; set; }
+    public DateTime UpdatedAt { get; set; }
 }
 
 public class SyncedCosmeticEnvelope

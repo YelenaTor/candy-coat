@@ -1,10 +1,25 @@
-x_X Contributing to Candy Coat X_x
+# Contributing to Candy Coat
 
-thank you for your interest in candy coat <3
+Thank you for your interest in Candy Coat.
 
-at this time, this project is *closed to external contributions*.
-development is strictly managed internally by the sugar venue technical team to ensure security & consistency w/ our needs.
+## This project is not open to external contributions.
 
-[ .:: Reporting Issues ::. ]
-if you encounter a bug or have a feature request specific to your work at sugar...
-plz contact the development lead directly via the venue discord (^_^)/"
+Candy Coat is proprietary software developed exclusively for Sugar Venue. The codebase is managed internally by the venue's technical team to ensure consistency, security, and alignment with operational requirements.
+
+Pull requests, forks, and unsolicited patches will not be reviewed or merged.
+
+---
+
+## Reporting Issues
+
+If you are a Sugar Venue staff member and encounter a bug or have a feature request:
+
+- Contact the development lead directly via the venue Discord
+- Include steps to reproduce the issue, your character name, and the plugin version (visible in Settings)
+- Crash logs can be found in `%APPDATA%\XIVLauncher\dalamud.log`
+
+---
+
+## Future Plans
+
+Candy Coat will be rebranded as **Backstage** for public release. At that point, contributions will be welcomed under a new open-source license and contribution guidelines will be published. Until then, this repository remains closed.

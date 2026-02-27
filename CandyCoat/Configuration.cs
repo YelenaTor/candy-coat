@@ -46,6 +46,15 @@ public class Configuration : IPluginConfiguration
     public List<Data.MacroTemplate> CandyHeartMacros { get; set; } = new();
     public List<Data.MacroTemplate> BartenderMacros { get; set; } = new();
 
+    // Role cosmetic defaults (Owner-configurable)
+    public Dictionary<StaffRole, RoleDefaultCosmetic> RoleDefaults { get; set; } = new();
+
+    // Patron loyalty tier thresholds (Owner-configurable)
+    public int RegularTierVisits { get; set; } = 3;
+    public int EliteTierVisits { get; set; } = 10;
+    public int RegularTierGil { get; set; } = 100_000;
+    public int EliteTierGil { get; set; } = 1_000_000;
+
     // Sync API settings
     public string ApiUrl { get; set; } = string.Empty;
     public string VenueKey { get; set; } = string.Empty;
@@ -58,5 +67,14 @@ public class Configuration : IPluginConfiguration
     public void Save()
     {
         Plugin.PluginInterface.SavePluginConfig(this);
+    }
+
+    public PatronTier GetTier(Patron patron)
+    {
+        if (patron.VisitCount >= EliteTierVisits || patron.TotalGilSpent >= EliteTierGil)
+            return PatronTier.Elite;
+        if (patron.VisitCount >= RegularTierVisits || patron.TotalGilSpent >= RegularTierGil)
+            return PatronTier.Regular;
+        return PatronTier.Guest;
     }
 }

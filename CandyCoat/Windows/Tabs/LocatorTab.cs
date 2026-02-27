@@ -99,23 +99,30 @@ public class LocatorTab : ITab
 
         foreach (var (patron, distance) in nearbyPlayers)
         {
+            var tier = _plugin.Configuration.GetTier(patron);
+
             Vector4 color = patron.Status switch
             {
-                PatronStatus.Regular => new Vector4(1f, 0.5f, 0.8f, 1f),
-                PatronStatus.Warning => new Vector4(1f, 0.8f, 0.2f, 1f),
+                PatronStatus.Regular    => tier == PatronTier.Elite
+                                              ? new Vector4(1f, 0.85f, 0.2f, 1f)   // gold for Elite
+                                              : new Vector4(1f, 0.5f, 0.8f, 1f),   // pink for Regular
+                PatronStatus.Warning    => new Vector4(1f, 0.8f, 0.2f, 1f),
                 PatronStatus.Blacklisted => new Vector4(1f, 0.2f, 0.2f, 1f),
                 _ => new Vector4(0.8f, 0.8f, 0.8f, 1f)
             };
-            
+
             string icon = patron.Status switch
             {
-                PatronStatus.Regular => "♥",
-                PatronStatus.Warning => "⚠",
+                PatronStatus.Regular    => tier == PatronTier.Elite ? "★" : "♥",
+                PatronStatus.Warning    => "⚠",
                 PatronStatus.Blacklisted => "🚫",
                 _ => "•"
             };
 
-            ImGui.TextColored(color, $"{icon} {patron.Name} is here! ({distance:F1}m away)");
+            string tierLabel = patron.Status == PatronStatus.Regular
+                ? $" [{tier}]" : string.Empty;
+
+            ImGui.TextColored(color, $"{icon} {patron.Name}{tierLabel} is here! ({distance:F1}m away)");
             
             // Add Target Eye button
             ImGui.SameLine();
@@ -141,7 +148,9 @@ public class LocatorTab : ITab
         using var patronList = ImRaii.Child("PatronList", new Vector2(0, 180), true);
         foreach (var p in _plugin.Configuration.Patrons)
         {
-            if (ImGui.Selectable($"- {p.Name}##{p.Name}", SelectedPatron == p))
+            var ptier = _plugin.Configuration.GetTier(p);
+            var ptierStr = p.Status == PatronStatus.Regular ? $" [{ptier}]" : string.Empty;
+            if (ImGui.Selectable($"- {p.Name}{ptierStr}##{p.Name}", SelectedPatron == p))
             {
                 SelectedPatron = p;
                 OnPatronSelected?.Invoke(p);

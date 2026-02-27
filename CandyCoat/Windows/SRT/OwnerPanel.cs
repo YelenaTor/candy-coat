@@ -35,9 +35,12 @@ public class OwnerPanel : IToolboxPanel
     private string _venueNameInput = string.Empty;
     private bool _venueNameInit = false;
 
+    private readonly StaffPingWidget _pingWidget;
+
     public OwnerPanel(Plugin plugin)
     {
         _plugin = plugin;
+        _pingWidget = new StaffPingWidget(plugin);
     }
 
     public void DrawContent()
@@ -63,6 +66,12 @@ public class OwnerPanel : IToolboxPanel
         DrawPatronNotes();
         ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
         DrawExport();
+        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
+        DrawLoyaltyTierThresholds();
+        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
+        DrawRoleCosmeticDefaults();
+        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
+        _pingWidget.Draw();
     }
 
     private void DrawVenueInfo()
@@ -386,6 +395,115 @@ public class OwnerPanel : IToolboxPanel
             ImGui.SameLine();
             ImGui.TextWrapped(n.Content);
         }
+    }
+
+    private void DrawLoyaltyTierThresholds()
+    {
+        ImGui.TextColored(StyleManager.SectionHeader, "Patron Loyalty Tier Thresholds");
+        ImGui.TextDisabled("Tiers: Guest (default) → Regular → Elite. Shown in Locator and CRM.");
+        ImGui.Spacing();
+
+        var config = _plugin.Configuration;
+        bool dirty = false;
+
+        // Regular tier
+        ImGui.TextColored(new Vector4(1f, 0.5f, 0.8f, 1f), "♥ Regular");
+        ImGui.SameLine();
+        ImGui.TextDisabled("(OR condition)");
+
+        ImGui.SetNextItemWidth(80);
+        int rv = config.RegularTierVisits;
+        if (ImGui.InputInt("Visits##RegV", ref rv, 1) && rv >= 1)
+        {
+            config.RegularTierVisits = rv;
+            dirty = true;
+        }
+        ImGui.SameLine();
+        int rg = config.RegularTierGil;
+        ImGui.SetNextItemWidth(110);
+        if (ImGui.InputInt("Gil##RegG", ref rg, 10000) && rg >= 0)
+        {
+            config.RegularTierGil = rg;
+            dirty = true;
+        }
+
+        ImGui.Spacing();
+
+        // Elite tier
+        ImGui.TextColored(new Vector4(1f, 0.85f, 0.2f, 1f), "★ Elite");
+        ImGui.SameLine();
+        ImGui.TextDisabled("(OR condition)");
+
+        ImGui.SetNextItemWidth(80);
+        int ev = config.EliteTierVisits;
+        if (ImGui.InputInt("Visits##ElV", ref ev, 1) && ev >= 1)
+        {
+            config.EliteTierVisits = ev;
+            dirty = true;
+        }
+        ImGui.SameLine();
+        int eg = config.EliteTierGil;
+        ImGui.SetNextItemWidth(110);
+        if (ImGui.InputInt("Gil##ElG", ref eg, 100000) && eg >= 0)
+        {
+            config.EliteTierGil = eg;
+            dirty = true;
+        }
+
+        if (dirty) config.Save();
+    }
+
+    private void DrawRoleCosmeticDefaults()
+    {
+        ImGui.TextColored(StyleManager.SectionHeader, "Role Cosmetic Defaults");
+        ImGui.TextDisabled("Set default badge + glow for each role. Applied when staff have no personal cosmetic profile.");
+        ImGui.Spacing();
+
+        var config = _plugin.Configuration;
+        bool dirty = false;
+
+        foreach (StaffRole role in Enum.GetValues<StaffRole>())
+        {
+            if (role == StaffRole.None) continue;
+
+            if (!config.RoleDefaults.TryGetValue(role, out var rd))
+            {
+                rd = new RoleDefaultCosmetic();
+                config.RoleDefaults[role] = rd;
+                dirty = true;
+            }
+
+            ImGui.PushID($"RoleDefault_{role}");
+            bool enabled = rd.Enabled;
+            if (ImGui.Checkbox($"##{role}_en", ref enabled))
+            {
+                rd.Enabled = enabled;
+                dirty = true;
+            }
+            ImGui.SameLine();
+            ImGui.TextColored(StyleManager.SectionHeader, role.ToString());
+            ImGui.SameLine();
+
+            int badgeIdx = System.Array.IndexOf(CosmeticRenderer.BadgeTemplates, rd.BadgeTemplate);
+            if (badgeIdx < 0) badgeIdx = 1; // default to "Heart"
+            ImGui.SetNextItemWidth(90);
+            if (ImGui.Combo($"##badge_{role}", ref badgeIdx, CosmeticRenderer.BadgeTemplates, CosmeticRenderer.BadgeTemplates.Length))
+            {
+                rd.BadgeTemplate = CosmeticRenderer.BadgeTemplates[badgeIdx];
+                dirty = true;
+            }
+            ImGui.SameLine();
+
+            var glowColor = rd.GlowColor;
+            if (ImGui.ColorEdit4($"Glow##{role}", ref glowColor, ImGuiColorEditFlags.NoLabel | ImGuiColorEditFlags.AlphaBar))
+            {
+                rd.GlowColor = glowColor;
+                dirty = true;
+            }
+            ImGui.PopID();
+        }
+
+        if (dirty) config.Save();
     }
 
     private void DrawExport()

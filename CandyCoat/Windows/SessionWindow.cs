@@ -12,10 +12,12 @@ namespace CandyCoat.Windows;
 public class SessionWindow : Window, IDisposable
 {
     private readonly SessionManager _sessionManager;
+    private readonly string _configDir;
 
-    public SessionWindow(SessionManager sessionManager) : base("Candy Session##CandySessionWindow")
+    public SessionWindow(SessionManager sessionManager, string configDir) : base("Candy Session##CandySessionWindow")
     {
         _sessionManager = sessionManager;
+        _configDir = configDir;
 
         SizeConstraints = new WindowSizeConstraints
         {
@@ -41,6 +43,12 @@ public class SessionWindow : Window, IDisposable
             }
 
             ImGui.Text($"Session with: {_sessionManager.TargetName}");
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Copy"))
+                ImGui.SetClipboardText(_sessionManager.GetExportText());
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Save to File"))
+                _sessionManager.SaveToFile(_configDir);
             ImGui.Separator();
 
             var region = ImGui.GetContentRegionAvail();

@@ -74,8 +74,25 @@ public class BookingsTab : ITab
         {
             if (!string.IsNullOrWhiteSpace(newBookingName))
             {
-                _venueService.AddBooking(newBookingName, newBookingService, newBookingRoom, newBookingGil);
-                
+                var newBooking = _venueService.AddBooking(newBookingName, newBookingService, newBookingRoom, newBookingGil);
+
+                // Push to backend if synced
+                if (_plugin.SyncService.IsConnected && newBooking != null)
+                {
+                    _ = _plugin.SyncService.UpsertBookingAsync(new CandyCoat.Services.SyncedBooking
+                    {
+                        Id = newBooking.Id,
+                        PatronName = newBooking.PatronName,
+                        Service = newBooking.Service,
+                        Room = newBooking.Room,
+                        Gil = newBooking.Gil,
+                        State = newBooking.State.ToString(),
+                        StaffName = _plugin.Configuration.CharacterName,
+                        Timestamp = newBooking.Timestamp,
+                        Duration = newBooking.Duration,
+                    });
+                }
+
                 // Reset inputs
                 newBookingName = string.Empty;
                 newBookingService = string.Empty;
@@ -89,6 +106,57 @@ public class BookingsTab : ITab
         ImGui.Spacing();
 
         DrawBookingsTable();
+
+        if (_plugin.SyncService.IsConnected)
+        {
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+            DrawTeamBookings();
+        }
+    }
+
+    private void DrawTeamBookings()
+    {
+        ImGui.TextColored(StyleManager.SectionHeader, "Team Bookings (Synced)");
+        ImGui.TextDisabled("All active bookings from all staff via backend sync.");
+        ImGui.Spacing();
+
+        var teamBookings = _plugin.SyncService.Bookings;
+        if (teamBookings.Count == 0)
+        {
+            ImGui.TextDisabled("No team bookings synced yet.");
+            return;
+        }
+
+        using var table = ImRaii.Table("##TeamBookings", 5,
+            ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingFixedFit);
+        if (!table) return;
+
+        ImGui.TableSetupColumn("Patron",  ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("Service", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("Staff",   ImGuiTableColumnFlags.WidthFixed, 110);
+        ImGui.TableSetupColumn("Gil",     ImGuiTableColumnFlags.WidthFixed, 80);
+        ImGui.TableSetupColumn("State",   ImGuiTableColumnFlags.WidthFixed, 110);
+        ImGui.TableHeadersRow();
+
+        foreach (var b in teamBookings)
+        {
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn(); ImGui.TextUnformatted(b.PatronName);
+            ImGui.TableNextColumn(); ImGui.TextUnformatted(b.Service);
+            ImGui.TableNextColumn(); ImGui.TextDisabled(b.StaffName);
+            ImGui.TableNextColumn(); ImGui.TextUnformatted($"{b.Gil:N0}");
+            ImGui.TableNextColumn();
+            var stateColor = b.State switch
+            {
+                "Active"          => StyleManager.SyncOk,
+                "CompletedPaid"   => new Vector4(0.6f, 0.75f, 1f, 1f),
+                "CompletedUnpaid" => StyleManager.SyncError,
+                _                 => new Vector4(0.5f, 0.5f, 0.5f, 1f),
+            };
+            ImGui.TextColored(stateColor, b.State);
+        }
     }
 
     private void DrawBookingsTable()

@@ -369,6 +369,51 @@ app.MapPost("/api/cosmetics", async (VenueDbContext db, HttpContext ctx, Cosmeti
     return Results.Ok();
 });
 
+// ═══════════════════════════════════════════
+//  BOOKINGS (30s slow poll)
+// ═══════════════════════════════════════════
+
+app.MapGet("/api/bookings", async (VenueDbContext db, HttpContext ctx) =>
+{
+    var venueId = GetVenueId(ctx);
+    return Results.Ok(await db.Bookings.Where(b => b.VenueId == venueId).ToListAsync());
+});
+
+app.MapPost("/api/bookings", async (VenueDbContext db, HttpContext ctx, BookingEntity booking) =>
+{
+    var venueId = GetVenueId(ctx);
+    var existing = await db.Bookings.FirstOrDefaultAsync(b => b.VenueId == venueId && b.Id == booking.Id);
+    if (existing != null)
+    {
+        existing.PatronName = booking.PatronName;
+        existing.Service = booking.Service;
+        existing.Room = booking.Room;
+        existing.Gil = booking.Gil;
+        existing.State = booking.State;
+        existing.StaffName = booking.StaffName;
+        existing.Duration = booking.Duration;
+        existing.UpdatedAt = DateTime.UtcNow;
+    }
+    else
+    {
+        booking.VenueId = venueId;
+        booking.UpdatedAt = DateTime.UtcNow;
+        db.Bookings.Add(booking);
+    }
+    await db.SaveChangesAsync();
+    return Results.Ok();
+});
+
+app.MapDelete("/api/bookings/{id}", async (VenueDbContext db, HttpContext ctx, Guid id) =>
+{
+    var venueId = GetVenueId(ctx);
+    var booking = await db.Bookings.FirstOrDefaultAsync(b => b.Id == id && b.VenueId == venueId);
+    if (booking == null) return Results.NotFound();
+    db.Bookings.Remove(booking);
+    await db.SaveChangesAsync();
+    return Results.NoContent();
+});
+
 app.Run();
 
 // ─── Helper: Extract venue ID from venue key config ───

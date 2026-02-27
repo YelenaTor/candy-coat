@@ -15,6 +15,7 @@ public class VenueDbContext : DbContext
     public DbSet<ServiceMenuEntity> ServiceMenu => Set<ServiceMenuEntity>();
     public DbSet<GambaPresetEntity> GambaPresets => Set<GambaPresetEntity>();
     public DbSet<CosmeticSyncEntity> CosmeticsSync => Set<CosmeticSyncEntity>();
+    public DbSet<BookingEntity> Bookings => Set<BookingEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -42,5 +43,7 @@ public class VenueDbContext : DbContext
         modelBuilder.Entity<ServiceMenuEntity>().HasIndex(m => m.VenueId);
         modelBuilder.Entity<GambaPresetEntity>().HasIndex(g => g.VenueId);
         modelBuilder.Entity<CosmeticSyncEntity>().HasIndex(c => c.VenueId);
+        modelBuilder.Entity<BookingEntity>().HasIndex(b => b.VenueId);
+        modelBuilder.Entity<BookingEntity>().HasIndex(b => b.UpdatedAt);
     }
 }

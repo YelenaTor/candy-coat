@@ -29,6 +29,9 @@ public class MainWindow : Window, IDisposable
     private int _selectedDashboardIndex = 0;
     private int _selectedSrtIndex = 0;
 
+    // Trade notifications banner
+    private readonly List<(string Name, int Amount, bool Linked)> _tradeNotifications = new();
+
     // Password gate for protected roles
     private string _rolePassword = string.Empty;
     private bool _rolePasswordUnlocked = false;
@@ -65,6 +68,10 @@ public class MainWindow : Window, IDisposable
         dashboardTabs.Add(new WaitlistTab(waitlistManager));
         dashboardTabs.Add(new StaffTab(shiftManager));
 
+        // Subscribe to trade notifications
+        plugin.TradeMonitorService.OnTradeDetected += (name, amount, linked) =>
+            _tradeNotifications.Add((name, amount, linked));
+
         // Initialize SRT Panels
         srtPanels.Add(new SweetheartPanel(plugin));
         srtPanels.Add(new CandyHeartPanel(plugin));
@@ -86,7 +93,8 @@ public class MainWindow : Window, IDisposable
 
     public void Dispose()
     {
-        // Any cleanup if tabs require it in the future
+        foreach (var panel in srtPanels)
+            if (panel is IDisposable d) d.Dispose();
     }
 
     public void OpenBookingsTab()
@@ -303,6 +311,8 @@ public class MainWindow : Window, IDisposable
 
             return;
         }
+
+        DrawTradeNotifications();
 
         switch (_activeSection)
         {
@@ -609,6 +619,30 @@ public class MainWindow : Window, IDisposable
             }
             ImGui.Spacing();
         }
+    }
+
+    private void DrawTradeNotifications()
+    {
+        if (_tradeNotifications.Count == 0) return;
+
+        for (int i = _tradeNotifications.Count - 1; i >= 0; i--)
+        {
+            var (name, amount, linked) = _tradeNotifications[i];
+
+            if (linked)
+                ImGui.TextColored(CandyCoat.UI.StyleManager.SyncOk,
+                    $"✔ Trade: {amount:N0} Gil from {name} — linked to booking");
+            else
+                ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f),
+                    $"💰 Trade: {amount:N0} Gil from {name} — no matching active booking");
+
+            ImGui.SameLine();
+            if (ImGui.SmallButton($"✕##tradeN{i}"))
+                _tradeNotifications.RemoveAt(i);
+        }
+
+        ImGui.Separator();
+        ImGui.Spacing();
     }
 
     private List<IToolboxPanel> GetVisibleSrtPanels()

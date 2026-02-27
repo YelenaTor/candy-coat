@@ -31,9 +31,12 @@ public class BartenderPanel : IToolboxPanel
     private string _newMacroTitle = string.Empty;
     private string _newMacroText = string.Empty;
 
+    private readonly StaffPingWidget _pingWidget;
+
     public BartenderPanel(Plugin plugin)
     {
         _plugin = plugin;
+        _pingWidget = new StaffPingWidget(plugin);
     }
 
     public void DrawContent()
@@ -49,6 +52,8 @@ public class BartenderPanel : IToolboxPanel
         DrawTabSystem();
         ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
         DrawRPMacros();
+        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
+        _pingWidget.Draw();
     }
 
     private void DrawDrinkMenu()
