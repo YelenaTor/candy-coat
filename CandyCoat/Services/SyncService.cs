@@ -95,18 +95,19 @@ public class SyncService : IDisposable
             return;
         }
 
-        // Initial data fetch
-        await FetchAllAsync();
-
-        // Start loops
-        _fastLoop = RunLoopAsync(FastPollAsync, FastPollMs, _cts.Token);
-        _slowLoop = RunLoopAsync(SlowPollAsync, SlowPollMs, _cts.Token);
-        _heartbeatLoop = RunLoopAsync(HeartbeatAsync, HeartbeatMs, _cts.Token);
-
+        // Unblock the UI immediately — data arrives on the first poll tick
         _isAwake = true;
         IsWaking = false;
         LastError = null;
         Svc.Log.Info("[SyncService] Awake and connected.");
+
+        // Start loops (FastPoll fires within 3 s and fills all data)
+        _fastLoop      = RunLoopAsync(FastPollAsync,  FastPollMs,  _cts.Token);
+        _slowLoop      = RunLoopAsync(SlowPollAsync,  SlowPollMs,  _cts.Token);
+        _heartbeatLoop = RunLoopAsync(HeartbeatAsync, HeartbeatMs, _cts.Token);
+
+        // Background initial fetch so first open isn't empty for 3 s
+        _ = FetchAllAsync();
     }
 
     /// <summary>
