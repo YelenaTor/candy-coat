@@ -169,22 +169,8 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnMainCommand(string command, string args)
     {
-        if (!Configuration.IsSetupComplete)
-        {
-            SetupWindow.IsOpen = true;
-            return;
-        }
-        
-        // In response to the slash command, toggle the display status of our main ui
+        if (!Configuration.IsSetupComplete) { SetupWindow.IsOpen = true; return; }
         MainWindow.Toggle();
-
-        // Wake/sleep sync service based on UI state
-        if (MainWindow.IsOpen)
-            _ = SyncService.WakeAsync().ContinueWith(
-                t => Log.Error($"[CandyCoat] WakeAsync threw: {t.Exception}"),
-                System.Threading.Tasks.TaskContinuationOptions.OnlyOnFaulted);
-        else
-            SyncService.Sleep();
     }
     
     public void OnSetupComplete()

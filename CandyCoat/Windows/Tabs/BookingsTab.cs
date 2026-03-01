@@ -76,8 +76,8 @@ public class BookingsTab : ITab
             {
                 var newBooking = _venueService.AddBooking(newBookingName, newBookingService, newBookingRoom, newBookingGil);
 
-                // Push to backend if synced
-                if (_plugin.SyncService.IsConnected && newBooking != null)
+                // Push to backend (fire-and-forget)
+                if (newBooking != null)
                 {
                     _ = _plugin.SyncService.UpsertBookingAsync(new CandyCoat.Services.SyncedBooking
                     {
@@ -107,13 +107,10 @@ public class BookingsTab : ITab
 
         DrawBookingsTable();
 
-        if (_plugin.SyncService.IsConnected)
-        {
-            ImGui.Spacing();
-            ImGui.Separator();
-            ImGui.Spacing();
-            DrawTeamBookings();
-        }
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+        DrawTeamBookings();
     }
 
     private void DrawTeamBookings()

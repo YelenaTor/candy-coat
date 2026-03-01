@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using ECommons.DalamudServices;
@@ -12,25 +11,16 @@ using CandyCoat.Data;
 namespace CandyCoat.Services;
 
 /// <summary>
-/// Manages synchronization between the plugin and the Candy Coat API.
-/// Supports sleep/wake mode: dormant when UI is closed, active when open.
-/// Future: multi-venue support via venue_id routing.
+/// Manages write-only synchronization between the plugin and the Candy Coat API.
+/// Local-first: IsConnected is always true; all read caches are empty collections.
+/// Write operations fire-and-forget to localhost:5000 — no polling, no blocking overlays.
 /// </summary>
 public class SyncService : IDisposable
 {
     private readonly Plugin _plugin;
     private readonly HttpClient _httpClient;
 
-    // Sync state
-    private CancellationTokenSource? _cts;
-    private Task? _fastLoop;
-    private Task? _slowLoop;
-    private Task? _heartbeatLoop;
-    private bool _isAwake = false;
-    private DateTime _lastEarningsSync = DateTime.MinValue;
-    private DateTime _lastNotesSync = DateTime.MinValue;
-
-    // Synced data cache (read by panels)
+    // Synced data cache — always empty in local dev; panels show "no data" gracefully
     public List<SyncedRoom> Rooms { get; private set; } = new();
     public List<SyncedStaff> OnlineStaff { get; private set; } = new();
     public List<SyncedPatron> Patrons { get; private set; } = new();
@@ -41,193 +31,15 @@ public class SyncService : IDisposable
     public ConcurrentDictionary<string, CosmeticProfile> Cosmetics { get; } = new();
     public List<SyncedBooking> Bookings { get; private set; } = new();
 
-    // Connection state
-    public bool IsConnected { get; private set; } = false;
-    public bool IsWaking { get; private set; } = false;
-    public string? LastError { get; private set; }
-
-    private const int FastPollMs = 3000;   // Rooms + staff
-    private const int SlowPollMs = 30000;  // Earnings + notes
-    private const int HeartbeatMs = 15000; // Staff heartbeat
+    // Always true — local dev write-only mode; NameplateRenderer degrades gracefully (empty cache)
+    public bool IsConnected { get; } = true;
 
     public SyncService(Plugin plugin)
     {
         _plugin = plugin;
         _httpClient = new HttpClient();
         _httpClient.Timeout = TimeSpan.FromSeconds(5);
-    }
-
-    /// <summary>
-    /// Wake up: start polling loops. Called when MainWindow opens.
-    /// </summary>
-    public async Task WakeAsync()
-    {
-        if (_isAwake || IsWaking) return;
-        // DEV: hardcoded to localhost while self-hosted; re-enable ApiUrl check when permanently deployed
-        // if (string.IsNullOrEmpty(_plugin.Configuration.ApiUrl)) return;
-
-        IsWaking = true;
-        _cts = new CancellationTokenSource();
-
-        // DEV: hardcoded base URL; swap to _plugin.Configuration.ApiUrl when hosted
         _httpClient.BaseAddress = new Uri("http://localhost:5000/");
-        // DEV: auth disabled — remove these comments and restore the key header when hosted
-        // _httpClient.DefaultRequestHeaders.Remove("X-Venue-Key");
-        // _httpClient.DefaultRequestHeaders.Add("X-Venue-Key", _plugin.Configuration.VenueKey);
-
-        // Test connection
-        try
-        {
-            var response = await _httpClient.GetAsync("api/health", _cts.Token);
-            IsConnected = response.IsSuccessStatusCode;
-            if (!IsConnected)
-            {
-                LastError = $"API returned {response.StatusCode}";
-                IsWaking = false;
-                return;
-            }
-        }
-        catch (Exception ex)
-        {
-            IsConnected = false;
-            LastError = ex.Message;
-            IsWaking = false;
-            return;
-        }
-
-        // Unblock the UI immediately — data arrives on the first poll tick
-        _isAwake = true;
-        IsWaking = false;
-        LastError = null;
-        Svc.Log.Info("[SyncService] Awake and connected.");
-
-        // Start loops (FastPoll fires within 3 s and fills all data)
-        _fastLoop      = RunLoopAsync(FastPollAsync,  FastPollMs,  _cts.Token);
-        _slowLoop      = RunLoopAsync(SlowPollAsync,  SlowPollMs,  _cts.Token);
-        _heartbeatLoop = RunLoopAsync(HeartbeatAsync, HeartbeatMs, _cts.Token);
-
-        // Background initial fetch so first open isn't empty for 3 s
-        _ = FetchAllAsync();
-    }
-
-    /// <summary>
-    /// Sleep: stop all polling. Called when MainWindow closes.
-    /// </summary>
-    public void Sleep()
-    {
-        if (!_isAwake) return;
-        _cts?.Cancel();
-        _cts?.Dispose();
-        _cts = null;
-        _isAwake = false;
-        IsConnected = false;
-        Svc.Log.Info("[SyncService] Sleeping.");
-    }
-
-    private async Task FetchAllAsync()
-    {
-        var ct = _cts?.Token ?? CancellationToken.None;
-        try
-        {
-            Rooms = await GetAsync<List<SyncedRoom>>("api/rooms", ct) ?? new();
-            OnlineStaff = await GetAsync<List<SyncedStaff>>("api/staff/online", ct) ?? new();
-            Patrons = await GetAsync<List<SyncedPatron>>("api/patrons", ct) ?? new();
-            PatronNotes = await GetAsync<List<SyncedPatronNote>>("api/notes", ct) ?? new();
-            Earnings = await GetAsync<List<SyncedEarning>>("api/earnings", ct) ?? new();
-            Menu = await GetAsync<List<SyncedMenuItem>>("api/menu", ct) ?? new();
-            GambaPresets = await GetAsync<List<SyncedGambaPreset>>("api/gamba/presets", ct) ?? new();
-            Bookings = await GetAsync<List<SyncedBooking>>("api/bookings", ct) ?? new();
-            _lastEarningsSync = DateTime.UtcNow;
-            _lastNotesSync = DateTime.UtcNow;
-        }
-        catch (Exception ex)
-        {
-            Svc.Log.Error($"[SyncService] FetchAll failed: {ex.Message}");
-            IsConnected = false;
-        }
-    }
-
-    private async Task FastPollAsync()
-    {
-        var ct = _cts?.Token ?? CancellationToken.None;
-        try
-        {
-            Rooms = await GetAsync<List<SyncedRoom>>("api/rooms", ct) ?? Rooms;
-            OnlineStaff = await GetAsync<List<SyncedStaff>>("api/staff/online", ct) ?? OnlineStaff;
-
-            var newCosmetics = await GetAsync<List<SyncedCosmeticEnvelope>>("api/cosmetics", ct);
-            if (newCosmetics != null)
-            {
-                foreach (var env in newCosmetics)
-                {
-                    var profile = await TryDecompressCosmeticAsync(env.BrotliBlob);
-                    if (profile != null) Cosmetics[env.CharacterHash] = profile;
-                }
-            }
-
-            IsConnected = true;
-            LastError = null;
-        }
-        catch (Exception ex)
-        {
-            IsConnected = false;
-            LastError = ex.Message;
-        }
-    }
-
-    private async Task SlowPollAsync()
-    {
-        var ct = _cts?.Token ?? CancellationToken.None;
-        try
-        {
-            var sinceEarnings = _lastEarningsSync.ToString("o");
-            var sinceNotes = _lastNotesSync.ToString("o");
-
-            var newEarnings = await GetAsync<List<SyncedEarning>>($"api/earnings?since={sinceEarnings}", ct);
-            if (newEarnings?.Count > 0)
-            {
-                var updatedEarnings = new List<SyncedEarning>(Earnings);
-                updatedEarnings.AddRange(newEarnings);
-                Earnings = updatedEarnings;
-                _lastEarningsSync = DateTime.UtcNow;
-            }
-
-            var newNotes = await GetAsync<List<SyncedPatronNote>>($"api/notes?since={sinceNotes}", ct);
-            if (newNotes?.Count > 0)
-            {
-                var updatedNotes = new List<SyncedPatronNote>(PatronNotes);
-                updatedNotes.AddRange(newNotes);
-                PatronNotes = updatedNotes;
-                _lastNotesSync = DateTime.UtcNow;
-            }
-
-            Patrons = await GetAsync<List<SyncedPatron>>("api/patrons", ct) ?? Patrons;
-            Bookings = await GetAsync<List<SyncedBooking>>("api/bookings", ct) ?? Bookings;
-        }
-        catch (Exception ex)
-        {
-            Svc.Log.Warning($"[SyncService] SlowPoll failed: {ex.Message}");
-        }
-    }
-
-    private async Task HeartbeatAsync()
-    {
-        try
-        {
-            var heartbeat = new
-            {
-                CharacterName = _plugin.Configuration.CharacterName,
-                HomeWorld = _plugin.Configuration.HomeWorld,
-                Role = _plugin.Configuration.PrimaryRole.ToString(),
-                IsDnd = false, // TODO: wire to panel DND state
-                ShiftStart = (DateTime?)null,
-            };
-            await PostAsync("api/staff/heartbeat", heartbeat);
-        }
-        catch (Exception ex)
-        {
-            Svc.Log.Warning($"[SyncService] Heartbeat failed: {ex.Message}");
-        }
     }
 
     // ─── Public write methods (panels call these) ───
@@ -298,30 +110,7 @@ public class SyncService : IDisposable
         }
     }
 
-    // ─── Private helpers ───
-
-    private static async Task<CosmeticProfile?> TryDecompressCosmeticAsync(byte[] blob)
-    {
-        try
-        {
-            using var ms = new System.IO.MemoryStream(blob);
-            using var bs = new System.IO.Compression.BrotliStream(ms, System.IO.Compression.CompressionMode.Decompress);
-            using var reader = new System.IO.StreamReader(bs);
-            var json = await reader.ReadToEndAsync();
-            return JsonConvert.DeserializeObject<CosmeticProfile>(json);
-        }
-        catch { return null; }
-    }
-
     // ─── HTTP helpers ───
-
-    private async Task<T?> GetAsync<T>(string path, CancellationToken ct = default)
-    {
-        var response = await _httpClient.GetAsync(path, ct);
-        response.EnsureSuccessStatusCode();
-        var json = await response.Content.ReadAsStringAsync(ct);
-        return JsonConvert.DeserializeObject<T>(json);
-    }
 
     private async Task SendBodyAsync<T>(HttpMethod method, string path, T body)
     {
@@ -339,23 +128,6 @@ public class SyncService : IDisposable
     {
         var response = await _httpClient.DeleteAsync(path);
         response.EnsureSuccessStatusCode();
-    }
-
-    private static async Task RunLoopAsync(Func<Task> action, int intervalMs, CancellationToken ct)
-    {
-        while (!ct.IsCancellationRequested)
-        {
-            try
-            {
-                await Task.Delay(intervalMs, ct);
-                await action();
-            }
-            catch (OperationCanceledException) { break; }
-            catch (Exception ex)
-            {
-                Svc.Log.Warning($"[SyncService] Loop error: {ex.Message}");
-            }
-        }
     }
 
     /// <summary>
@@ -452,7 +224,6 @@ public class SyncService : IDisposable
 
     public void Dispose()
     {
-        Sleep();
         _httpClient.Dispose();
     }
 }

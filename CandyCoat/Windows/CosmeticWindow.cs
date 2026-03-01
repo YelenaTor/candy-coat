@@ -60,8 +60,7 @@ public class CosmeticWindow : Window, IDisposable
     private void ForcePush()
     {
         _lastAutoRedraw = DateTime.UtcNow;
-        if (_plugin.SyncService.IsConnected)
-            _ = _plugin.SyncService.PushCosmeticsAsync(_plugin.Configuration.CosmeticProfile);
+        _ = _plugin.SyncService.PushCosmeticsAsync(_plugin.Configuration.CosmeticProfile);
     }
 
     public void Dispose() { }

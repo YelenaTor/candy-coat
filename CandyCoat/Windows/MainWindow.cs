@@ -218,17 +218,11 @@ public class MainWindow : Window, IDisposable
             ImGui.TextDisabled("  Set up in Settings.");
         }
 
-        // ── Sync Status + Cosmetics + Settings (pinned to bottom) ──
-        var syncService = plugin.SyncService;
+        // ── API Status + Cosmetics + Settings (pinned to bottom) ──
         var footerHeight = ImGui.GetFrameHeightWithSpacing() * 4 + ImGui.GetStyle().ItemSpacing.Y;
         ImGui.SetCursorPosY(ImGui.GetWindowHeight() - footerHeight - ImGui.GetStyle().WindowPadding.Y);
 
-        if (syncService.IsWaking)
-            ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⏳ Connecting...");
-        else if (syncService.IsConnected)
-            ImGui.TextColored(CandyCoat.UI.StyleManager.SyncOk, "🟢 Synced");
-        else
-            ImGui.TextColored(CandyCoat.UI.StyleManager.SyncError, "🔴 Offline");
+        ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1f), "API: Local Dev");
 
         ImGui.Separator();
 
@@ -260,70 +254,6 @@ public class MainWindow : Window, IDisposable
 
     private void DrawContentPanel()
     {
-        // Wake overlay when sync is connecting
-        if (plugin.SyncService.IsWaking && _activeSection != SidebarSection.Settings)
-        {
-            var region = ImGui.GetContentRegionAvail();
-            ImGui.SetCursorPos(new Vector2(region.X / 2 - 80, region.Y / 2 - 40));
-            ImGui.TextColored(new Vector4(1f, 0.6f, 0.8f, 1f), "☁ Waking up...");
-            ImGui.SetCursorPosX(region.X / 2 - 100);
-            ImGui.TextDisabled("Connecting to Candy Coat API");
-            
-            ImGui.Spacing();
-            ImGui.SetCursorPosX(region.X / 2 - 15);
-            OtterGui.Text.ImUtf8.Spinner("SyncWakingSpinner"u8, 15f, 3, ImGui.GetColorU32(new Vector4(1f, 0.6f, 0.8f, 1f)));
-            return;
-        }
-
-        // Error overlay when connection fails
-        if (!plugin.SyncService.IsConnected && _activeSection != SidebarSection.Settings)
-        {
-            var region = ImGui.GetContentRegionAvail();
-            ImGui.SetCursorPosY(region.Y / 2 - 100);
-            
-            var title = "🔴 API Connection Failed";
-            ImGui.SetCursorPosX(region.X / 2 - ImGui.CalcTextSize(title).X / 2);
-            ImGui.TextColored(new Vector4(1f, 0.3f, 0.3f, 1f), title);
-            
-            ImGui.Spacing();
-            var errText = $"Error: {plugin.SyncService.LastError ?? "Unknown"}";
-            ImGui.SetCursorPosX(region.X / 2 - ImGui.CalcTextSize(errText).X / 2);
-            ImGui.TextColored(new Vector4(0.9f, 0.9f, 0.9f, 1f), errText);
-            
-            ImGui.Spacing();
-            var causesTitle = "Possible causes:";
-            ImGui.SetCursorPosX(region.X / 2 - ImGui.CalcTextSize(causesTitle).X / 2);
-            ImGui.TextDisabled(causesTitle);
-            
-            var c1 = "• The API/Database container is offline.";
-            ImGui.SetCursorPosX(region.X / 2 - ImGui.CalcTextSize(c1).X / 2);
-            ImGui.TextDisabled(c1);
-            
-            var c2 = "• Invalid API URL or Venue Key in Settings.";
-            ImGui.SetCursorPosX(region.X / 2 - ImGui.CalcTextSize(c2).X / 2);
-            ImGui.TextDisabled(c2);
-            
-            var c3 = "• Network interruption.";
-            ImGui.SetCursorPosX(region.X / 2 - ImGui.CalcTextSize(c3).X / 2);
-            ImGui.TextDisabled(c3);
-
-            ImGui.Spacing();
-            ImGui.Spacing();
-            ImGui.SetCursorPosX(region.X / 2 - 15);
-            OtterGui.Text.ImUtf8.Spinner("SyncErrorSpinner"u8, 15f, 3, ImGui.GetColorU32(new Vector4(1f, 0.3f, 0.3f, 1f)));
-
-            ImGui.Spacing();
-            ImGui.Spacing();
-            var btnText = "Retry Connection";
-            ImGui.SetCursorPosX(region.X / 2 - 60);
-            if (ImGui.Button(btnText, new Vector2(120, 30)))
-            {
-                _ = plugin.SyncService.WakeAsync();
-            }
-
-            return;
-        }
-
         DrawTradeNotifications();
 
         switch (_activeSection)

@@ -83,12 +83,6 @@ public class ProfileWindow : Window, IDisposable
 
     private void DrawSyncStatus()
     {
-        var sync = _plugin.SyncService;
-        if (sync.IsWaking)
-            ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "Connecting...");
-        else if (sync.IsConnected)
-            ImGui.TextColored(StyleManager.SyncOk, "Connected");
-        else
-            ImGui.TextColored(StyleManager.SyncError, "Disconnected");
+        ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1f), "Local Dev Mode");
     }
 }
