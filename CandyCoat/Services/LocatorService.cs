@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
 using Dalamud.Plugin.Services;
 using ECommons.DalamudServices;
@@ -14,6 +13,10 @@ public class LocatorService : IDisposable
     private int _frameCount = 0;
     private const int ScanIntervalFrames = 60; // Approx 1 second at 60fps
     private readonly HashSet<string> _alertedPatrons = new();
+
+    // Fired when a tracked patron is newly detected nearby.
+    // PatronAlertService subscribes to this to handle display and chat alerts.
+    public event Action<Data.Patron, float>? OnPatronArrived;
 
     // Cached state for the UI to read from
     public List<(Data.Patron Patron, float Distance)> NearbyRegulars { get; private set; } = new();
@@ -62,24 +65,7 @@ public class LocatorService : IDisposable
                 if (!_alertedPatrons.Contains(playerName))
                 {
                     _alertedPatrons.Add(playerName);
-
-                    if (patron.Status is PatronStatus.Warning or PatronStatus.Blacklisted)
-                    {
-                        var alertLevel = patron.Status == PatronStatus.Blacklisted ? "[BLACKLIST]" : "[WARNING]";
-                        Svc.Chat.Print(new Dalamud.Game.Text.XivChatEntry
-                        {
-                            Type = Dalamud.Game.Text.XivChatType.Echo,
-                            Message = $"[CandyCoat] {alertLevel} {playerName} is nearby! ({distance:F1}m). Notes: {patron.Notes}"
-                        });
-                    }
-                    else if (patron.Status == PatronStatus.Regular)
-                    {
-                        Svc.Chat.Print(new Dalamud.Game.Text.XivChatEntry
-                        {
-                            Type = Dalamud.Game.Text.XivChatType.Echo,
-                            Message = BuildCrmSummary(patron, distance)
-                        });
-                    }
+                    OnPatronArrived?.Invoke(patron, distance);
                 }
                 
                 // Update LastSeen
@@ -91,32 +77,6 @@ public class LocatorService : IDisposable
         _alertedPatrons.RemoveWhere(name => !currentNearbyNames.Contains(name));
 
         NearbyRegulars = newCache;
-    }
-
-    private static string BuildCrmSummary(Data.Patron patron, float distance)
-    {
-        var parts = new System.Text.StringBuilder();
-        parts.Append($"[CandyCoat] ♥ {patron.Name} is here! ({distance:F1}m) — ");
-        parts.Append($"{patron.VisitCount} visit{(patron.VisitCount != 1 ? "s" : "")}");
-
-        if (patron.TotalGilSpent > 0)
-            parts.Append($" · {patron.TotalGilSpent:N0} Gil spent");
-
-        if (!string.IsNullOrWhiteSpace(patron.FavoriteDrink))
-            parts.Append($" · Drink: {patron.FavoriteDrink}");
-
-        var lastNote = patron.Notes?.Split('\n', System.StringSplitOptions.RemoveEmptyEntries)
-                                    .FirstOrDefault(l => !string.IsNullOrWhiteSpace(l));
-        if (!string.IsNullOrWhiteSpace(lastNote))
-        {
-            var preview = lastNote.Length > 60 ? lastNote[..60] + "…" : lastNote;
-            parts.Append($" · Note: {preview}");
-        }
-
-        if (patron.LastVisitDate != default && patron.LastVisitDate != patron.LastSeen)
-            parts.Append($" · Last: {patron.LastVisitDate:MM/dd}");
-
-        return parts.ToString();
     }
 
     public int GetNearbyCount()

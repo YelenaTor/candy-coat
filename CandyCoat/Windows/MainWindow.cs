@@ -500,6 +500,76 @@ public class MainWindow : Window, IDisposable
             ImGui.Spacing();
         }
 
+        // ── Patron Alerts ──
+        if (ImGui.CollapsingHeader("Patron Alerts"))
+        {
+            ImGui.Spacing();
+            var enableAlerts = config.EnablePatronAlerts;
+            if (ImGui.Checkbox("Enable Patron Entry Alerts", ref enableAlerts))
+            {
+                config.EnablePatronAlerts = enableAlerts;
+                config.Save();
+            }
+            ImGui.TextDisabled("Shows an overlay when a tracked patron enters the instance.");
+            ImGui.Spacing();
+
+            if (config.EnablePatronAlerts)
+            {
+                ImGui.Indent();
+
+                ImGui.Text("Alert Method:");
+                ImGui.SameLine();
+                var methodIdx = (int)config.AlertMethod;
+                ImGui.SetNextItemWidth(120);
+                if (ImGui.Combo("##alertMethod", ref methodIdx,
+                    new[] { "Panel", "Chat", "Both" }, 3))
+                {
+                    config.AlertMethod = (CandyCoat.Data.PatronAlertMethod)methodIdx;
+                    config.Save();
+                }
+                ImGui.TextDisabled("Panel = on-screen card · Chat = echo message · Both = panel + chat");
+                ImGui.Spacing();
+
+                var regularOnly = config.AlertOnRegularOnly;
+                if (ImGui.Checkbox("Only alert for Regular / Elite patrons", ref regularOnly))
+                {
+                    config.AlertOnRegularOnly = regularOnly;
+                    config.Save();
+                }
+                ImGui.TextDisabled("Danger-status patrons (Warning/Blacklisted) always alert regardless.");
+                ImGui.Spacing();
+
+                var targetBtn = config.EnableTargetOnAlertClick;
+                if (ImGui.Checkbox("Show 'Target' button on panel alerts", ref targetBtn))
+                {
+                    config.EnableTargetOnAlertClick = targetBtn;
+                    config.Save();
+                }
+                ImGui.Spacing();
+
+                var cooldown = config.AlertCooldownMinutes;
+                ImGui.SetNextItemWidth(80);
+                if (ImGui.InputInt("Cooldown (minutes)##alertCooldown", ref cooldown, 1))
+                {
+                    config.AlertCooldownMinutes = System.Math.Max(1, cooldown);
+                    config.Save();
+                }
+                ImGui.TextDisabled("Minimum time before re-alerting for the same patron.");
+                ImGui.Spacing();
+
+                var dismissSecs = config.AlertDismissSeconds;
+                ImGui.SetNextItemWidth(80);
+                if (ImGui.InputInt("Auto-dismiss after (seconds)##alertDismiss", ref dismissSecs, 1))
+                {
+                    config.AlertDismissSeconds = System.Math.Max(3, dismissSecs);
+                    config.Save();
+                }
+
+                ImGui.Unindent();
+            }
+            ImGui.Spacing();
+        }
+
         // ── Support ──
         if (ImGui.CollapsingHeader("Support & Feedback"))
         {

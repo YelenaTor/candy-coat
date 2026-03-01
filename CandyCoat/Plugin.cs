@@ -44,6 +44,7 @@ public sealed class Plugin : IDalamudPlugin
     public WaitlistManager WaitlistManager { get; init; }
     public ShiftManager ShiftManager { get; init; }
     public SyncService SyncService { get; init; }
+    public PatronAlertService PatronAlertService { get; init; }
 
     public CosmeticFontManager CosmeticFontManager { get; init; }
     public CosmeticBadgeManager CosmeticBadgeManager { get; init; }
@@ -53,6 +54,7 @@ public sealed class Plugin : IDalamudPlugin
     private SetupWindow SetupWindow { get; init; }
     public ProfileWindow ProfileWindow { get; init; }
     private PatronDetailsWindow PatronDetailsWindow { get; init; }
+    private PatronAlertOverlay PatronAlertOverlay { get; init; }
     private ChatTwoIpc ChatTwoIpc { get; init; }
     private NameplateRenderer NameplateRenderer { get; init; }
 
@@ -77,18 +79,21 @@ public sealed class Plugin : IDalamudPlugin
         WaitlistManager = new WaitlistManager();
         ShiftManager = new ShiftManager(this);
         SyncService = new SyncService(this);
+        PatronAlertService = new PatronAlertService(this, LocatorService);
         var glamourerIpc = new GlamourerIpc();
 
         PatronDetailsWindow = new PatronDetailsWindow(this, glamourerIpc);
         ProfileWindow = new ProfileWindow(this);
         MainWindow = new MainWindow(this, VenueService, WaitlistManager, ShiftManager, PatronDetailsWindow, goatImagePath, CosmeticWindow, ProfileWindow);
         SessionWindow = new SessionWindow(SessionManager, PluginInterface.ConfigDirectory.FullName);
+        PatronAlertOverlay = new PatronAlertOverlay(this, PatronAlertService);
 
         WindowSystem.AddWindow(PatronDetailsWindow);
         WindowSystem.AddWindow(ProfileWindow);
         WindowSystem.AddWindow(MainWindow);
         WindowSystem.AddWindow(SessionWindow);
         WindowSystem.AddWindow(CosmeticWindow);
+        WindowSystem.AddWindow(PatronAlertOverlay);
 
         // Initialize IPC
         ChatTwoIpc = new ChatTwoIpc((targetName) =>
@@ -160,6 +165,7 @@ public sealed class Plugin : IDalamudPlugin
         LocatorService?.Dispose();
         TradeMonitorService?.Dispose();
         SyncService?.Dispose();
+        PatronAlertService?.Dispose();
         CosmeticFontManager?.Dispose();
         CosmeticBadgeManager?.Dispose();
         CosmeticWindow?.Dispose();

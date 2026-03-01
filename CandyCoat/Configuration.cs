@@ -63,6 +63,14 @@ public class Configuration : IPluginConfiguration
     // Manager password (set by Owner; gates Management role assignment)
     public string ManagerPassword { get; set; } = string.Empty;
 
+    // Patron Alert settings
+    public bool EnablePatronAlerts { get; set; } = true;
+    public PatronAlertMethod AlertMethod { get; set; } = PatronAlertMethod.Panel;
+    public bool AlertOnRegularOnly { get; set; } = false;
+    public bool EnableTargetOnAlertClick { get; set; } = true;
+    public int AlertCooldownMinutes { get; set; } = 30;
+    public int AlertDismissSeconds { get; set; } = 8;
+
     // Sync API settings
     public string ApiUrl { get; set; } = string.Empty;
     public string VenueKey { get; set; } = string.Empty;
