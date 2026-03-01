@@ -16,11 +16,12 @@ public class SetupWindow : Window, IDisposable
     private int _lastSavedStep = -1;
     private readonly WizardState _state = new();
 
-    private readonly SetupStep0_Welcome          _step0 = new();
-    private readonly SetupStep1_CharacterProfile _step1 = new();
-    private readonly SetupStep2_ModeSelection    _step2 = new();
-    private readonly SetupStep3_RoleSelection    _step3 = new();
-    private readonly SetupStep4_Finish           _step4 = new();
+    private readonly SetupStep0_Welcome          _step0    = new();
+    private readonly SetupStepCheckSync          _stepSync = new();
+    private readonly SetupStep1_CharacterProfile _step1    = new();
+    private readonly SetupStep2_ModeSelection    _step2    = new();
+    private readonly SetupStep3_RoleSelection    _step3    = new();
+    private readonly SetupStep4_Finish           _step4    = new();
 
     public SetupWindow(Plugin plugin) : base("Candy Coat Setup##CandyCoatSetup")
     {
@@ -95,10 +96,11 @@ public class SetupWindow : Window, IDisposable
             switch (_currentStep)
             {
                 case 0: _step0.DrawContent(ref _currentStep, _state); break;
-                case 1: _step1.DrawContent(ref _currentStep, _state, _plugin, this); break;
-                case 2: DrawStep2WithNav(); break;
-                case 3: DrawStep3WithNav(); break;
-                case 4: DrawStep4WithNav(); break;
+                case 1: _stepSync.DrawContent(ref _currentStep, _state, _plugin); break;
+                case 2: _step1.DrawContent(ref _currentStep, _state, _plugin, this); break;
+                case 3: DrawModeSelectionWithNav(); break;
+                case 4: DrawRoleSelectionWithNav(); break;
+                case 5: DrawFinishWithNav(); break;
             }
         }
         finally
@@ -107,7 +109,7 @@ public class SetupWindow : Window, IDisposable
         }
     }
 
-    private void DrawStep2WithNav()
+    private void DrawModeSelectionWithNav()
     {
         _step2.DrawContent(ref _currentStep, _state);
 
@@ -115,35 +117,35 @@ public class SetupWindow : Window, IDisposable
         ImGui.Separator();
         ImGui.Spacing();
 
-        if (ImGui.Button("Back##step2back"))
-            _currentStep = 1;
+        if (ImGui.Button("Back##step3back"))
+            _currentStep = 2;
     }
 
-    private void DrawStep3WithNav()
+    private void DrawRoleSelectionWithNav()
     {
-        _step3.DrawContent(ref _currentStep, _state);
+        _step3.DrawContent(ref _currentStep, _state, _plugin);
 
         ImGui.Spacing();
         ImGui.Separator();
         ImGui.Spacing();
 
-        if (ImGui.Button("Back##step3back"))
-            _currentStep = 2;
+        if (ImGui.Button("Back##step4back"))
+            _currentStep = 3;
 
         bool canProceed = _state.SelectedPrimaryRole != StaffRole.None;
         ImGui.SameLine();
         if (!canProceed) ImGui.BeginDisabled();
-        if (ImGui.Button("Next##step3next"))
-            _currentStep = 4;
+        if (ImGui.Button("Next##step4next"))
+            _currentStep = 5;
         if (!canProceed) ImGui.EndDisabled();
     }
 
-    private void DrawStep4WithNav()
+    private void DrawFinishWithNav()
     {
         _step4.DrawContent(ref _currentStep, _state, _plugin, this);
 
         ImGui.Spacing();
-        if (ImGui.Button("Back##step4back"))
-            _currentStep = 3;
+        if (ImGui.Button("Back##step5back"))
+            _currentStep = 4;
     }
 }

@@ -13,7 +13,7 @@ internal sealed class SetupStep2_ModeSelection
         var cardBg  = new Vector4(0.12f, 0.08f, 0.16f, 1f);
         var cardHov = new Vector4(0.18f, 0.12f, 0.24f, 1f);
 
-        ImGui.TextColored(dimGrey, "Step 2 of 4 — Choose Your Mode");
+        ImGui.TextColored(dimGrey, "Step 3 of 5 — Choose Your Mode");
         ImGui.Spacing();
         ImGui.TextWrapped("How will you be using Candy Coat?");
         ImGui.Spacing();
@@ -46,7 +46,7 @@ internal sealed class SetupStep2_ModeSelection
         if (ImGui.IsItemClicked())
         {
             state.UserMode = "Staff";
-            step = 3;
+            step = 4;
         }
 
         ImGui.SameLine(0, 16f);

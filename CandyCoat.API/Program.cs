@@ -466,6 +466,42 @@ app.MapPost("/api/profile", async (VenueDbContext db, GlobalProfileEntity req) =
     return Results.Ok(new { profileId = req.ProfileId });
 });
 
+// ═══════════════════════════════════════════
+//  VENUE CONFIG (manager password, etc.)
+// ═══════════════════════════════════════════
+
+app.MapGet("/api/config", async (VenueDbContext db, HttpContext ctx) =>
+{
+    var venueId = GetVenueId(ctx).ToString();
+    var cfg = await db.VenueConfig.FirstOrDefaultAsync(c => c.VenueId == venueId);
+    if (cfg == null) return Results.Ok(new { managerPwAdded = false, managerPw = "" });
+    return Results.Ok(new { managerPwAdded = cfg.ManagerPwAdded, managerPw = cfg.ManagerPw });
+});
+
+app.MapPut("/api/config", async (VenueDbContext db, HttpContext ctx, VenueConfigUpdateReq req) =>
+{
+    var venueId = GetVenueId(ctx).ToString();
+    var existing = await db.VenueConfig.FirstOrDefaultAsync(c => c.VenueId == venueId);
+    if (existing != null)
+    {
+        existing.ManagerPw = req.ManagerPw ?? string.Empty;
+        existing.ManagerPwAdded = !string.IsNullOrEmpty(req.ManagerPw);
+        existing.UpdatedAt = DateTime.UtcNow;
+    }
+    else
+    {
+        db.VenueConfig.Add(new VenueConfigEntity
+        {
+            VenueId = venueId,
+            ManagerPw = req.ManagerPw ?? string.Empty,
+            ManagerPwAdded = !string.IsNullOrEmpty(req.ManagerPw),
+            UpdatedAt = DateTime.UtcNow
+        });
+    }
+    await db.SaveChangesAsync();
+    return Results.Ok();
+});
+
 app.Run();
 
 // ─── Helper: Extract venue ID from venue key config ───
@@ -479,3 +515,5 @@ static Guid GetVenueId(HttpContext ctx)
     return new Guid(System.Security.Cryptography.MD5.HashData(
         System.Text.Encoding.UTF8.GetBytes(key)));
 }
+
+record VenueConfigUpdateReq(string? ManagerPw);

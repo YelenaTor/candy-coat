@@ -14,7 +14,7 @@ internal sealed class SetupStep4_Finish
         var green   = new Vector4(0.2f, 0.9f, 0.4f, 1f);
         var panelBg = new Vector4(0.1f, 0.07f, 0.14f, 1f);
 
-        ImGui.TextColored(dimGrey, "Step 4 of 4 — Summary");
+        ImGui.TextColored(dimGrey, "Step 5 of 5 — Summary");
         ImGui.Spacing();
         ImGui.TextWrapped("Review your setup before launching Candy Coat.");
         ImGui.Spacing();

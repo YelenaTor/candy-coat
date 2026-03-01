@@ -17,6 +17,7 @@ public class VenueDbContext : DbContext
     public DbSet<CosmeticSyncEntity> CosmeticsSync => Set<CosmeticSyncEntity>();
     public DbSet<BookingEntity> Bookings => Set<BookingEntity>();
     public DbSet<GlobalProfileEntity> GlobalProfiles => Set<GlobalProfileEntity>();
+    public DbSet<VenueConfigEntity> VenueConfig => Set<VenueConfigEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -46,6 +47,13 @@ public class VenueDbContext : DbContext
         modelBuilder.Entity<CosmeticSyncEntity>().HasIndex(c => c.VenueId);
         modelBuilder.Entity<BookingEntity>().HasIndex(b => b.VenueId);
         modelBuilder.Entity<BookingEntity>().HasIndex(b => b.UpdatedAt);
+
+        modelBuilder.Entity<VenueConfigEntity>(e =>
+        {
+            e.HasKey(v => v.VenueId);
+            e.Property(v => v.ManagerPwAdded).HasDefaultValue(false);
+            e.Property(v => v.ManagerPw).HasDefaultValue(string.Empty);
+        });
 
         modelBuilder.Entity<GlobalProfileEntity>(e =>
         {

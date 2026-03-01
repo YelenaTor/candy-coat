@@ -60,7 +60,7 @@ internal sealed class SetupStep1_CharacterProfile
             _hasAutoScanned = true;
         }
 
-        ImGui.TextColored(DimGrey, "Step 1 of 4 — Character Profile");
+        ImGui.TextColored(DimGrey, "Step 2 of 5 — Character Profile");
         ImGui.Spacing();
 
         // ── Scan status + Retry ──
@@ -307,6 +307,6 @@ internal sealed class SetupStep1_CharacterProfile
         ImGui.Spacing();
 
         if (ImGui.Button("Continue##step1continue", new Vector2(120, 0)))
-            step = 2;
+            step = 3;
     }
 }

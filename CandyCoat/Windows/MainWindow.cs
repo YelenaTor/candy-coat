@@ -33,10 +33,11 @@ public class MainWindow : Window, IDisposable
     // Trade notifications banner
     private readonly List<(string Name, int Amount, bool Linked)> _tradeNotifications = new();
 
-    // Password gate for protected roles
-    private string _rolePassword = string.Empty;
-    private bool _rolePasswordUnlocked = false;
     private const string ProtectedRolePassword = "pixie13!?";
+
+    // Manager password UI state (settings)
+    private string _mgrPwBuffer    = string.Empty;
+    private bool   _mgrPwSetResult = false; // true = last save succeeded
 
     private const float SidebarWidth = 160f;
 
@@ -379,47 +380,36 @@ public class MainWindow : Window, IDisposable
         {
             ImGui.Spacing();
             ImGui.Text("Primary Role:");
-            ImGui.Spacing();
 
-            foreach (StaffRole role in Enum.GetValues<StaffRole>())
+            // Build combo from StaffRole values (skip None)
+            var allRoles  = System.Linq.Enumerable.ToArray(
+                System.Linq.Enumerable.Where(Enum.GetValues<StaffRole>(), r => r != StaffRole.None));
+            var roleLabels = System.Array.ConvertAll(allRoles, r => r.ToString());
+
+            int primaryIdx = System.Array.IndexOf(allRoles, config.PrimaryRole);
+            if (primaryIdx < 0) primaryIdx = 0;
+
+            ImGui.SetNextItemWidth(200);
+            if (ImGui.Combo("##primaryRoleSettings", ref primaryIdx, roleLabels, roleLabels.Length))
             {
-                if (role == StaffRole.None) continue;
-                bool isPrimary = config.PrimaryRole == role;
-                bool isProtected = role == StaffRole.Owner || role == StaffRole.Management;
+                var chosen = allRoles[primaryIdx];
+                bool mgmtLocked  = chosen == StaffRole.Management && string.IsNullOrEmpty(config.ManagerPassword);
+                bool ownerLocked = chosen == StaffRole.Owner && !config.IsManagementModeEnabled;
 
-                if (isProtected && !_rolePasswordUnlocked && !config.IsManagementModeEnabled)
+                if (!mgmtLocked && !ownerLocked)
                 {
-                    ImGui.BeginDisabled();
-                    ImGui.RadioButton($"{role} 🔒", isPrimary);
-                    ImGui.EndDisabled();
+                    config.PrimaryRole  = chosen;
+                    config.EnabledRoles |= chosen;
+                    config.Save();
                 }
-                else
-                {
-                    if (ImGui.RadioButton(role.ToString(), isPrimary))
-                    {
-                        config.PrimaryRole = role;
-                        config.EnabledRoles |= role;
-                        config.Save();
-                    }
-                }
+                // else: don't apply — combo reverts to config.PrimaryRole next frame
             }
 
-            // Password unlock for protected roles
-            if (!_rolePasswordUnlocked && !config.IsManagementModeEnabled)
+            if (string.IsNullOrEmpty(config.ManagerPassword))
             {
                 ImGui.Spacing();
-                ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "🔒 Owner & Management require a passcode.");
-                ImGui.SetNextItemWidth(160);
-                if (ImGui.InputTextWithHint("##rolePw", "Enter Passcode", ref _rolePassword, 30, ImGuiInputTextFlags.Password | ImGuiInputTextFlags.EnterReturnsTrue))
-                {
-                    if (_rolePassword == ProtectedRolePassword)
-                    {
-                        _rolePasswordUnlocked = true;
-                        config.IsManagementModeEnabled = true;
-                        config.Save();
-                    }
-                    _rolePassword = string.Empty;
-                }
+                ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f),
+                    "\u26a0 Management role requires a Manager Password (set by Owner).");
             }
 
             ImGui.Spacing();
@@ -428,9 +418,7 @@ public class MainWindow : Window, IDisposable
             {
                 config.MultiRoleEnabled = multiRole;
                 if (!multiRole)
-                {
                     config.EnabledRoles = config.PrimaryRole;
-                }
                 config.Save();
             }
 
@@ -440,13 +428,14 @@ public class MainWindow : Window, IDisposable
                 foreach (StaffRole role in Enum.GetValues<StaffRole>())
                 {
                     if (role == StaffRole.None || role == config.PrimaryRole) continue;
-                    bool enabled = config.EnabledRoles.HasFlag(role);
-                    bool isProtected = role == StaffRole.Owner || role == StaffRole.Management;
+                    bool enabled    = config.EnabledRoles.HasFlag(role);
+                    bool mgmtLocked = role == StaffRole.Management && string.IsNullOrEmpty(config.ManagerPassword);
+                    bool ownerLocked = role == StaffRole.Owner && !config.IsManagementModeEnabled;
 
-                    if (isProtected && !_rolePasswordUnlocked && !config.IsManagementModeEnabled)
+                    if (mgmtLocked || ownerLocked)
                     {
                         ImGui.BeginDisabled();
-                        ImGui.Checkbox($"{role} 🔒##secondary", ref enabled);
+                        ImGui.Checkbox($"{role} \uD83D\uDD12##secondary", ref enabled);
                         ImGui.EndDisabled();
                     }
                     else
@@ -463,6 +452,35 @@ public class MainWindow : Window, IDisposable
                 }
                 ImGui.Unindent();
             }
+
+            // ── Set Manager Password (Owner only) ──
+            if (config.IsManagementModeEnabled)
+            {
+                ImGui.Spacing();
+                ImGui.Separator();
+                ImGui.Spacing();
+                ImGui.TextColored(new Vector4(1f, 0.6f, 0.8f, 1f), "\uD83D\uDD11 Set Manager Password");
+                ImGui.TextDisabled("Controls who can be assigned the Management role.");
+                ImGui.Spacing();
+                ImGui.SetNextItemWidth(200);
+                ImGui.InputTextWithHint("##mgrPwInput", "New password...", ref _mgrPwBuffer, 50,
+                    ImGuiInputTextFlags.Password);
+                ImGui.SameLine();
+                if (ImGui.Button("Save##saveMgrPw"))
+                {
+                    config.ManagerPassword = _mgrPwBuffer.Trim();
+                    config.Save();
+                    plugin.SyncService.UpsertVenueConfigAsync(config.ManagerPassword);
+                    _mgrPwBuffer    = string.Empty;
+                    _mgrPwSetResult = true;
+                }
+                if (_mgrPwSetResult)
+                {
+                    ImGui.SameLine();
+                    ImGui.TextColored(new Vector4(0.2f, 0.9f, 0.4f, 1f), "\u2714 Saved");
+                }
+            }
+
             ImGui.Spacing();
         }
 

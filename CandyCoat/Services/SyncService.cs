@@ -387,6 +387,46 @@ public class SyncService : IDisposable
     }
 
     /// <summary>
+    /// Fire-and-forget upsert of venue config (manager password) to the API.
+    /// Non-fatal: logs a warning on failure.
+    /// </summary>
+    public void UpsertVenueConfigAsync(string managerPw)
+    {
+        if (!_plugin.Configuration.EnableSync) return;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await PutAsync("api/config", new { managerPw });
+            }
+            catch (Exception ex)
+            {
+                Svc.Log.Warning($"[SyncService] UpsertVenueConfigAsync failed: {ex.Message}");
+            }
+        });
+    }
+
+    /// <summary>
+    /// One-shot unauthenticated health check during setup wizard.
+    /// Returns true if the API responds successfully.
+    /// </summary>
+    public static async Task<bool> CheckHealthAsync(string apiUrl)
+    {
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+            var url = $"{apiUrl.TrimEnd('/')}/api/health";
+            var response = await client.GetAsync(url);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// One-shot unauthenticated profile lookup during setup wizard.
     /// Creates a temporary HttpClient — do not call in a hot loop.
     /// Returns null if not found or on error.

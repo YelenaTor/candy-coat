@@ -60,6 +60,9 @@ public class Configuration : IPluginConfiguration
     // Setup wizard progress (persisted so users can resume mid-setup)
     public int SetupWizardStep { get; set; } = 0;
 
+    // Manager password (set by Owner; gates Management role assignment)
+    public string ManagerPassword { get; set; } = string.Empty;
+
     // Sync API settings
     public string ApiUrl { get; set; } = string.Empty;
     public string VenueKey { get; set; } = string.Empty;
