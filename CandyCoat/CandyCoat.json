@@ -4,7 +4,7 @@
     "InternalName": "CandyCoat",
     "Punchline": "Private venue assistant with role-based toolboxes for Sugar.",
     "Description": "Private plugin for the Sugar venue. Provides role-specific toolboxes (Sweetheart, Candy Heart, Bartender, Gamba, DJ, Management, Owner) with session timers, order tracking, earnings logging, and patron management. Main commands: /candy (main UI), /cset (settings), /cbook (bookings).",
-    "AssemblyVersion": "0.11.3.0",
+    "AssemblyVersion": "0.11.4.0",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 14,
     "LoadRequiredState": 0,
