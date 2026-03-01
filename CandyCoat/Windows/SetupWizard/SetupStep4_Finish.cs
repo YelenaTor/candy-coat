@@ -68,10 +68,12 @@ internal sealed class SetupStep4_Finish
             cfg.EnableGlamourer       = state.HasGlamourerIntegrated;
             cfg.EnableChatTwo         = state.HasChatTwoIntegrated;
 
+            cfg.EnableSync      = true;
             cfg.IsSetupComplete = true;
             cfg.Save();
 
-            if (cfg.EnableSync && !string.IsNullOrEmpty(state.ProfileId))
+            // Immediately push the new profile to the API
+            if (!string.IsNullOrEmpty(state.ProfileId))
             {
                 plugin.SyncService.UpsertProfileAsync(
                     state.ProfileId,

@@ -62,7 +62,7 @@ public class SyncService : IDisposable
     /// </summary>
     public async Task WakeAsync()
     {
-        if (_isAwake || IsWaking || !_plugin.Configuration.EnableSync) return;
+        if (_isAwake || IsWaking) return;
         // DEV: hardcoded to localhost while self-hosted; re-enable ApiUrl check when permanently deployed
         // if (string.IsNullOrEmpty(_plugin.Configuration.ApiUrl)) return;
 
@@ -364,8 +364,6 @@ public class SyncService : IDisposable
     public void UpsertProfileAsync(string profileId, string characterName, string homeWorld, string mode,
         bool hasGlamourer = false, bool hasChatTwo = false)
     {
-        if (!_plugin.Configuration.EnableSync) return;
-
         _ = Task.Run(async () =>
         {
             try
@@ -394,8 +392,6 @@ public class SyncService : IDisposable
     /// </summary>
     public void UpsertVenueConfigAsync(string managerPw)
     {
-        if (!_plugin.Configuration.EnableSync) return;
-
         _ = Task.Run(async () =>
         {
             try

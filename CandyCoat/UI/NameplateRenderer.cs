@@ -29,8 +29,6 @@ public class NameplateRenderer : IDisposable
         INamePlateUpdateContext context,
         IReadOnlyList<INamePlateUpdateHandler> handlers)
     {
-        if (!_plugin.Configuration.EnableSync) return;
-
         foreach (var handler in handlers)
         {
             var pc = handler.PlayerCharacter;
@@ -57,9 +55,6 @@ public class NameplateRenderer : IDisposable
 
     private void DrawNameplates()
     {
-        if (!_plugin.Configuration.EnableSync)
-            return;
-
         var drawList = ImGui.GetBackgroundDrawList();
         var localName  = _plugin.Configuration.CharacterName;
         var localWorld = _plugin.Configuration.HomeWorld;

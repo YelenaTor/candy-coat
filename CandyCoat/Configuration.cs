@@ -67,7 +67,7 @@ public class Configuration : IPluginConfiguration
     public string ApiUrl { get; set; } = string.Empty;
     public string VenueKey { get; set; } = string.Empty;
     public string VenueId { get; set; } = string.Empty; // Future: multi-venue
-    public bool EnableSync { get; set; } = false;
+    public bool EnableSync { get; set; } = true; // always on — managed via API
     public bool CosmeticAutoRedraw { get; set; } = false;
     public DateTime LastSyncTimestamp { get; set; } = DateTime.MinValue;
 

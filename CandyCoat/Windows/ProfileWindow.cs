@@ -83,12 +83,6 @@ public class ProfileWindow : Window, IDisposable
 
     private void DrawSyncStatus()
     {
-        if (!_plugin.Configuration.EnableSync)
-        {
-            ImGui.TextDisabled("Offline");
-            return;
-        }
-
         var sync = _plugin.SyncService;
         if (sync.IsWaking)
             ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "Connecting...");

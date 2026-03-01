@@ -220,19 +220,15 @@ public class MainWindow : Window, IDisposable
 
         // ── Sync Status + Cosmetics + Settings (pinned to bottom) ──
         var syncService = plugin.SyncService;
-        var syncHeight = plugin.Configuration.EnableSync ? ImGui.GetFrameHeightWithSpacing() : 0;
-        var footerHeight = ImGui.GetFrameHeightWithSpacing() * 3 + ImGui.GetStyle().ItemSpacing.Y + syncHeight;
+        var footerHeight = ImGui.GetFrameHeightWithSpacing() * 4 + ImGui.GetStyle().ItemSpacing.Y;
         ImGui.SetCursorPosY(ImGui.GetWindowHeight() - footerHeight - ImGui.GetStyle().WindowPadding.Y);
 
-        if (plugin.Configuration.EnableSync)
-        {
-            if (syncService.IsWaking)
-                ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⏳ Connecting...");
-            else if (syncService.IsConnected)
-                ImGui.TextColored(CandyCoat.UI.StyleManager.SyncOk, "🟢 Synced");
-            else
-                ImGui.TextColored(CandyCoat.UI.StyleManager.SyncError, "🔴 Offline");
-        }
+        if (syncService.IsWaking)
+            ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⏳ Connecting...");
+        else if (syncService.IsConnected)
+            ImGui.TextColored(CandyCoat.UI.StyleManager.SyncOk, "🟢 Synced");
+        else
+            ImGui.TextColored(CandyCoat.UI.StyleManager.SyncError, "🔴 Offline");
 
         ImGui.Separator();
 
@@ -265,7 +261,7 @@ public class MainWindow : Window, IDisposable
     private void DrawContentPanel()
     {
         // Wake overlay when sync is connecting
-        if (plugin.Configuration.EnableSync && plugin.SyncService.IsWaking && _activeSection != SidebarSection.Settings)
+        if (plugin.SyncService.IsWaking && _activeSection != SidebarSection.Settings)
         {
             var region = ImGui.GetContentRegionAvail();
             ImGui.SetCursorPos(new Vector2(region.X / 2 - 80, region.Y / 2 - 40));
@@ -280,7 +276,7 @@ public class MainWindow : Window, IDisposable
         }
 
         // Error overlay when connection fails
-        if (plugin.Configuration.EnableSync && !plugin.SyncService.IsConnected && _activeSection != SidebarSection.Settings)
+        if (!plugin.SyncService.IsConnected && _activeSection != SidebarSection.Settings)
         {
             var region = ImGui.GetContentRegionAvail();
             ImGui.SetCursorPosY(region.Y / 2 - 100);
@@ -500,62 +496,6 @@ public class MainWindow : Window, IDisposable
             {
                 config.EnableChatTwo = enableChat;
                 config.Save();
-            }
-            ImGui.Spacing();
-        }
-
-        // ── Sync / API Configuration ──
-        if (ImGui.CollapsingHeader("Sync / API Configuration"))
-        {
-            ImGui.Spacing();
-            var enableSync = config.EnableSync;
-            if (ImGui.Checkbox("Enable Sync", ref enableSync))
-            {
-                config.EnableSync = enableSync;
-                config.Save();
-                if (!enableSync)
-                    plugin.SyncService.Sleep();
-            }
-
-            if (config.EnableSync)
-            {
-                ImGui.Spacing();
-                var apiUrl = config.ApiUrl;
-                ImGui.SetNextItemWidth(300);
-                if (ImGui.InputTextWithHint("##apiUrl", "http://localhost:5000", ref apiUrl, 200))
-                {
-                    config.ApiUrl = apiUrl;
-                    config.Save();
-                }
-                ImGui.SameLine();
-                ImGui.Text("API URL");
-
-                var venueKey = config.VenueKey;
-                ImGui.SetNextItemWidth(300);
-                if (ImGui.InputTextWithHint("##venueKey", "00000000-0000-0000-0000-000000000000", ref venueKey, 100))
-                {
-                    config.VenueKey = venueKey;
-                    config.Save();
-                }
-                ImGui.SameLine();
-                ImGui.Text("Venue Key");
-
-                ImGui.Spacing();
-                if (ImGui.Button("Test Connection"))
-                {
-                    _ = plugin.SyncService.WakeAsync();
-                }
-                ImGui.SameLine();
-
-                var sync = plugin.SyncService;
-                if (sync.IsWaking)
-                    ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⏳ Connecting...");
-                else if (sync.IsConnected)
-                    ImGui.TextColored(CandyCoat.UI.StyleManager.SyncOk, "🟢 Connected");
-                else if (!string.IsNullOrEmpty(sync.LastError))
-                    ImGui.TextColored(new Vector4(1f, 0.3f, 0.3f, 1f), $"🔴 {sync.LastError}");
-                else
-                    ImGui.TextDisabled("Not connected");
             }
             ImGui.Spacing();
         }
