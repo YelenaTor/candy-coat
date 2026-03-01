@@ -18,23 +18,27 @@ using (var scope = app.Services.CreateScope())
 }
 
 // ─── Middleware: Venue Key Auth ───
+// DEV: auth bypassed for local development — restore the key check when permanently hosted
 var venueKey = builder.Configuration["VENUE_KEY"] ?? "";
 app.Use(async (context, next) =>
 {
-    // Health check and unauthenticated profile lookup are public
-    if (context.Request.Path.StartsWithSegments("/api/health") ||
-        (context.Request.Method == "GET" && context.Request.Path.StartsWithSegments("/api/profile")))
-    {
-        await next();
-        return;
-    }
-    if (!context.Request.Headers.TryGetValue("X-Venue-Key", out var key) || key != venueKey)
-    {
-        context.Response.StatusCode = 401;
-        await context.Response.WriteAsync("Invalid venue key");
-        return;
-    }
-    await next();
+    // DEV: all requests pass through while running locally
+    // When hosting permanently, remove this line and un-comment the block below:
+    await next(); return;
+
+    // -- restore for production: --
+    // if (context.Request.Path.StartsWithSegments("/api/health") ||
+    //     (context.Request.Method == "GET" && context.Request.Path.StartsWithSegments("/api/profile")))
+    // {
+    //     await next(); return;
+    // }
+    // if (!context.Request.Headers.TryGetValue("X-Venue-Key", out var key) || key != venueKey)
+    // {
+    //     context.Response.StatusCode = 401;
+    //     await context.Response.WriteAsync("Invalid venue key");
+    //     return;
+    // }
+    // await next();
 });
 
 // ─── Health ───

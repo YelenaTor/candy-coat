@@ -209,14 +209,8 @@ internal sealed class SetupStep1_CharacterProfile
 
     private void StartLookup(Plugin plugin)
     {
-        var apiUrl = plugin.Configuration.ApiUrl;
-        if (string.IsNullOrWhiteSpace(apiUrl))
-        {
-            _lookupState = LookupState.Error;
-            _lookupError = "API URL not configured. Set it in Settings > Sync first.";
-            return;
-        }
-
+        // DEV: hardcoded to localhost while self-hosted; restore ApiUrl lookup when permanently deployed
+        const string apiUrl = "http://localhost:5000";
         _lookupState = LookupState.InProgress;
         _lookupError = string.Empty;
         _lookupTask  = SyncService.LookupProfileAsync(apiUrl, _existingIdBuffer.Trim());

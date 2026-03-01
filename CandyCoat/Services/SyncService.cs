@@ -63,15 +63,17 @@ public class SyncService : IDisposable
     public async Task WakeAsync()
     {
         if (_isAwake || IsWaking || !_plugin.Configuration.EnableSync) return;
-        if (string.IsNullOrEmpty(_plugin.Configuration.ApiUrl)) return;
+        // DEV: hardcoded to localhost while self-hosted; re-enable ApiUrl check when permanently deployed
+        // if (string.IsNullOrEmpty(_plugin.Configuration.ApiUrl)) return;
 
         IsWaking = true;
         _cts = new CancellationTokenSource();
 
-        // Set auth header
-        _httpClient.BaseAddress = new Uri(_plugin.Configuration.ApiUrl.TrimEnd('/') + "/");
-        _httpClient.DefaultRequestHeaders.Remove("X-Venue-Key");
-        _httpClient.DefaultRequestHeaders.Add("X-Venue-Key", _plugin.Configuration.VenueKey);
+        // DEV: hardcoded base URL; swap to _plugin.Configuration.ApiUrl when hosted
+        _httpClient.BaseAddress = new Uri("http://localhost:5000/");
+        // DEV: auth disabled — remove these comments and restore the key header when hosted
+        // _httpClient.DefaultRequestHeaders.Remove("X-Venue-Key");
+        // _httpClient.DefaultRequestHeaders.Add("X-Venue-Key", _plugin.Configuration.VenueKey);
 
         // Test connection
         try
