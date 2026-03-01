@@ -414,6 +414,34 @@ app.MapDelete("/api/bookings/{id}", async (VenueDbContext db, HttpContext ctx, G
     return Results.NoContent();
 });
 
+// ═══════════════════════════════════════════
+//  GLOBAL PROFILES
+// ═══════════════════════════════════════════
+
+app.MapPost("/api/profile", async (VenueDbContext db, GlobalProfileEntity req) =>
+{
+    if (string.IsNullOrWhiteSpace(req.ProfileId))
+        return Results.BadRequest("ProfileId is required");
+
+    var existing = await db.GlobalProfiles.FindAsync(req.ProfileId);
+    if (existing != null)
+    {
+        existing.CharacterName = req.CharacterName;
+        existing.HomeWorld = req.HomeWorld;
+        existing.Mode = req.Mode;
+        existing.LastSeen = DateTime.UtcNow;
+    }
+    else
+    {
+        req.CreatedAt = DateTime.UtcNow;
+        req.LastSeen = DateTime.UtcNow;
+        db.GlobalProfiles.Add(req);
+    }
+
+    await db.SaveChangesAsync();
+    return Results.Ok(new { profileId = req.ProfileId });
+});
+
 app.Run();
 
 // ─── Helper: Extract venue ID from venue key config ───

@@ -355,6 +355,34 @@ public class SyncService : IDisposable
         }
     }
 
+    /// <summary>
+    /// Fire-and-forget upsert of a character profile to the global profiles table.
+    /// Non-fatal: logs a warning on failure.
+    /// </summary>
+    public void UpsertProfileAsync(string profileId, string characterName, string homeWorld, string mode)
+    {
+        if (!_plugin.Configuration.EnableSync) return;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var body = new
+                {
+                    profileId,
+                    characterName,
+                    homeWorld,
+                    mode
+                };
+                await PostAsync("api/profile", body);
+            }
+            catch (Exception ex)
+            {
+                Svc.Log.Warning($"[SyncService] UpsertProfileAsync failed: {ex.Message}");
+            }
+        });
+    }
+
     public void Dispose()
     {
         Sleep();

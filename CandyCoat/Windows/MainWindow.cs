@@ -19,6 +19,7 @@ public class MainWindow : Window, IDisposable
     private readonly VenueService venueService;
     private readonly PatronDetailsWindow detailsWindow;
     private readonly CosmeticWindow _cosmeticWindow;
+    private readonly ProfileWindow _profileWindow;
 
     private readonly List<ITab> dashboardTabs = new();
     private readonly List<IToolboxPanel> srtPanels = new();
@@ -39,7 +40,7 @@ public class MainWindow : Window, IDisposable
 
     private const float SidebarWidth = 160f;
 
-    public MainWindow(Plugin plugin, VenueService venueService, WaitlistManager waitlistManager, ShiftManager shiftManager, PatronDetailsWindow detailsWindow, string goatImagePath, CosmeticWindow cosmeticWindow)
+    public MainWindow(Plugin plugin, VenueService venueService, WaitlistManager waitlistManager, ShiftManager shiftManager, PatronDetailsWindow detailsWindow, string goatImagePath, CosmeticWindow cosmeticWindow, ProfileWindow profileWindow)
         : base("Candy Coat - Sugar##CandyCoatMain", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
     {
         SizeConstraints = new WindowSizeConstraints
@@ -53,6 +54,7 @@ public class MainWindow : Window, IDisposable
         this.venueService = venueService;
         this.detailsWindow = detailsWindow;
         _cosmeticWindow = cosmeticWindow;
+        _profileWindow = profileWindow;
 
         // Initialize Dashboard Tabs
         var bookingsTab = new BookingsTab(plugin, venueService);
@@ -142,6 +144,14 @@ public class MainWindow : Window, IDisposable
         // Header
         ImGui.TextColored(new Vector4(1f, 0.6f, 0.8f, 1f), "Candy Coat");
         ImGui.Spacing();
+
+        var profileOpen = _profileWindow.IsOpen;
+        if (profileOpen) ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.7f, 0.9f, 1f));
+        if (ImGui.Selectable("  My Profile##profileBtn", profileOpen,
+            ImGuiSelectableFlags.None, new Vector2(SidebarWidth - 16f, 0)))
+            _profileWindow.Toggle();
+        if (profileOpen) ImGui.PopStyleColor();
+
         ImGui.Separator();
         ImGui.Spacing();
 

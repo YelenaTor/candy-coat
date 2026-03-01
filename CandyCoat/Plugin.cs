@@ -51,6 +51,7 @@ public sealed class Plugin : IDalamudPlugin
 
     private SessionWindow SessionWindow { get; init; }
     private SetupWindow SetupWindow { get; init; }
+    public ProfileWindow ProfileWindow { get; init; }
     private PatronDetailsWindow PatronDetailsWindow { get; init; }
     private ChatTwoIpc ChatTwoIpc { get; init; }
     private NameplateRenderer NameplateRenderer { get; init; }
@@ -79,10 +80,12 @@ public sealed class Plugin : IDalamudPlugin
         var glamourerIpc = new GlamourerIpc();
 
         PatronDetailsWindow = new PatronDetailsWindow(this, glamourerIpc);
-        MainWindow = new MainWindow(this, VenueService, WaitlistManager, ShiftManager, PatronDetailsWindow, goatImagePath, CosmeticWindow);
+        ProfileWindow = new ProfileWindow(this);
+        MainWindow = new MainWindow(this, VenueService, WaitlistManager, ShiftManager, PatronDetailsWindow, goatImagePath, CosmeticWindow, ProfileWindow);
         SessionWindow = new SessionWindow(SessionManager, PluginInterface.ConfigDirectory.FullName);
-        
+
         WindowSystem.AddWindow(PatronDetailsWindow);
+        WindowSystem.AddWindow(ProfileWindow);
         WindowSystem.AddWindow(MainWindow);
         WindowSystem.AddWindow(SessionWindow);
         WindowSystem.AddWindow(CosmeticWindow);
@@ -95,8 +98,8 @@ public sealed class Plugin : IDalamudPlugin
         });
         ChatTwoIpc.Enable();
 
-        // Initialize Setup Window (needs IPCs)
-        SetupWindow = new SetupWindow(this, glamourerIpc, ChatTwoIpc);
+        // Initialize Setup Window
+        SetupWindow = new SetupWindow(this);
         WindowSystem.AddWindow(SetupWindow);
 
         NameplateRenderer = new NameplateRenderer(this, CosmeticFontManager, CosmeticBadgeManager);
@@ -149,6 +152,7 @@ public sealed class Plugin : IDalamudPlugin
         
         MainWindow.Dispose();
         PatronDetailsWindow.Dispose();
+        ProfileWindow?.Dispose();
         SessionWindow?.Dispose();
         SetupWindow?.Dispose();
         

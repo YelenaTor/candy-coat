@@ -19,6 +19,8 @@ public class Configuration : IPluginConfiguration
     public Dictionary<string, int> DailyEarnings { get; set; } = new();
     public string CharacterName { get; set; } = string.Empty;
     public string HomeWorld { get; set; } = string.Empty;
+    public string ProfileId { get; set; } = string.Empty;
+    public string UserMode  { get; set; } = string.Empty;
     public bool EnableGlamourer { get; set; } = true;
     public bool EnableChatTwo { get; set; } = true;
     public bool IsConfigWindowMovable { get; set; } = true;
