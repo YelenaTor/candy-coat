@@ -57,6 +57,9 @@ public class Configuration : IPluginConfiguration
     public int RegularTierGil { get; set; } = 100_000;
     public int EliteTierGil { get; set; } = 1_000_000;
 
+    // Setup wizard progress (persisted so users can resume mid-setup)
+    public int SetupWizardStep { get; set; } = 0;
+
     // Sync API settings
     public string ApiUrl { get; set; } = string.Empty;
     public string VenueKey { get; set; } = string.Empty;

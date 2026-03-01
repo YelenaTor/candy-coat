@@ -194,11 +194,21 @@ public sealed class Plugin : IDalamudPlugin
 
     public void ToggleMainUi()
     {
+        if (!Configuration.IsSetupComplete)
+        {
+            SetupWindow.IsOpen = true;
+            return;
+        }
         MainWindow.Toggle();
     }
 
     public void ToggleConfigUi()
     {
+        if (!Configuration.IsSetupComplete)
+        {
+            SetupWindow.IsOpen = true;
+            return;
+        }
         MainWindow.Toggle();
     }
 

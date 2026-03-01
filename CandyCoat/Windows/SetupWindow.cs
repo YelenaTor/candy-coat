@@ -2,6 +2,7 @@ using System;
 using System.Numerics;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
+using CandyCoat.Data;
 using CandyCoat.UI;
 using CandyCoat.Windows.SetupWizard;
 
@@ -11,7 +12,8 @@ public class SetupWindow : Window, IDisposable
 {
     private readonly Plugin _plugin;
 
-    private int _currentStep = 0;
+    private int _currentStep;
+    private int _lastSavedStep = -1;
     private readonly WizardState _state = new();
 
     private readonly SetupStep0_Welcome          _step0 = new();
@@ -23,6 +25,10 @@ public class SetupWindow : Window, IDisposable
     public SetupWindow(Plugin plugin) : base("Candy Coat Setup##CandyCoatSetup")
     {
         _plugin = plugin;
+
+        // Restore step and partial state from config so users can resume mid-setup
+        _currentStep = plugin.Configuration.SetupWizardStep;
+        RestoreStateFromConfig();
 
         SizeConstraints = new WindowSizeConstraints
         {
@@ -36,16 +42,59 @@ public class SetupWindow : Window, IDisposable
 
     public void Dispose() { }
 
+    // ─── State restoration / persistence ───
+
+    private void RestoreStateFromConfig()
+    {
+        var cfg = _plugin.Configuration;
+        var parts = cfg.CharacterName.Split(' ', 2);
+        if (parts.Length >= 1) _state.FirstName = parts[0];
+        if (parts.Length >= 2) _state.LastName  = parts[1];
+        _state.HomeWorld             = cfg.HomeWorld;
+        _state.ProfileId             = cfg.ProfileId;
+        _state.IdGenerated           = !string.IsNullOrEmpty(cfg.ProfileId);
+        _state.UserMode              = cfg.UserMode;
+        _state.SelectedPrimaryRole   = cfg.PrimaryRole;
+        _state.SelectedSecondaryRoles = cfg.EnabledRoles;
+        _state.MultiRoleToggle       = cfg.MultiRoleEnabled;
+    }
+
+    private void SaveProgress()
+    {
+        var cfg = _plugin.Configuration;
+        cfg.SetupWizardStep = _currentStep;
+
+        var name = $"{_state.FirstName} {_state.LastName}".Trim();
+        if (!string.IsNullOrWhiteSpace(name))          cfg.CharacterName = name;
+        if (!string.IsNullOrWhiteSpace(_state.HomeWorld)) cfg.HomeWorld  = _state.HomeWorld;
+        if (!string.IsNullOrEmpty(_state.ProfileId))    cfg.ProfileId    = _state.ProfileId;
+        if (!string.IsNullOrEmpty(_state.UserMode))     cfg.UserMode     = _state.UserMode;
+        if (_state.SelectedPrimaryRole != StaffRole.None)
+            cfg.PrimaryRole = _state.SelectedPrimaryRole;
+        cfg.EnabledRoles     = _state.SelectedSecondaryRoles;
+        cfg.MultiRoleEnabled = _state.MultiRoleToggle;
+        cfg.Save();
+    }
+
+    // ─── Draw ───
+
     public override void Draw()
     {
         StyleManager.PushStyles();
         try
         {
+            // Auto-save whenever the step changes
+            if (_currentStep != _lastSavedStep)
+            {
+                SaveProgress();
+                _lastSavedStep = _currentStep;
+            }
+
             switch (_currentStep)
             {
                 case 0: _step0.DrawContent(ref _currentStep, _state); break;
                 case 1: _step1.DrawContent(ref _currentStep, _state); break;
-                case 2: _step2.DrawContent(ref _currentStep, _state); break;
+                case 2: DrawStep2WithNav(); break;
                 case 3: DrawStep3WithNav(); break;
                 case 4: DrawStep4WithNav(); break;
             }
@@ -56,7 +105,18 @@ public class SetupWindow : Window, IDisposable
         }
     }
 
-    // Step 3 and 4 have a Back button drawn by the outer shell
+    private void DrawStep2WithNav()
+    {
+        _step2.DrawContent(ref _currentStep, _state);
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        if (ImGui.Button("Back##step2back"))
+            _currentStep = 1;
+    }
+
     private void DrawStep3WithNav()
     {
         _step3.DrawContent(ref _currentStep, _state);
@@ -68,7 +128,7 @@ public class SetupWindow : Window, IDisposable
         if (ImGui.Button("Back##step3back"))
             _currentStep = 2;
 
-        bool canProceed = _state.SelectedPrimaryRole != CandyCoat.Data.StaffRole.None;
+        bool canProceed = _state.SelectedPrimaryRole != StaffRole.None;
         ImGui.SameLine();
         if (!canProceed) ImGui.BeginDisabled();
         if (ImGui.Button("Next##step3next"))
