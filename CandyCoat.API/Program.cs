@@ -21,7 +21,9 @@ using (var scope = app.Services.CreateScope())
 var venueKey = builder.Configuration["VENUE_KEY"] ?? "";
 app.Use(async (context, next) =>
 {
-    if (context.Request.Path.StartsWithSegments("/api/health"))
+    // Health check and unauthenticated profile lookup are public
+    if (context.Request.Path.StartsWithSegments("/api/health") ||
+        (context.Request.Method == "GET" && context.Request.Path.StartsWithSegments("/api/profile")))
     {
         await next();
         return;
@@ -418,6 +420,26 @@ app.MapDelete("/api/bookings/{id}", async (VenueDbContext db, HttpContext ctx, G
 //  GLOBAL PROFILES
 // ═══════════════════════════════════════════
 
+// Public lookup — no auth required (used during setup wizard)
+app.MapGet("/api/profile/{profileId}", async (VenueDbContext db, string profileId) =>
+{
+    if (string.IsNullOrWhiteSpace(profileId))
+        return Results.BadRequest("ProfileId is required");
+
+    var profile = await db.GlobalProfiles.FindAsync(profileId);
+    if (profile == null) return Results.NotFound();
+
+    return Results.Ok(new
+    {
+        profile.ProfileId,
+        profile.CharacterName,
+        profile.HomeWorld,
+        profile.Mode,
+        profile.HasGlamourerIntegrated,
+        profile.HasChatTwoIntegrated
+    });
+});
+
 app.MapPost("/api/profile", async (VenueDbContext db, GlobalProfileEntity req) =>
 {
     if (string.IsNullOrWhiteSpace(req.ProfileId))
@@ -429,6 +451,8 @@ app.MapPost("/api/profile", async (VenueDbContext db, GlobalProfileEntity req) =
         existing.CharacterName = req.CharacterName;
         existing.HomeWorld = req.HomeWorld;
         existing.Mode = req.Mode;
+        existing.HasGlamourerIntegrated = req.HasGlamourerIntegrated;
+        existing.HasChatTwoIntegrated = req.HasChatTwoIntegrated;
         existing.LastSeen = DateTime.UtcNow;
     }
     else

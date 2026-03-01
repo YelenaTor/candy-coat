@@ -53,6 +53,8 @@ public class VenueDbContext : DbContext
             e.Property(p => p.StaffData).HasDefaultValue("{}");
             e.Property(p => p.PatronData).HasDefaultValue("{}");
             e.Property(p => p.RegisteredVenues).HasDefaultValue("[]");
+            e.Property(p => p.HasGlamourerIntegrated).HasDefaultValue(false);
+            e.Property(p => p.HasChatTwoIntegrated).HasDefaultValue(false);
             e.HasIndex(p => p.CharacterName);
         });
     }

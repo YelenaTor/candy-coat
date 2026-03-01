@@ -11,6 +11,8 @@ public class GlobalProfileEntity
     public string StaffData { get; set; } = "{}";
     public string PatronData { get; set; } = "{}";
     public string RegisteredVenues { get; set; } = "[]";
+    public bool HasGlamourerIntegrated { get; set; } = false;
+    public bool HasChatTwoIntegrated { get; set; } = false;
     public DateTime CreatedAt { get; set; }
     public DateTime LastSeen { get; set; }
 }

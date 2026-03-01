@@ -359,7 +359,8 @@ public class SyncService : IDisposable
     /// Fire-and-forget upsert of a character profile to the global profiles table.
     /// Non-fatal: logs a warning on failure.
     /// </summary>
-    public void UpsertProfileAsync(string profileId, string characterName, string homeWorld, string mode)
+    public void UpsertProfileAsync(string profileId, string characterName, string homeWorld, string mode,
+        bool hasGlamourer = false, bool hasChatTwo = false)
     {
         if (!_plugin.Configuration.EnableSync) return;
 
@@ -372,7 +373,9 @@ public class SyncService : IDisposable
                     profileId,
                     characterName,
                     homeWorld,
-                    mode
+                    mode,
+                    hasGlamourerIntegrated = hasGlamourer,
+                    hasChatTwoIntegrated = hasChatTwo
                 };
                 await PostAsync("api/profile", body);
             }
@@ -381,6 +384,31 @@ public class SyncService : IDisposable
                 Svc.Log.Warning($"[SyncService] UpsertProfileAsync failed: {ex.Message}");
             }
         });
+    }
+
+    /// <summary>
+    /// One-shot unauthenticated profile lookup during setup wizard.
+    /// Creates a temporary HttpClient — do not call in a hot loop.
+    /// Returns null if not found or on error.
+    /// </summary>
+    public static async Task<GlobalProfileLookupResult?> LookupProfileAsync(string apiUrl, string profileId)
+    {
+        if (string.IsNullOrWhiteSpace(apiUrl) || string.IsNullOrWhiteSpace(profileId))
+            return null;
+
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            var url = $"{apiUrl.TrimEnd('/')}/api/profile/{Uri.EscapeDataString(profileId)}";
+            var response = await client.GetAsync(url);
+            if (!response.IsSuccessStatusCode) return null;
+            var json = await response.Content.ReadAsStringAsync();
+            return JsonConvert.DeserializeObject<GlobalProfileLookupResult>(json);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public void Dispose()
@@ -489,4 +517,14 @@ public class SyncedCosmeticEnvelope
     public string CharacterHash { get; set; } = string.Empty;
     public byte[] BrotliBlob { get; set; } = Array.Empty<byte>();
     public DateTime LastUpdatedUtc { get; set; }
+}
+
+public class GlobalProfileLookupResult
+{
+    public string ProfileId { get; set; } = string.Empty;
+    public string CharacterName { get; set; } = string.Empty;
+    public string HomeWorld { get; set; } = string.Empty;
+    public string Mode { get; set; } = string.Empty;
+    public bool HasGlamourerIntegrated { get; set; }
+    public bool HasChatTwoIntegrated { get; set; }
 }

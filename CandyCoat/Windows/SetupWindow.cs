@@ -50,13 +50,15 @@ public class SetupWindow : Window, IDisposable
         var parts = cfg.CharacterName.Split(' ', 2);
         if (parts.Length >= 1) _state.FirstName = parts[0];
         if (parts.Length >= 2) _state.LastName  = parts[1];
-        _state.HomeWorld             = cfg.HomeWorld;
-        _state.ProfileId             = cfg.ProfileId;
-        _state.IdGenerated           = !string.IsNullOrEmpty(cfg.ProfileId);
-        _state.UserMode              = cfg.UserMode;
-        _state.SelectedPrimaryRole   = cfg.PrimaryRole;
+        _state.HomeWorld              = cfg.HomeWorld;
+        _state.ProfileId              = cfg.ProfileId;
+        _state.IdGenerated            = !string.IsNullOrEmpty(cfg.ProfileId);
+        _state.UserMode               = cfg.UserMode;
+        _state.SelectedPrimaryRole    = cfg.PrimaryRole;
         _state.SelectedSecondaryRoles = cfg.EnabledRoles;
-        _state.MultiRoleToggle       = cfg.MultiRoleEnabled;
+        _state.MultiRoleToggle        = cfg.MultiRoleEnabled;
+        _state.HasGlamourerIntegrated = cfg.EnableGlamourer;
+        _state.HasChatTwoIntegrated   = cfg.EnableChatTwo;
     }
 
     private void SaveProgress()
@@ -93,7 +95,7 @@ public class SetupWindow : Window, IDisposable
             switch (_currentStep)
             {
                 case 0: _step0.DrawContent(ref _currentStep, _state); break;
-                case 1: _step1.DrawContent(ref _currentStep, _state); break;
+                case 1: _step1.DrawContent(ref _currentStep, _state, _plugin, this); break;
                 case 2: DrawStep2WithNav(); break;
                 case 3: DrawStep3WithNav(); break;
                 case 4: DrawStep4WithNav(); break;

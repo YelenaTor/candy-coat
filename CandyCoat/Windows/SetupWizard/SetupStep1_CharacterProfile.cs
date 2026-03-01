@@ -1,10 +1,12 @@
 using System;
 using System.IO;
 using System.Numerics;
+using System.Threading.Tasks;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using ECommons.DalamudServices;
 using CandyCoat.Helpers;
+using CandyCoat.Services;
 
 namespace CandyCoat.Windows.SetupWizard;
 
@@ -17,13 +19,40 @@ internal sealed class SetupStep1_CharacterProfile
     private static readonly Vector4 Green   = new(0.2f, 0.9f, 0.4f, 1f);
     private static readonly Vector4 PanelBg = new(0.12f, 0.08f, 0.16f, 1f);
 
-    private bool    _hasAutoScanned       = false;
-    private bool    _scanDetected         = false;
-    private string? _validationError      = null;
-    private string  _existingIdBuffer     = string.Empty;
+    private bool    _hasAutoScanned  = false;
+    private bool    _scanDetected    = false;
+    private string? _validationError = null;
 
-    public void DrawContent(ref int step, WizardState state)
+    // Existing profile lookup state machine
+    private string   _existingIdBuffer = string.Empty;
+    private enum LookupState { Idle, InProgress, NotFound, Error }
+    private LookupState _lookupState = LookupState.Idle;
+    private Task<GlobalProfileLookupResult?>? _lookupTask;
+    private string _lookupError = string.Empty;
+
+    public void DrawContent(ref int step, WizardState state, Plugin plugin, SetupWindow window)
     {
+        // ── Poll async lookup task ──
+        if (_lookupState == LookupState.InProgress && _lookupTask?.IsCompleted == true)
+        {
+            if (_lookupTask.IsFaulted)
+            {
+                _lookupState = LookupState.Error;
+                _lookupError = _lookupTask.Exception?.InnerException?.Message ?? "Connection failed";
+            }
+            else
+            {
+                var result = _lookupTask.Result;
+                if (result != null)
+                {
+                    ApplyLookupResult(result, plugin, window);
+                    return; // window closing — skip further draw
+                }
+                _lookupState = LookupState.NotFound;
+            }
+            _lookupTask = null;
+        }
+
         // ── Auto-scan on first draw ──
         if (!_hasAutoScanned)
         {
@@ -36,9 +65,9 @@ internal sealed class SetupStep1_CharacterProfile
 
         // ── Scan status + Retry ──
         if (_scanDetected)
-            ImGui.TextColored(Green, "✔ Character detected");
+            ImGui.TextColored(Green, "\u2714 Character detected");
         else
-            ImGui.TextColored(Amber, "⚠ Character not detected");
+            ImGui.TextColored(Amber, "\u26a0 Character not detected");
 
         ImGui.SameLine();
         if (ImGui.SmallButton("Retry Scan"))
@@ -56,38 +85,12 @@ internal sealed class SetupStep1_CharacterProfile
             return;
         }
 
-        // ── Two-panel layout: New User | or | Existing User ──
-        var avail  = ImGui.GetContentRegionAvail().X;
-        const float DividerW = 30f;
-        const float PanelH   = 150f;
-        var panelW = (avail - DividerW) / 2f;
-
-        // Left: New User
+        // ── New User section ──
         ImGui.PushStyleColor(ImGuiCol.ChildBg, PanelBg);
-        using (ImRaii.Child("##newUserPanel", new Vector2(panelW, PanelH), true))
+        using (ImRaii.Child("##newUserPanel", new Vector2(-1, 165), true))
         {
             ImGui.PopStyleColor();
             DrawNewUserPanel(state);
-        }
-
-        // "or" divider
-        ImGui.SameLine(0, 0);
-        using (ImRaii.Child("##orDivider", new Vector2(DividerW, PanelH), false))
-        {
-            var ty = (PanelH - ImGui.GetTextLineHeight()) / 2f;
-            var tx = (DividerW - ImGui.CalcTextSize("or").X) / 2f;
-            ImGui.SetCursorPosY(ty);
-            ImGui.SetCursorPosX(tx);
-            ImGui.TextDisabled("or");
-        }
-
-        // Right: Existing User
-        ImGui.SameLine(0, 0);
-        ImGui.PushStyleColor(ImGuiCol.ChildBg, PanelBg);
-        using (ImRaii.Child("##existUserPanel", new Vector2(panelW, PanelH), true))
-        {
-            ImGui.PopStyleColor();
-            DrawExistingUserPanel(ref step, state);
         }
 
         // ── Validation error ──
@@ -95,6 +98,22 @@ internal sealed class SetupStep1_CharacterProfile
         {
             ImGui.Spacing();
             ImGui.TextColored(Red, _validationError);
+        }
+
+        ImGui.Spacing();
+
+        // ── "or" separator ──
+        ImGui.Separator();
+        ImGui.Spacing();
+        ImGui.TextDisabled("Already have a Profile ID?");
+        ImGui.Spacing();
+
+        // ── Existing Profile ID section ──
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, PanelBg);
+        using (ImRaii.Child("##existUserPanel", new Vector2(-1, 80), true))
+        {
+            ImGui.PopStyleColor();
+            DrawExistingUserPanel(plugin, window, state);
         }
     }
 
@@ -119,14 +138,13 @@ internal sealed class SetupStep1_CharacterProfile
                      && !string.IsNullOrEmpty(state.HomeWorld);
     }
 
-    // ─── Left panel: New User ───
+    // ─── New User panel ───
 
     private void DrawNewUserPanel(WizardState state)
     {
         ImGui.TextColored(DimGrey, "New User");
         ImGui.Spacing();
 
-        // Editable fields (auto-filled from scan, editable as fallback)
         var fn = state.FirstName;
         ImGui.TextDisabled("First");
         ImGui.SetNextItemWidth(-1);
@@ -154,37 +172,72 @@ internal sealed class SetupStep1_CharacterProfile
         if (!allFilled) ImGui.EndDisabled();
     }
 
-    // ─── Right panel: Existing User ───
+    // ─── Existing User panel ───
 
-    private void DrawExistingUserPanel(ref int step, WizardState state)
+    private void DrawExistingUserPanel(Plugin plugin, SetupWindow window, WizardState state)
     {
-        ImGui.TextColored(DimGrey, "Existing User");
-        ImGui.Spacing();
-        ImGui.TextWrapped("Already have a Profile ID? Enter it below.");
-        ImGui.Spacing();
-
-        ImGui.SetNextItemWidth(-1);
+        ImGui.SetNextItemWidth(-70);
         ImGui.InputTextWithHint("##existId", "silver-moon-4821", ref _existingIdBuffer, 50);
 
+        ImGui.SameLine();
+
+        bool lookupReady = !string.IsNullOrWhiteSpace(_existingIdBuffer)
+                        && _lookupState != LookupState.InProgress;
+
+        if (!lookupReady) ImGui.BeginDisabled();
+        if (ImGui.Button("Use This Profile##useExist"))
+            StartLookup(plugin);
+        if (!lookupReady) ImGui.EndDisabled();
+
         ImGui.Spacing();
 
-        // Require both a Profile ID and a detected character (so we have name/world)
-        bool canContinue = !string.IsNullOrWhiteSpace(_existingIdBuffer) && _scanDetected;
-
-        if (!canContinue) ImGui.BeginDisabled();
-        if (ImGui.Button("Continue##useExistId", new Vector2(-1, 0)))
+        switch (_lookupState)
         {
-            state.ProfileId   = _existingIdBuffer.Trim();
-            state.IdGenerated = true;
-            step = 2;
+            case LookupState.InProgress:
+                ImGui.TextColored(Amber, "Looking up profile...");
+                break;
+            case LookupState.NotFound:
+                ImGui.TextColored(Red, "Profile not found. Check the ID and try again.");
+                break;
+            case LookupState.Error:
+                ImGui.TextColored(Red, $"Error: {_lookupError}");
+                break;
         }
-        if (!canContinue) ImGui.EndDisabled();
+    }
 
-        if (!string.IsNullOrWhiteSpace(_existingIdBuffer) && !_scanDetected)
+    // ─── Start lookup task ───
+
+    private void StartLookup(Plugin plugin)
+    {
+        var apiUrl = plugin.Configuration.ApiUrl;
+        if (string.IsNullOrWhiteSpace(apiUrl))
         {
-            ImGui.Spacing();
-            ImGui.TextColored(Amber, "Retry Scan needed\nto detect character.");
+            _lookupState = LookupState.Error;
+            _lookupError = "API URL not configured. Set it in Settings > Sync first.";
+            return;
         }
+
+        _lookupState = LookupState.InProgress;
+        _lookupError = string.Empty;
+        _lookupTask  = SyncService.LookupProfileAsync(apiUrl, _existingIdBuffer.Trim());
+    }
+
+    // ─── Apply lookup result and skip to dashboard ───
+
+    private static void ApplyLookupResult(GlobalProfileLookupResult result, Plugin plugin, SetupWindow window)
+    {
+        var cfg = plugin.Configuration;
+        cfg.ProfileId       = result.ProfileId;
+        cfg.CharacterName   = result.CharacterName;
+        cfg.HomeWorld       = result.HomeWorld;
+        cfg.UserMode        = result.Mode;
+        cfg.EnableGlamourer = result.HasGlamourerIntegrated;
+        cfg.EnableChatTwo   = result.HasChatTwoIntegrated;
+        cfg.IsSetupComplete = true;
+        cfg.Save();
+
+        window.IsOpen = false;
+        plugin.OnSetupComplete();
     }
 
     // ─── Validation ───
@@ -200,9 +253,9 @@ internal sealed class SetupStep1_CharacterProfile
             return;
         }
 
-        var expectedName  = $"{state.FirstName.Trim()} {state.LastName.Trim()}";
-        var actualName    = player.Name.ToString();
-        var actualWorld   = player.HomeWorld.ValueNullable?.Name.ToString() ?? string.Empty;
+        var expectedName = $"{state.FirstName.Trim()} {state.LastName.Trim()}";
+        var actualName   = player.Name.ToString();
+        var actualWorld  = player.HomeWorld.ValueNullable?.Name.ToString() ?? string.Empty;
 
         if (!string.Equals(expectedName, actualName, StringComparison.OrdinalIgnoreCase)
          || !string.Equals(state.HomeWorld.Trim(), actualWorld, StringComparison.OrdinalIgnoreCase))

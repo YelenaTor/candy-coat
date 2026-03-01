@@ -17,4 +17,7 @@ internal sealed class WizardState
     public bool      MultiRoleToggle      { get; set; } = false;
     public bool      RolePasswordUnlocked { get; set; } = false;
     public string    RolePasswordBuffer   { get; set; } = string.Empty;
+
+    public bool HasGlamourerIntegrated { get; set; } = false;
+    public bool HasChatTwoIntegrated   { get; set; } = false;
 }
