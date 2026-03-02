@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using System.Numerics;
-using System.Collections.Generic;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
@@ -17,18 +16,24 @@ public class CandyHeartPanel : IToolboxPanel
     public string Name => "Candy Heart";
     public StaffRole Role => StaffRole.CandyHeart;
 
-    // Active patron tracking
-    private readonly List<(string Name, int StatusIdx)> _activePatrons = new();
-    private string _newPatronName = string.Empty;
-    private static readonly string[] StatusLabels = { "Chatting", "Escorting", "Idle" };
+    // Session state
+    private bool _chSessionActive = false;
+    private string _chSessionPatron = string.Empty;
+    private DateTime _chSessionStart;
+    private int _chSessionDurationMin = 30;
+    private int _chSelectedRoomIndex = -1;
+    private bool _chDndToggle = false;
+    private bool _chAlert5Fired = false;
+    private bool _chAlert2Fired = false;
+
+    // Patron profile lookup
+    private string _chLookupPatronName = string.Empty;
 
     // Input state
     private string _newMacroTitle = string.Empty;
     private string _newMacroText = string.Empty;
-    private string _notePatron = string.Empty;
     private string _newNoteText = string.Empty;
-    private int _tipAmount = 0;
-    private string _tipPatron = string.Empty;
+    private int _chEarningsAmount = 0;
 
     private readonly StaffPingWidget _pingWidget;
 
@@ -46,12 +51,12 @@ public class CandyHeartPanel : IToolboxPanel
 
     public void DrawContent()
     {
-        // Tier 1 — Active Patron Tracker (fixed ~120px)
+        // Tier 1 — Session Timer (fixed ~140px)
         ImGui.PushStyleColor(ImGuiCol.ChildBg, CardBg);
-        using (var tier1 = ImRaii.Child("##CHTier1", new Vector2(0, 120f), true))
+        using (var tier1 = ImRaii.Child("##CHTier1", new Vector2(0, 140f), true))
         {
             ImGui.PopStyleColor();
-            if (tier1) DrawActivePatrons();
+            if (tier1) DrawSessionTimer();
         }
 
         ImGui.Spacing();
@@ -60,23 +65,29 @@ public class CandyHeartPanel : IToolboxPanel
         ImGui.PushStyleColor(ImGuiCol.Header, HeaderBg);
         ImGui.PushStyleColor(ImGuiCol.HeaderHovered, HeaderHover);
 
+        if (ImGui.CollapsingHeader("Room Assignment##CH", ImGuiTreeNodeFlags.DefaultOpen))
+            DrawRoomAssignment();
+
+        if (ImGui.CollapsingHeader("Patron Profile##CH", ImGuiTreeNodeFlags.DefaultOpen))
+            DrawPatronProfile();
+
+        if (ImGui.CollapsingHeader("Upcoming Bookings##CH"))
+            DrawUpcomingBookings();
+
         if (ImGui.CollapsingHeader("Quick-Tell Macros##CH", ImGuiTreeNodeFlags.DefaultOpen))
             DrawMacroBankButtons();
 
-        if (ImGui.CollapsingHeader("Escort Handoff##CH", ImGuiTreeNodeFlags.DefaultOpen))
-            DrawEscortHandoff();
-
-        if (ImGui.CollapsingHeader("Emote Wheel##CH"))
+        if (ImGui.CollapsingHeader("Emote Shortcuts##CH", ImGuiTreeNodeFlags.DefaultOpen))
             DrawEmoteWheel();
 
-        if (ImGui.CollapsingHeader("Tips Tracker##CH"))
-            DrawTipsTracker();
+        if (ImGui.CollapsingHeader("Log Earnings##CH", ImGuiTreeNodeFlags.DefaultOpen))
+            DrawEarningsLog();
 
-        if (ImGui.CollapsingHeader("Patron Notes##CH"))
+        if (ImGui.CollapsingHeader("Patron Notes##CH", ImGuiTreeNodeFlags.DefaultOpen))
             DrawPatronNotes();
 
-        if (ImGui.CollapsingHeader("Room Status##CH"))
-            DrawRoomStatus();
+        if (ImGui.CollapsingHeader("Patron History##CH"))
+            DrawPatronHistory();
 
         if (ImGui.CollapsingHeader("Staff Ping##CH"))
             _pingWidget.Draw();
@@ -149,50 +160,186 @@ public class CandyHeartPanel : IToolboxPanel
 
     // ─── Private Draw Helpers ────────────────────────────────────────────────
 
-    private void DrawActivePatrons()
+    private void DrawSessionTimer()
     {
-        ImGui.Text("Active Patrons");
+        if (_chSessionActive)
+        {
+            var elapsed = DateTime.Now - _chSessionStart;
+            var remaining = TimeSpan.FromMinutes(_chSessionDurationMin) - elapsed;
+
+            ImGui.TextColored(StyleManager.SyncOk, $"IN SESSION \u2014 {_chSessionPatron}");
+            ImGui.Text($"Elapsed:   {elapsed.Hours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}");
+
+            if (remaining.TotalSeconds > 0)
+            {
+                var color = remaining.TotalMinutes <= 2 ? new Vector4(1f, 0.2f, 0.2f, 1f)
+                          : remaining.TotalMinutes <= 5 ? new Vector4(1f, 0.8f, 0.2f, 1f)
+                          : new Vector4(0.8f, 0.8f, 0.8f, 1f);
+                ImGui.TextColored(color, $"Remaining: {remaining.Minutes:D2}:{remaining.Seconds:D2}");
+
+                if (remaining.TotalMinutes <= 5 && !_chAlert5Fired)
+                {
+                    Svc.Chat.Print($"[Candy Coat] \u26a0 5 minutes remaining with {_chSessionPatron}!");
+                    _chAlert5Fired = true;
+                }
+                if (remaining.TotalMinutes <= 2 && !_chAlert2Fired)
+                {
+                    Svc.Chat.Print($"[Candy Coat] \u26a0 2 minutes remaining with {_chSessionPatron}!");
+                    _chAlert2Fired = true;
+                }
+            }
+            else
+            {
+                float pulse = (float)(Math.Sin(ImGui.GetTime() * 2.0f) * 0.5f + 0.5f);
+                ImGui.TextColored(new Vector4(1f, pulse, pulse, 1f), "TIME'S UP!");
+            }
+
+            ImGui.Spacing();
+            if (ImGui.Button("End Session", new Vector2(120, 28)))
+                EndSession();
+        }
+        else
+        {
+            var target = Svc.Targets.Target;
+            if (target != null && string.IsNullOrEmpty(_chSessionPatron))
+            {
+                if (ImGui.Button("Use Target##CH")) _chSessionPatron = target.Name.ToString();
+                ImGui.SameLine();
+            }
+            ImGui.SetNextItemWidth(180);
+            ImGui.InputTextWithHint("##CHPatron", "Patron Name", ref _chSessionPatron, 100);
+            ImGui.SetNextItemWidth(100);
+            ImGui.InputInt("Duration (min)##CH", ref _chSessionDurationMin, 15);
+            if (_chSessionDurationMin < 15) _chSessionDurationMin = 15;
+
+            ImGui.Checkbox("Do Not Disturb##CH", ref _chDndToggle);
+            if (_chDndToggle)
+                ImGui.TextColored(StyleManager.SyncOk, "DND synced to staff.");
+
+            if (!string.IsNullOrWhiteSpace(_chSessionPatron))
+            {
+                if (ImGui.Button("Start Session", new Vector2(120, 28)))
+                {
+                    _chSessionActive = true;
+                    _chSessionStart = DateTime.Now;
+                    _chAlert5Fired = false;
+                    _chAlert2Fired = false;
+                    _chLookupPatronName = _chSessionPatron;
+                    if (_chSelectedRoomIndex >= 0 && _chSelectedRoomIndex < _plugin.Configuration.Rooms.Count)
+                    {
+                        var room = _plugin.Configuration.Rooms[_chSelectedRoomIndex];
+                        room.Status = RoomStatus.Occupied;
+                        room.OccupiedBy = _plugin.Configuration.CharacterName;
+                        room.PatronName = _chSessionPatron;
+                        room.OccupiedSince = DateTime.Now;
+                        _plugin.Configuration.Save();
+                    }
+                    Svc.Chat.Print($"[Candy Coat] Session started with {_chSessionPatron}.");
+                }
+            }
+        }
+    }
+
+    private void EndSession()
+    {
+        if (_chSelectedRoomIndex >= 0 && _chSelectedRoomIndex < _plugin.Configuration.Rooms.Count)
+        {
+            var room = _plugin.Configuration.Rooms[_chSelectedRoomIndex];
+            room.Status = RoomStatus.Available;
+            room.OccupiedBy = string.Empty;
+            room.PatronName = string.Empty;
+            room.OccupiedSince = null;
+            _plugin.Configuration.Save();
+        }
+        Svc.Chat.Print($"[Candy Coat] Session ended with {_chSessionPatron}.");
+        _chSessionActive = false;
+        _chSessionPatron = string.Empty;
+        _chSelectedRoomIndex = -1;
+    }
+
+    private void DrawRoomAssignment()
+    {
+        ImGui.Spacing();
+        var rooms = _plugin.Configuration.Rooms;
+        if (rooms.Count == 0) { ImGui.TextDisabled("No rooms defined. Add in Owner > Room Editor."); ImGui.Spacing(); return; }
+        var names = rooms.Select(r => $"{r.Name} ({r.Status})").ToArray();
+        ImGui.SetNextItemWidth(200);
+        ImGui.Combo("##CHRoomSelect", ref _chSelectedRoomIndex, names, names.Length);
+        ImGui.Spacing();
+    }
+
+    private void DrawPatronProfile()
+    {
         ImGui.Spacing();
 
-        if (ImGui.Button("Add Target##CH"))
+        // Auto-populate from active session
+        if (_chSessionActive && !string.IsNullOrEmpty(_chSessionPatron) && _chLookupPatronName != _chSessionPatron)
+            _chLookupPatronName = _chSessionPatron;
+
+        ImGui.SetNextItemWidth(200);
+        ImGui.InputTextWithHint("##CHProfileName", "Patron Name", ref _chLookupPatronName, 100);
+
+        if (string.IsNullOrWhiteSpace(_chLookupPatronName)) { ImGui.Spacing(); return; }
+
+        var patron = _plugin.Configuration.Patrons
+            .FirstOrDefault(p => p.Name.Equals(_chLookupPatronName, StringComparison.OrdinalIgnoreCase));
+
+        if (patron == null)
         {
-            var t = Svc.Targets.Target;
-            if (t != null) _newPatronName = t.Name.ToString();
-        }
-        ImGui.SameLine();
-        ImGui.SetNextItemWidth(150);
-        ImGui.InputTextWithHint("##CHAddPatron", "Name", ref _newPatronName, 100);
-        ImGui.SameLine();
-        if (ImGui.Button("+##CHAddActive"))
-        {
-            if (!string.IsNullOrWhiteSpace(_newPatronName) && !_activePatrons.Any(p => p.Name == _newPatronName))
-            {
-                _activePatrons.Add((_newPatronName, 0));
-                _newPatronName = string.Empty;
-            }
+            ImGui.TextDisabled("Not in patron database.");
+            ImGui.Spacing();
+            return;
         }
 
-        for (int i = 0; i < _activePatrons.Count; i++)
+        var cfg = _plugin.Configuration;
+        var tier = cfg.GetTier(patron);
+        var tierColor = tier switch
         {
-            var (name, statusIdx) = _activePatrons[i];
-            ImGui.PushID($"chap{i}");
-            ImGui.Text(name);
+            PatronTier.Elite   => new Vector4(1f, 0.85f, 0.2f, 1f),
+            PatronTier.Regular => new Vector4(1f, 0.5f, 0.8f, 1f),
+            _                  => new Vector4(0.7f, 0.7f, 0.7f, 1f),
+        };
+        ImGui.TextColored(tierColor, $"[{tier}]");
+
+        if (patron.Status is PatronStatus.Warning or PatronStatus.Blacklisted)
+        {
             ImGui.SameLine();
-            ImGui.SetNextItemWidth(100);
-            var si = statusIdx;
-            if (ImGui.Combo("##CHStatus", ref si, StatusLabels, StatusLabels.Length))
-                _activePatrons[i] = (name, si);
-            ImGui.SameLine();
-            if (ImGui.SmallButton("X##CHRemove"))
-            {
-                _activePatrons.RemoveAt(i);
-                ImGui.PopID();
-                break;
-            }
-            ImGui.PopID();
+            var statusColor = patron.Status == PatronStatus.Blacklisted ? StyleManager.SyncError : StyleManager.SyncWarn;
+            ImGui.TextColored(statusColor, $"[{patron.Status}]");
         }
 
-        if (_activePatrons.Count == 0) ImGui.TextDisabled("No patrons being attended.");
+        ImGui.TextDisabled("RP Hooks:");
+        ImGui.SameLine();
+        if (!string.IsNullOrWhiteSpace(patron.RpHooks)) ImGui.TextWrapped(patron.RpHooks);
+        else ImGui.TextDisabled("None on file");
+
+        ImGui.TextDisabled("Favourite Drink:");
+        ImGui.SameLine();
+        if (!string.IsNullOrWhiteSpace(patron.FavoriteDrink)) ImGui.Text(patron.FavoriteDrink);
+        else ImGui.TextDisabled("\u2014");
+
+        ImGui.TextDisabled("Allergies / Limits:");
+        ImGui.SameLine();
+        if (!string.IsNullOrWhiteSpace(patron.Allergies)) ImGui.TextWrapped(patron.Allergies);
+        else ImGui.TextDisabled("\u2014");
+
+        ImGui.Spacing();
+    }
+
+    private void DrawUpcomingBookings()
+    {
+        ImGui.Spacing();
+        var bookings = _plugin.Configuration.Bookings
+            .Where(b => b.State != BookingState.CompletedPaid && b.State != BookingState.CompletedUnpaid)
+            .OrderBy(b => b.Timestamp)
+            .ToList();
+
+        if (bookings.Count == 0) { ImGui.TextDisabled("No upcoming bookings."); ImGui.Spacing(); return; }
+
+        foreach (var b in bookings)
+            ImGui.BulletText($"{b.PatronName} | {b.Service} | {b.Room} | {b.Gil:N0} Gil");
+
+        ImGui.Spacing();
     }
 
     private void DrawMacroBankButtons()
@@ -204,7 +351,7 @@ public class CandyHeartPanel : IToolboxPanel
         {
             if (ImGui.Button($"{m.Title}##CHbtn{m.Title}"))
             {
-                var target = _activePatrons.Count > 0 ? _activePatrons[0].Name
+                var target = !string.IsNullOrEmpty(_chSessionPatron) ? _chSessionPatron
                     : Svc.Targets.Target?.Name.ToString() ?? "";
                 if (!string.IsNullOrEmpty(target))
                 {
@@ -218,48 +365,24 @@ public class CandyHeartPanel : IToolboxPanel
         ImGui.Spacing();
     }
 
-    private void DrawEscortHandoff()
-    {
-        ImGui.Spacing();
-        if (_plugin.SyncService.IsConnected)
-            ImGui.TextColored(StyleManager.SyncOk, "\ud83d\udfe2 Handoff will be synced.");
-        else
-            ImGui.TextColored(StyleManager.SyncWarn, "\u26a0 Handoff is local-only.");
-
-        if (_activePatrons.Count > 0)
-        {
-            if (ImGui.Button("Announce Handoff (Echo)##CH"))
-            {
-                Svc.Chat.Print(new Dalamud.Game.Text.XivChatEntry
-                {
-                    Type = Dalamud.Game.Text.XivChatType.Echo,
-                    Message = $"[CandyCoat] Handing off {_activePatrons[0].Name} \u2014 please follow up."
-                });
-            }
-        }
-        ImGui.Spacing();
-    }
-
     private void DrawEmoteWheel()
     {
         ImGui.Spacing();
-        ImGui.TextDisabled("Flirty:");
+        EmoteBtn("Wink",      "/wink motion");     ImGui.SameLine();
         EmoteBtn("Blow Kiss", "/blowkiss motion"); ImGui.SameLine();
-        EmoteBtn("Wink", "/wink motion"); ImGui.SameLine();
-        EmoteBtn("Dote", "/dote motion"); ImGui.SameLine();
-        EmoteBtn("Comfort", "/comfort motion");
+        EmoteBtn("Dote",      "/dote motion");     ImGui.SameLine();
+        EmoteBtn("Beckon",    "/beckon motion");
 
-        ImGui.TextDisabled("Friendly:");
-        EmoteBtn("Wave", "/wave motion"); ImGui.SameLine();
-        EmoteBtn("Smile", "/smile motion"); ImGui.SameLine();
-        EmoteBtn("Cheer", "/cheer motion"); ImGui.SameLine();
-        EmoteBtn("Laugh", "/laugh motion");
+        EmoteBtn("Smile",    "/smile motion");    ImGui.SameLine();
+        EmoteBtn("Kneel",    "/kneel motion");    ImGui.SameLine();
+        EmoteBtn("Curtsey",  "/curtsey motion");  ImGui.SameLine();
+        EmoteBtn("Cheer",    "/cheer motion");
 
-        ImGui.TextDisabled("Elegant:");
-        EmoteBtn("Bow", "/bow motion"); ImGui.SameLine();
-        EmoteBtn("Curtsey", "/curtsey motion"); ImGui.SameLine();
-        EmoteBtn("Beckon", "/beckon motion"); ImGui.SameLine();
-        EmoteBtn("Kneel", "/kneel motion");
+        EmoteBtn("Laugh",    "/laugh motion");    ImGui.SameLine();
+        EmoteBtn("Bow",      "/bow motion");      ImGui.SameLine();
+        EmoteBtn("Nod",      "/nod motion");      ImGui.SameLine();
+        EmoteBtn("Clap",     "/clap motion");
+
         ImGui.Spacing();
     }
 
@@ -268,23 +391,43 @@ public class CandyHeartPanel : IToolboxPanel
         if (ImGui.Button(label, new Vector2(75, 22))) Svc.Commands.ProcessCommand(cmd);
     }
 
-    private void DrawTipsTracker()
+    private void DrawEarningsLog()
     {
         ImGui.Spacing();
-        ImGui.SetNextItemWidth(100);
-        ImGui.InputInt("##CHTipAmt", ref _tipAmount, 5000);
-        ImGui.SameLine();
         ImGui.SetNextItemWidth(120);
-        ImGui.InputTextWithHint("##CHTipP", "From", ref _tipPatron, 100);
+        ImGui.InputInt("Gil##CHEarn", ref _chEarningsAmount, 10000);
+        ImGui.SameLine();
+        if (ImGui.Button("Log Session Earnings##CH"))
+        {
+            if (_chEarningsAmount > 0)
+            {
+                _plugin.Configuration.Earnings.Add(new EarningsEntry
+                {
+                    Role = StaffRole.CandyHeart,
+                    Type = EarningsType.Session,
+                    PatronName = !string.IsNullOrEmpty(_chSessionPatron) ? _chSessionPatron : "Unknown",
+                    Description = "Session",
+                    Amount = _chEarningsAmount
+                });
+                _plugin.Configuration.Save();
+                _chEarningsAmount = 0;
+            }
+        }
         ImGui.SameLine();
         if (ImGui.Button("Log Tip##CH"))
         {
-            if (_tipAmount > 0)
+            if (_chEarningsAmount > 0)
             {
-                _plugin.Configuration.Earnings.Add(new EarningsEntry { Role = StaffRole.CandyHeart, Type = EarningsType.Tip, PatronName = string.IsNullOrWhiteSpace(_tipPatron) ? "Unknown" : _tipPatron, Description = "Tip", Amount = _tipAmount });
+                _plugin.Configuration.Earnings.Add(new EarningsEntry
+                {
+                    Role = StaffRole.CandyHeart,
+                    Type = EarningsType.Tip,
+                    PatronName = !string.IsNullOrEmpty(_chSessionPatron) ? _chSessionPatron : "Unknown",
+                    Description = "Tip",
+                    Amount = _chEarningsAmount
+                });
                 _plugin.Configuration.Save();
-                _tipAmount = 0;
-                _tipPatron = string.Empty;
+                _chEarningsAmount = 0;
             }
         }
         ImGui.Spacing();
@@ -293,20 +436,29 @@ public class CandyHeartPanel : IToolboxPanel
     private void DrawPatronNotes()
     {
         ImGui.Spacing();
-        ImGui.SetNextItemWidth(120);
-        ImGui.InputTextWithHint("##CHNotePat", "Patron", ref _notePatron, 100);
-        if (!string.IsNullOrEmpty(_notePatron))
+        var patronName = !string.IsNullOrEmpty(_chSessionPatron) ? _chSessionPatron : "(no active session)";
+        ImGui.TextDisabled($"For: {patronName}");
+        if (!string.IsNullOrEmpty(_chSessionPatron))
         {
-            var notes = _plugin.Configuration.PatronNotes.Where(n => n.PatronName == _notePatron && n.AuthorRole == StaffRole.CandyHeart).OrderByDescending(n => n.Timestamp).Take(5).ToList();
+            var notes = _plugin.Configuration.PatronNotes
+                .Where(n => n.PatronName == _chSessionPatron && n.AuthorRole == StaffRole.CandyHeart)
+                .OrderByDescending(n => n.Timestamp)
+                .ToList();
             foreach (var n in notes) { ImGui.TextDisabled($"[{n.Timestamp:MM/dd HH:mm}]"); ImGui.SameLine(); ImGui.TextWrapped(n.Content); }
-            ImGui.SetNextItemWidth(-50);
+            ImGui.SetNextItemWidth(-60);
             ImGui.InputTextWithHint("##CHNoteIn", "Add note...", ref _newNoteText, 500);
             ImGui.SameLine();
             if (ImGui.Button("Save##CHNote"))
             {
                 if (!string.IsNullOrWhiteSpace(_newNoteText))
                 {
-                    _plugin.Configuration.PatronNotes.Add(new PatronNote { PatronName = _notePatron, AuthorRole = StaffRole.CandyHeart, AuthorName = _plugin.Configuration.CharacterName, Content = _newNoteText });
+                    _plugin.Configuration.PatronNotes.Add(new PatronNote
+                    {
+                        PatronName = _chSessionPatron,
+                        AuthorRole = StaffRole.CandyHeart,
+                        AuthorName = _plugin.Configuration.CharacterName,
+                        Content = _newNoteText
+                    });
                     _plugin.Configuration.Save();
                     _newNoteText = string.Empty;
                 }
@@ -315,27 +467,17 @@ public class CandyHeartPanel : IToolboxPanel
         ImGui.Spacing();
     }
 
-    private void DrawRoomStatus()
+    private void DrawPatronHistory()
     {
         ImGui.Spacing();
-        var rooms = _plugin.Configuration.Rooms;
-        if (rooms.Count == 0) { ImGui.TextDisabled("No rooms defined."); ImGui.Spacing(); return; }
-        foreach (var room in rooms)
-        {
-            var color = room.Status switch
-            {
-                RoomStatus.Available => StyleManager.SyncOk,
-                RoomStatus.Occupied  => new Vector4(1f, 0.4f, 0.4f, 1f),
-                RoomStatus.Reserved  => new Vector4(1f, 0.8f, 0.2f, 1f),
-                _                    => new Vector4(0.5f, 0.5f, 0.5f, 1f),
-            };
-            ImGui.TextColored(color, $"\u2022 {room.Name}: {room.Status}");
-            if (room.Status == RoomStatus.Occupied && !string.IsNullOrEmpty(room.OccupiedBy))
-            {
-                ImGui.SameLine();
-                ImGui.TextDisabled($"({room.OccupiedBy} + {room.PatronName})");
-            }
-        }
+        if (string.IsNullOrEmpty(_chSessionPatron)) { ImGui.TextDisabled("Start a session to see patron history."); ImGui.Spacing(); return; }
+        var history = _plugin.Configuration.Earnings
+            .Where(e => e.PatronName == _chSessionPatron && e.Role == StaffRole.CandyHeart)
+            .OrderByDescending(e => e.Timestamp)
+            .Take(10)
+            .ToList();
+        if (history.Count == 0) { ImGui.TextDisabled("No history with this patron."); ImGui.Spacing(); return; }
+        foreach (var e in history) ImGui.BulletText($"{e.Timestamp:MM/dd} \u2014 {e.Description}: {e.Amount:N0} Gil");
         ImGui.Spacing();
     }
 }

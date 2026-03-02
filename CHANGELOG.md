@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.13.1] — 2026-03-02
+
+### Changed
+- **CandyHeart panel — full rework**: replaced the legacy active-patron tracker with a full session timer (idle form → running timer → TIME'S UP pulsing); added Room Assignment, Patron Profile inline card, Upcoming Bookings mini-list, Courtesan Emote Shortcuts (Wink, Blow Kiss, Dote, Beckon, Smile, Kneel, Curtsey, Cheer, Laugh, Bow, Nod, Clap), dual Session + Tip earnings logging, session-scoped Patron Notes, and Patron History; removed Escort Handoff collapsible (belongs to Greeter)
+- **Sweetheart panel — targeted additions**: new Patron Profile collapsible (auto-fills from active session — tier badge, RP hooks, favourite drink, allergies / limits); new Upcoming Bookings mini-list; new Emote Shortcuts collapsible with Pillow/Comfort flavour (Comfort, Smile, Blow Kiss, Kneel, Bow, Beckon, Doze, Laugh, Wave, Hug, Nuzzle, Pet); Log Earnings and Patron Notes now DefaultOpen
+- Both companion panels share a unified collapsible order: Room Assignment → Patron Profile → Upcoming Bookings → Quick-Tell Macros → Emote Shortcuts → Log Earnings → Patron Notes → Patron History → Staff Ping
+
+---
+
 ## [0.12.0] — 2026-03-02
 
 ### Added

@@ -60,13 +60,16 @@ Role-gated panels — each staff member only sees panels matching their assigned
 
 | Panel | Role | Purpose |
 |-------|------|---------|
-| Sweetheart | `Sweetheart` | Companion/entertainer session tooling and macro bank |
-| Candy Heart | `CandyHeart` | Greeter / welcome team quick-tells and patron triage |
+| Sweetheart | `Sweetheart` | SFW companion session timer, patron profile card, upcoming bookings, comfort emote shortcuts, macro bank, glamourer presets, earnings/tip logging |
+| Candy Heart | `CandyHeart` | Courtesan session timer, patron profile card, upcoming bookings, social emote shortcuts, dual session/tip earnings, macro bank |
 | Bartender | `Bartender` | Drink service menu management |
 | Gamba | `Gamba` | Gambling round management with **auto-capture** of `/random` and `/dice` chat rolls |
 | DJ | `DJ` | Music and performance tooling |
+| Greeter | `CandyHeart` | Door queue, patron lookup, welcome macros, escort handoff |
 | Management | `Management` | Shift overview, live floor board, room board, incident log, patron flagging, capacity |
 | Owner | `Owner` | Venue-wide admin: room editor, staff roster, loyalty tier thresholds, role cosmetic defaults |
+
+Both companion panels (Sweetheart, Candy Heart) share a unified panel layout: session timer → patron profile inline card (tier, RP hooks, favourite drink, allergies) → upcoming bookings → macros → role-flavoured emote shortcuts → earnings → notes → history → staff ping.
 
 All SRT panels include the **Staff Ping widget** — select any online staff member and send a templated or freeform coordinated alert (Room Ready, Needs Escort, Incident Here, Help Needed).
 

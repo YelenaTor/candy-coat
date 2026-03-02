@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using System.Numerics;
-using System.Collections.Generic;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
@@ -26,6 +25,9 @@ public class SweetheartPanel : IToolboxPanel
     private bool _dndToggle = false;
     private bool _alert5Fired = false;
     private bool _alert2Fired = false;
+
+    // Patron profile lookup
+    private string _shLookupPatronName = string.Empty;
 
     // Input state
     private string _newNoteText = string.Empty;
@@ -66,8 +68,17 @@ public class SweetheartPanel : IToolboxPanel
         if (ImGui.CollapsingHeader("Room Assignment##SH", ImGuiTreeNodeFlags.DefaultOpen))
             DrawRoomAssignment();
 
+        if (ImGui.CollapsingHeader("Patron Profile##SH", ImGuiTreeNodeFlags.DefaultOpen))
+            DrawPatronProfile();
+
+        if (ImGui.CollapsingHeader("Upcoming Bookings##SH"))
+            DrawUpcomingBookings();
+
         if (ImGui.CollapsingHeader("Quick-Tell Macros##SH", ImGuiTreeNodeFlags.DefaultOpen))
             DrawQuickTellButtons();
+
+        if (ImGui.CollapsingHeader("Emote Shortcuts##SH", ImGuiTreeNodeFlags.DefaultOpen))
+            DrawEmoteShortcuts();
 
         if (ImGui.CollapsingHeader("Service Rate Card##SH"))
             DrawServiceRateCard();
@@ -75,10 +86,10 @@ public class SweetheartPanel : IToolboxPanel
         if (ImGui.CollapsingHeader("Outfit Presets##SH"))
             DrawGlamourerPresets();
 
-        if (ImGui.CollapsingHeader("Log Earnings##SH"))
+        if (ImGui.CollapsingHeader("Log Earnings##SH", ImGuiTreeNodeFlags.DefaultOpen))
             DrawEarningsLog();
 
-        if (ImGui.CollapsingHeader("Patron Notes##SH"))
+        if (ImGui.CollapsingHeader("Patron Notes##SH", ImGuiTreeNodeFlags.DefaultOpen))
             DrawPatronNotes();
 
         if (ImGui.CollapsingHeader("Patron History##SH"))
@@ -220,6 +231,7 @@ public class SweetheartPanel : IToolboxPanel
                     _sessionStart = DateTime.Now;
                     _alert5Fired = false;
                     _alert2Fired = false;
+                    _shLookupPatronName = _sessionPatron;
                     if (_selectedRoomIndex >= 0 && _selectedRoomIndex < _plugin.Configuration.Rooms.Count)
                     {
                         var room = _plugin.Configuration.Rooms[_selectedRoomIndex];
@@ -263,6 +275,80 @@ public class SweetheartPanel : IToolboxPanel
         ImGui.Spacing();
     }
 
+    private void DrawPatronProfile()
+    {
+        ImGui.Spacing();
+
+        // Auto-populate from active session
+        if (_sessionActive && !string.IsNullOrEmpty(_sessionPatron) && _shLookupPatronName != _sessionPatron)
+            _shLookupPatronName = _sessionPatron;
+
+        ImGui.SetNextItemWidth(200);
+        ImGui.InputTextWithHint("##SHProfileName", "Patron Name", ref _shLookupPatronName, 100);
+
+        if (string.IsNullOrWhiteSpace(_shLookupPatronName)) { ImGui.Spacing(); return; }
+
+        var patron = _plugin.Configuration.Patrons
+            .FirstOrDefault(p => p.Name.Equals(_shLookupPatronName, StringComparison.OrdinalIgnoreCase));
+
+        if (patron == null)
+        {
+            ImGui.TextDisabled("Not in patron database.");
+            ImGui.Spacing();
+            return;
+        }
+
+        var cfg = _plugin.Configuration;
+        var tier = cfg.GetTier(patron);
+        var tierColor = tier switch
+        {
+            PatronTier.Elite   => new Vector4(1f, 0.85f, 0.2f, 1f),
+            PatronTier.Regular => new Vector4(1f, 0.5f, 0.8f, 1f),
+            _                  => new Vector4(0.7f, 0.7f, 0.7f, 1f),
+        };
+        ImGui.TextColored(tierColor, $"[{tier}]");
+
+        if (patron.Status is PatronStatus.Warning or PatronStatus.Blacklisted)
+        {
+            ImGui.SameLine();
+            var statusColor = patron.Status == PatronStatus.Blacklisted ? StyleManager.SyncError : StyleManager.SyncWarn;
+            ImGui.TextColored(statusColor, $"[{patron.Status}]");
+        }
+
+        ImGui.TextDisabled("RP Hooks:");
+        ImGui.SameLine();
+        if (!string.IsNullOrWhiteSpace(patron.RpHooks)) ImGui.TextWrapped(patron.RpHooks);
+        else ImGui.TextDisabled("None on file");
+
+        ImGui.TextDisabled("Favourite Drink:");
+        ImGui.SameLine();
+        if (!string.IsNullOrWhiteSpace(patron.FavoriteDrink)) ImGui.Text(patron.FavoriteDrink);
+        else ImGui.TextDisabled("\u2014");
+
+        ImGui.TextDisabled("Allergies / Limits:");
+        ImGui.SameLine();
+        if (!string.IsNullOrWhiteSpace(patron.Allergies)) ImGui.TextWrapped(patron.Allergies);
+        else ImGui.TextDisabled("\u2014");
+
+        ImGui.Spacing();
+    }
+
+    private void DrawUpcomingBookings()
+    {
+        ImGui.Spacing();
+        var bookings = _plugin.Configuration.Bookings
+            .Where(b => b.State != BookingState.CompletedPaid && b.State != BookingState.CompletedUnpaid)
+            .OrderBy(b => b.Timestamp)
+            .ToList();
+
+        if (bookings.Count == 0) { ImGui.TextDisabled("No upcoming bookings."); ImGui.Spacing(); return; }
+
+        foreach (var b in bookings)
+            ImGui.BulletText($"{b.PatronName} | {b.Service} | {b.Room} | {b.Gil:N0} Gil");
+
+        ImGui.Spacing();
+    }
+
     private void DrawQuickTellButtons()
     {
         ImGui.Spacing();
@@ -284,6 +370,32 @@ public class SweetheartPanel : IToolboxPanel
             ImGui.TextDisabled(m.Text.Length > 40 ? m.Text[..40] + "..." : m.Text);
         }
         ImGui.Spacing();
+    }
+
+    private void DrawEmoteShortcuts()
+    {
+        ImGui.Spacing();
+        EmoteBtn("Comfort",   "/comfort motion");   ImGui.SameLine();
+        EmoteBtn("Smile",     "/smile motion");     ImGui.SameLine();
+        EmoteBtn("Blow Kiss", "/blowkiss motion");  ImGui.SameLine();
+        EmoteBtn("Kneel",     "/kneel motion");
+
+        EmoteBtn("Bow",       "/bow motion");       ImGui.SameLine();
+        EmoteBtn("Beckon",    "/beckon motion");    ImGui.SameLine();
+        EmoteBtn("Doze",      "/doze motion");      ImGui.SameLine();
+        EmoteBtn("Laugh",     "/laugh motion");
+
+        EmoteBtn("Wave",      "/wave motion");      ImGui.SameLine();
+        EmoteBtn("Hug",       "/hug motion");       ImGui.SameLine();
+        EmoteBtn("Nuzzle",    "/nuzzle motion");    ImGui.SameLine();
+        EmoteBtn("Pet",       "/pet motion");
+
+        ImGui.Spacing();
+    }
+
+    private static void EmoteBtn(string label, string cmd)
+    {
+        if (ImGui.Button(label, new Vector2(75, 22))) Svc.Commands.ProcessCommand(cmd);
     }
 
     private void DrawServiceRateCard()
