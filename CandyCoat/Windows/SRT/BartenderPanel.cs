@@ -3,6 +3,7 @@ using System.Linq;
 using System.Numerics;
 using System.Collections.Generic;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
 using CandyCoat.UI;
 using ECommons.DalamudServices;
@@ -16,22 +17,23 @@ public class BartenderPanel : IToolboxPanel
 
     private readonly Plugin _plugin;
 
-    // Order queue
     public enum OrderStatus { Pending, Making, Served }
     private readonly List<(string Patron, string Drink, int Price, DateTime Time, OrderStatus Status)> _orders = new();
     private string _newOrderPatron = string.Empty;
     private int _selectedDrinkIndex = -1;
     private string _customDrink = string.Empty;
-
-    // Tab system
     private readonly Dictionary<string, int> _tabs = new();
     private string? _pendingCloseTab = null;
 
-    // Macro input
+    // Settings input
     private string _newMacroTitle = string.Empty;
     private string _newMacroText = string.Empty;
 
     private readonly StaffPingWidget _pingWidget;
+
+    private static readonly Vector4 CardBg = new(0.16f, 0.12f, 0.20f, 1f);
+    private static readonly Vector4 HeaderBg = new(0.22f, 0.16f, 0.28f, 1f);
+    private static readonly Vector4 HeaderHover = new(0.30f, 0.22f, 0.36f, 1f);
 
     public BartenderPanel(Plugin plugin)
     {
@@ -39,105 +41,137 @@ public class BartenderPanel : IToolboxPanel
         _pingWidget = new StaffPingWidget(plugin);
     }
 
+    // ─── Features ────────────────────────────────────────────────────────────
+
     public void DrawContent()
     {
-        ImGui.TextColored(StyleManager.SectionHeader, "🍸 Bartender Toolbox");
-        ImGui.Separator();
+        // Tier 1 — Order Queue (fixed ~160px)
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, CardBg);
+        using (var tier1 = ImRaii.Child("##BTTier1", new Vector2(0, 160f), true))
+        {
+            ImGui.PopStyleColor();
+            if (tier1) DrawOrderQueue();
+        }
+
         ImGui.Spacing();
 
-        DrawDrinkMenu();
-        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
-        DrawOrderQueue();
-        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
-        DrawTabSystem();
-        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
-        DrawRPMacros();
-        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
-        _pingWidget.Draw();
+        ImGui.PushStyleColor(ImGuiCol.Header, HeaderBg);
+        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, HeaderHover);
+
+        if (ImGui.CollapsingHeader("Drink Menu##BT", ImGuiTreeNodeFlags.DefaultOpen))
+            DrawDrinkMenu();
+
+        if (ImGui.CollapsingHeader("Open Tabs##BT", ImGuiTreeNodeFlags.DefaultOpen))
+            DrawTabSystem();
+
+        if (ImGui.CollapsingHeader("RP Emote Macros##BT"))
+            DrawRPMacroButtons();
+
+        if (ImGui.CollapsingHeader("Staff Ping##BT"))
+            _pingWidget.Draw();
+
+        ImGui.PopStyleColor(2);
     }
 
-    private void DrawDrinkMenu()
+    // ─── Settings ────────────────────────────────────────────────────────────
+
+    public void DrawSettings()
     {
-        ImGui.Text("Drink Menu");
-        var drinks = _plugin.Configuration.ServiceMenu
-            .Where(s => s.Category == ServiceCategory.Drink).ToList();
+        ImGui.TextColored(StyleManager.SectionHeader, "\ud83c\udf78 Bartender Settings");
+        ImGui.TextDisabled("Configure your RP emote macro bank.");
+        ImGui.Spacing();
 
-        if (drinks.Count == 0)
+        // Card: RP Macro Bank
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, CardBg);
+        using (var card = ImRaii.Child("##BTMacroCard", new Vector2(0, 220f), true))
         {
-            ImGui.TextDisabled("No drinks defined. Add in Owner > Menu Editor.");
-            return;
-        }
+            ImGui.PopStyleColor();
+            if (!card) return;
 
-        for (int i = 0; i < drinks.Count; i++)
-        {
-            var d = drinks[i];
-            if (ImGui.Selectable($"  {d.Name} — {d.Price:N0} Gil##drink{i}", _selectedDrinkIndex == i))
-                _selectedDrinkIndex = i;
+            ImGui.TextColored(StyleManager.SectionHeader, "RP Emote Macro Bank");
+            ImGui.Separator();
+            ImGui.Spacing();
+            ImGui.TextDisabled("Use {patron} and {drink} tokens.");
 
-            if (ImGui.IsItemHovered() && !string.IsNullOrEmpty(d.Description))
-                ImGui.SetTooltip(d.Description);
-        }
+            var macros = _plugin.Configuration.BartenderMacros;
 
-        if (_selectedDrinkIndex >= 0 && _selectedDrinkIndex < drinks.Count)
-        {
-            if (ImGui.Button("Paste to Chat"))
+            using (var scroll = ImRaii.Child("##BTMacroList", new Vector2(0, 110f), false))
             {
-                var d = drinks[_selectedDrinkIndex];
-                Svc.Commands.ProcessCommand($"/say {d.Name} — {d.Description}");
+                for (int i = 0; i < macros.Count; i++)
+                {
+                    ImGui.PushID($"btm{i}");
+                    ImGui.Text(macros[i].Title);
+                    ImGui.SameLine();
+                    ImGui.TextDisabled(macros[i].Text.Length > 40 ? macros[i].Text[..40] + "..." : macros[i].Text);
+                    ImGui.SameLine();
+                    if (ImGui.SmallButton("Del##btmd"))
+                    {
+                        macros.RemoveAt(i);
+                        _plugin.Configuration.Save();
+                        ImGui.PopID();
+                        break;
+                    }
+                    ImGui.PopID();
+                }
+                if (macros.Count == 0) ImGui.TextDisabled("No macros yet.");
+            }
+
+            ImGui.Spacing();
+            ImGui.SetNextItemWidth(80);
+            ImGui.InputTextWithHint("##BTMacroT", "Title", ref _newMacroTitle, 50);
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(220);
+            ImGui.InputTextWithHint("##BTMacroM", "{patron} {drink}", ref _newMacroText, 200);
+            ImGui.SameLine();
+            if (ImGui.Button("+##BTAddMacro"))
+            {
+                if (!string.IsNullOrWhiteSpace(_newMacroTitle))
+                {
+                    macros.Add(new MacroTemplate { Title = _newMacroTitle, Text = _newMacroText });
+                    _plugin.Configuration.Save();
+                    _newMacroTitle = string.Empty;
+                    _newMacroText = string.Empty;
+                }
             }
         }
     }
+
+    // ─── Private Draw Helpers ────────────────────────────────────────────────
 
     private void DrawOrderQueue()
     {
         ImGui.Text("Order Queue");
         ImGui.Spacing();
 
-        // New order
         var target = Svc.Targets.Target;
         if (target != null && string.IsNullOrEmpty(_newOrderPatron))
         {
-            if (ImGui.Button("Use Target##OQ"))
-                _newOrderPatron = target.Name.ToString();
+            if (ImGui.Button("Use Target##BT")) _newOrderPatron = target.Name.ToString();
             ImGui.SameLine();
         }
         ImGui.SetNextItemWidth(130);
-        ImGui.InputTextWithHint("##OrdPatron", "Patron", ref _newOrderPatron, 100);
+        ImGui.InputTextWithHint("##BTOrdPatron", "Patron", ref _newOrderPatron, 100);
         ImGui.SameLine();
 
-        // Drink selection: from menu or custom
-        var drinks = _plugin.Configuration.ServiceMenu
-            .Where(s => s.Category == ServiceCategory.Drink).ToList();
+        var drinks = _plugin.Configuration.ServiceMenu.Where(s => s.Category == ServiceCategory.Drink).ToList();
         var drinkNames = drinks.Select(d => d.Name).Append("Custom...").ToArray();
-        var drinkIdx = _selectedDrinkIndex;
-        if (drinkIdx < 0 || drinkIdx >= drinkNames.Length) drinkIdx = 0;
-        ImGui.SetNextItemWidth(140);
-        ImGui.Combo("##DrinkPick", ref drinkIdx, drinkNames, drinkNames.Length);
+        var drinkIdx = _selectedDrinkIndex < 0 || _selectedDrinkIndex >= drinkNames.Length ? 0 : _selectedDrinkIndex;
+        ImGui.SetNextItemWidth(130);
+        ImGui.Combo("##BTDrinkPick", ref drinkIdx, drinkNames, drinkNames.Length);
+        _selectedDrinkIndex = drinkIdx;
 
         ImGui.SameLine();
-        if (ImGui.Button("Add Order"))
+        if (ImGui.Button("Add Order##BT"))
         {
             if (!string.IsNullOrWhiteSpace(_newOrderPatron))
             {
                 string drink;
                 int price;
-                if (drinkIdx < drinks.Count)
-                {
-                    drink = drinks[drinkIdx].Name;
-                    price = drinks[drinkIdx].Price;
-                }
-                else
-                {
-                    drink = string.IsNullOrWhiteSpace(_customDrink) ? "Custom Drink" : _customDrink;
-                    price = 0;
-                }
+                if (drinkIdx < drinks.Count) { drink = drinks[drinkIdx].Name; price = drinks[drinkIdx].Price; }
+                else { drink = string.IsNullOrWhiteSpace(_customDrink) ? "Custom" : _customDrink; price = 0; }
                 _orders.Add((_newOrderPatron, drink, price, DateTime.Now, OrderStatus.Pending));
-
-                // Add to tab
-                if (!_tabs.ContainsKey(_newOrderPatron))
-                    _tabs[_newOrderPatron] = 0;
+                if (!_tabs.ContainsKey(_newOrderPatron)) _tabs[_newOrderPatron] = 0;
                 _tabs[_newOrderPatron] += price;
-
                 _newOrderPatron = string.Empty;
                 _customDrink = string.Empty;
             }
@@ -146,16 +180,11 @@ public class BartenderPanel : IToolboxPanel
         if (drinkIdx >= drinks.Count)
         {
             ImGui.SetNextItemWidth(200);
-            ImGui.InputTextWithHint("##CustomDrink", "Custom drink name", ref _customDrink, 100);
+            ImGui.InputTextWithHint("##BTCustomDrink", "Custom drink name", ref _customDrink, 100);
         }
 
-        // Order table
         ImGui.Spacing();
-        if (_orders.Count == 0)
-        {
-            ImGui.TextDisabled("No orders queued.");
-            return;
-        }
+        if (_orders.Count == 0) { ImGui.TextDisabled("No orders queued."); return; }
 
         for (int i = 0; i < _orders.Count; i++)
         {
@@ -168,41 +197,43 @@ public class BartenderPanel : IToolboxPanel
                 OrderStatus.Served  => StyleManager.SyncOk,
                 _                   => Vector4.One,
             };
-
-            ImGui.PushID($"ord{i}");
+            ImGui.PushID($"btord{i}");
             ImGui.TextColored(statusColor, $"[{status}]");
             ImGui.SameLine();
             ImGui.Text($"{patron}: {drink}");
             ImGui.SameLine();
-            ImGui.TextDisabled($"({elapsed.Minutes}m ago)");
+            ImGui.TextDisabled($"({elapsed.Minutes}m)");
             ImGui.SameLine();
-
-            if (status == OrderStatus.Pending && ImGui.SmallButton("Making"))
-                _orders[i] = (patron, drink, price, time, OrderStatus.Making);
-            if (status == OrderStatus.Making)
-            {
-                if (ImGui.SmallButton("Served"))
-                    _orders[i] = (patron, drink, price, time, OrderStatus.Served);
-            }
-            if (status == OrderStatus.Served && ImGui.SmallButton("Clear"))
-            {
-                _orders.RemoveAt(i);
-                ImGui.PopID();
-                break;
-            }
+            if (status == OrderStatus.Pending && ImGui.SmallButton("Making##bt")) _orders[i] = (patron, drink, price, time, OrderStatus.Making);
+            if (status == OrderStatus.Making && ImGui.SmallButton("Served##bt")) _orders[i] = (patron, drink, price, time, OrderStatus.Served);
+            if (status == OrderStatus.Served && ImGui.SmallButton("Clear##bt")) { _orders.RemoveAt(i); ImGui.PopID(); break; }
             ImGui.PopID();
         }
     }
 
+    private void DrawDrinkMenu()
+    {
+        ImGui.Spacing();
+        var drinks = _plugin.Configuration.ServiceMenu.Where(s => s.Category == ServiceCategory.Drink).ToList();
+        if (drinks.Count == 0) { ImGui.TextDisabled("No drinks defined. Add in Owner > Menu Editor."); ImGui.Spacing(); return; }
+        for (int i = 0; i < drinks.Count; i++)
+        {
+            var d = drinks[i];
+            if (ImGui.Selectable($"  {d.Name} \u2014 {d.Price:N0} Gil##btdrink{i}", _selectedDrinkIndex == i))
+                _selectedDrinkIndex = i;
+            if (ImGui.IsItemHovered() && !string.IsNullOrEmpty(d.Description)) ImGui.SetTooltip(d.Description);
+        }
+        if (_selectedDrinkIndex >= 0 && _selectedDrinkIndex < drinks.Count)
+        {
+            if (ImGui.Button("Paste to Chat##BT")) Svc.Commands.ProcessCommand($"/say {drinks[_selectedDrinkIndex].Name} \u2014 {drinks[_selectedDrinkIndex].Description}");
+        }
+        ImGui.Spacing();
+    }
+
     private void DrawTabSystem()
     {
-        ImGui.Text("Open Tabs");
-        if (_tabs.Count == 0)
-        {
-            ImGui.TextDisabled("No open tabs.");
-            return;
-        }
-
+        ImGui.Spacing();
+        if (_tabs.Count == 0) { ImGui.TextDisabled("No open tabs."); ImGui.Spacing(); return; }
         foreach (var (patron, total) in _tabs.ToList())
         {
             ImGui.Text($"{patron}: {total:N0} Gil");
@@ -210,12 +241,10 @@ public class BartenderPanel : IToolboxPanel
             if (ImGui.SmallButton($"Close Tab##{patron}"))
             {
                 _pendingCloseTab = patron;
-                ImGui.OpenPopup("ConfirmCloseTab##BA");
+                ImGui.OpenPopup("ConfirmCloseTab##BT");
             }
         }
-
-        // Confirmation modal
-        if (ImGui.BeginPopupModal("ConfirmCloseTab##BA", ImGuiWindowFlags.AlwaysAutoResize))
+        if (ImGui.BeginPopupModal("ConfirmCloseTab##BT", ImGuiWindowFlags.AlwaysAutoResize))
         {
             if (_pendingCloseTab != null && _tabs.TryGetValue(_pendingCloseTab, out var pendingTotal))
             {
@@ -223,68 +252,37 @@ public class BartenderPanel : IToolboxPanel
                 ImGui.Spacing();
                 if (ImGui.Button("Yes, Close", new Vector2(100, 0)))
                 {
-                    _plugin.Configuration.Earnings.Add(new EarningsEntry
-                    {
-                        Role = StaffRole.Bartender,
-                        Type = EarningsType.Drink,
-                        PatronName = _pendingCloseTab,
-                        Description = "Tab close",
-                        Amount = pendingTotal,
-                    });
+                    _plugin.Configuration.Earnings.Add(new EarningsEntry { Role = StaffRole.Bartender, Type = EarningsType.Drink, PatronName = _pendingCloseTab, Description = "Tab close", Amount = pendingTotal });
                     _plugin.Configuration.Save();
                     _tabs.Remove(_pendingCloseTab);
                     _pendingCloseTab = null;
                     ImGui.CloseCurrentPopup();
                 }
                 ImGui.SameLine();
-                if (ImGui.Button("Cancel", new Vector2(80, 0)))
-                {
-                    _pendingCloseTab = null;
-                    ImGui.CloseCurrentPopup();
-                }
+                if (ImGui.Button("Cancel", new Vector2(80, 0))) { _pendingCloseTab = null; ImGui.CloseCurrentPopup(); }
             }
-            else
-            {
-                _pendingCloseTab = null;
-                ImGui.CloseCurrentPopup();
-            }
+            else { _pendingCloseTab = null; ImGui.CloseCurrentPopup(); }
             ImGui.EndPopup();
         }
+        ImGui.Spacing();
     }
 
-    private void DrawRPMacros()
+    private void DrawRPMacroButtons()
     {
-        ImGui.Text("RP Emote Macros");
+        ImGui.Spacing();
         var macros = _plugin.Configuration.BartenderMacros;
-
+        if (macros.Count == 0) { ImGui.TextDisabled("No macros. Add them in Settings."); ImGui.Spacing(); return; }
         foreach (var m in macros)
         {
-            if (ImGui.Button($"{m.Title}##{m.Title}"))
+            if (ImGui.Button($"{m.Title}##BTbtn{m.Title}"))
             {
                 var patron = _orders.Count > 0 ? _orders[0].Patron : Svc.Targets.Target?.Name.ToString() ?? "";
                 var drink = _orders.Count > 0 ? _orders[0].Drink : "a drink";
-                var msg = m.Text.Replace("{patron}", patron).Replace("{drink}", drink);
-                Svc.Commands.ProcessCommand($"/em {msg}");
+                Svc.Commands.ProcessCommand($"/em {m.Text.Replace("{patron}", patron).Replace("{drink}", drink)}");
             }
             ImGui.SameLine();
             ImGui.TextDisabled(m.Text.Length > 35 ? m.Text[..35] + "..." : m.Text);
         }
-
-        ImGui.SetNextItemWidth(80);
-        ImGui.InputTextWithHint("##BT", "Title", ref _newMacroTitle, 50);
-        ImGui.SameLine();
-        ImGui.SetNextItemWidth(200);
-        ImGui.InputTextWithHint("##BM", "{patron} {drink}", ref _newMacroText, 200);
-        ImGui.SameLine();
-        if (ImGui.Button("+##AddBM"))
-        {
-            if (!string.IsNullOrWhiteSpace(_newMacroTitle))
-            {
-                macros.Add(new MacroTemplate { Title = _newMacroTitle, Text = _newMacroText });
-                _plugin.Configuration.Save();
-                _newMacroTitle = string.Empty;
-                _newMacroText = string.Empty;
-            }
-        }
+        ImGui.Spacing();
     }
 }

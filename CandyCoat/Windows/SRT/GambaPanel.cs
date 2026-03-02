@@ -18,9 +18,6 @@ public class GambaPanel : IToolboxPanel, IDisposable
     public string Name => "Gamba";
     public StaffRole Role => StaffRole.Gamba;
 
-    // Matches "/random" and "/dice" roll output:
-    // "Firstname Lastname rolls a 438 on the 1000-sided die."
-    // "You roll a 438 on the 1000-sided die."
     private static readonly Regex RollRegex = new(
         @"^(.+?)\s+rolls?\s+a\s+(\d+)\s+on\s+the",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -34,17 +31,19 @@ public class GambaPanel : IToolboxPanel, IDisposable
     private string _newPlayerName = string.Empty;
     private int _newPlayerBet = 50000;
     private int _manualRoll = 0;
-
-    // Bank
     private int _bankIn = 0;
     private int _bankOut = 0;
 
-    // Preset editor
+    // Settings input
     private string _newPresetName = string.Empty;
     private string _newPresetRules = string.Empty;
     private string _newPresetAnnounce = string.Empty;
 
     private readonly StaffPingWidget _pingWidget;
+
+    private static readonly Vector4 CardBg = new(0.16f, 0.12f, 0.20f, 1f);
+    private static readonly Vector4 HeaderBg = new(0.22f, 0.16f, 0.28f, 1f);
+    private static readonly Vector4 HeaderHover = new(0.30f, 0.22f, 0.36f, 1f);
 
     public GambaPanel(Plugin plugin)
     {
@@ -64,116 +63,156 @@ public class GambaPanel : IToolboxPanel, IDisposable
         var match = RollRegex.Match(text);
         if (!match.Success) return;
         if (!int.TryParse(match.Groups[2].Value, out var roll)) return;
-
-        // Try to match roller to a registered player by name
         var rollerRaw = match.Groups[1].Value;
-        var player = _players.FirstOrDefault(
-            p => rollerRaw.Contains(p.Name, StringComparison.OrdinalIgnoreCase));
-
-        _rollHistory.Add(new GambaRollEntry
-        {
-            PlayerName = player?.Name ?? rollerRaw,
-            Roll = roll,
-        });
+        var player = _players.FirstOrDefault(p => rollerRaw.Contains(p.Name, StringComparison.OrdinalIgnoreCase));
+        _rollHistory.Add(new GambaRollEntry { PlayerName = player?.Name ?? rollerRaw, Roll = roll });
     }
+
+    // ─── Features ────────────────────────────────────────────────────────────
 
     public void DrawContent()
     {
-        ImGui.TextColored(StyleManager.SectionHeader, "🎲 Gamba Toolbox");
-        ImGui.Separator();
+        // Tier 1 — Active game round (fixed ~160px)
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, CardBg);
+        using (var tier1 = ImRaii.Child("##GBTier1", new Vector2(0, 160f), true))
+        {
+            ImGui.PopStyleColor();
+            if (tier1) DrawGameRound();
+        }
+
         ImGui.Spacing();
 
-        DrawGameSelector();
-        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
-        DrawPlayerBets();
-        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
-        DrawRolls();
-        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
-        DrawPayoutCalculator();
-        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
-        DrawHouseBank();
-        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
-        DrawAnnounceMacros();
-        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
-        _pingWidget.Draw();
+        ImGui.PushStyleColor(ImGuiCol.Header, HeaderBg);
+        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, HeaderHover);
+
+        if (ImGui.CollapsingHeader("Roll Tracker##GB", ImGuiTreeNodeFlags.DefaultOpen))
+            DrawRolls();
+
+        if (ImGui.CollapsingHeader("Payout Calculator##GB", ImGuiTreeNodeFlags.DefaultOpen))
+            DrawPayoutCalculator();
+
+        if (ImGui.CollapsingHeader("House Bank##GB"))
+            DrawHouseBank();
+
+        if (ImGui.CollapsingHeader("Announce##GB"))
+            DrawAnnounceMacros();
+
+        if (ImGui.CollapsingHeader("Staff Ping##GB"))
+            _pingWidget.Draw();
+
+        ImGui.PopStyleColor(2);
     }
 
-    private void DrawGameSelector()
+    // ─── Settings ────────────────────────────────────────────────────────────
+
+    public void DrawSettings()
     {
-        ImGui.Text("Game Select");
+        ImGui.TextColored(StyleManager.SectionHeader, "\ud83c\udfb2 Gamba Settings");
+        ImGui.TextDisabled("Manage your game presets.");
+        ImGui.Spacing();
+
         var presets = _plugin.Configuration.GambaPresets;
 
-        if (presets.Count == 0)
+        // Card: Preset Manager
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, CardBg);
+        using (var card = ImRaii.Child("##GBPresetCard", new Vector2(0, 260f), true))
         {
-            ImGui.TextDisabled("No game presets. Add below or in Owner panel.");
+            ImGui.PopStyleColor();
+            if (!card) return;
 
-            // Inline add
-            ImGui.SetNextItemWidth(100);
-            ImGui.InputTextWithHint("##gpn", "Name", ref _newPresetName, 50);
+            ImGui.TextColored(StyleManager.SectionHeader, "Game Preset Manager");
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            using (var scroll = ImRaii.Child("##GBPresetList", new Vector2(0, 120f), false))
+            {
+                for (int i = 0; i < presets.Count; i++)
+                {
+                    ImGui.PushID($"gbp{i}");
+                    ImGui.Text(presets[i].Name);
+                    ImGui.SameLine();
+                    ImGui.TextDisabled($"x{presets[i].DefaultMultiplier:F1}");
+                    ImGui.SameLine();
+                    if (ImGui.SmallButton("Del##gbpd"))
+                    {
+                        presets.RemoveAt(i);
+                        _plugin.Configuration.Save();
+                        if (_selectedPresetIndex >= presets.Count) _selectedPresetIndex = System.Math.Max(0, presets.Count - 1);
+                        ImGui.PopID();
+                        break;
+                    }
+                    ImGui.PopID();
+                }
+                if (presets.Count == 0) ImGui.TextDisabled("No presets yet.");
+            }
+
+            ImGui.Spacing();
+            ImGui.SetNextItemWidth(120);
+            ImGui.InputTextWithHint("##GBPresetN", "Preset Name", ref _newPresetName, 50);
             ImGui.SameLine();
-            if (ImGui.Button("+ Add Preset"))
+            ImGui.SetNextItemWidth(150);
+            ImGui.InputTextWithHint("##GBPresetA", "Announce macro...", ref _newPresetAnnounce, 200);
+            ImGui.SameLine();
+            if (ImGui.Button("+##GBAddPreset"))
             {
                 if (!string.IsNullOrWhiteSpace(_newPresetName))
                 {
-                    presets.Add(new GambaGamePreset
-                    {
-                        Name = _newPresetName,
-                        Rules = "Set rules here...",
-                        AnnounceMacro = $"🎲 {_newPresetName} starting! /tell me to join!",
-                        DefaultMultiplier = 2.0f,
-                    });
+                    presets.Add(new GambaGamePreset { Name = _newPresetName, Rules = "Set rules here...", AnnounceMacro = string.IsNullOrWhiteSpace(_newPresetAnnounce) ? $"\ud83c\udfb2 {_newPresetName} starting! /tell me to join!" : _newPresetAnnounce, DefaultMultiplier = 2.0f });
                     _plugin.Configuration.Save();
                     _newPresetName = string.Empty;
+                    _newPresetAnnounce = string.Empty;
                 }
             }
-            return;
-        }
 
-        var names = presets.Select(p => p.Name).ToArray();
-        ImGui.SetNextItemWidth(200);
-        ImGui.Combo("##GamePreset", ref _selectedPresetIndex, names, names.Length);
-
-        if (_selectedPresetIndex >= 0 && _selectedPresetIndex < presets.Count)
-        {
-            var preset = presets[_selectedPresetIndex];
-            ImGui.TextDisabled($"Multiplier: {preset.DefaultMultiplier}x");
-
-            if (ImGui.TreeNode("Rules"))
+            if (presets.Count > 0 && _selectedPresetIndex >= 0 && _selectedPresetIndex < presets.Count)
             {
-                ImGui.TextWrapped(preset.Rules);
-                if (ImGui.Button("Paste Rules to /say"))
+                ImGui.Spacing();
+                ImGui.TextDisabled("Edit Rules for selected preset:");
+                var rules = presets[_selectedPresetIndex].Rules;
+                if (ImGui.InputTextMultiline("##GBRules", ref rules, 500, new Vector2(-1, 50)))
                 {
-                    // Split long rules into lines
-                    foreach (var line in preset.Rules.Split('\n'))
-                    {
-                        if (!string.IsNullOrWhiteSpace(line))
-                            Svc.Commands.ProcessCommand($"/say {line.Trim()}");
-                    }
+                    presets[_selectedPresetIndex].Rules = rules;
+                    _plugin.Configuration.Save();
                 }
-                ImGui.TreePop();
             }
         }
     }
 
-    private void DrawPlayerBets()
+    // ─── Private Draw Helpers ────────────────────────────────────────────────
+
+    private void DrawGameRound()
     {
-        ImGui.Text("Player Bets");
+        // Game selector
+        var presets = _plugin.Configuration.GambaPresets;
+        if (presets.Count > 0)
+        {
+            var names = presets.Select(p => p.Name).ToArray();
+            ImGui.SetNextItemWidth(180);
+            ImGui.Combo("##GBPreset", ref _selectedPresetIndex, names, names.Length);
+            if (_selectedPresetIndex >= 0 && _selectedPresetIndex < presets.Count)
+                ImGui.TextDisabled($"Multiplier: {presets[_selectedPresetIndex].DefaultMultiplier}x");
+        }
+        else
+        {
+            ImGui.TextDisabled("No presets. Add in Settings.");
+        }
+
         ImGui.Spacing();
 
-        // Add player
-        if (ImGui.Button("Add Target##GP"))
+        // Player registration
+        if (ImGui.Button("Add Target##GB"))
         {
             var t = Svc.Targets.Target;
             if (t != null) _newPlayerName = t.Name.ToString();
         }
         ImGui.SameLine();
-        ImGui.SetNextItemWidth(130);
-        ImGui.InputTextWithHint("##PlayerName", "Name", ref _newPlayerName, 100);
+        ImGui.SetNextItemWidth(120);
+        ImGui.InputTextWithHint("##GBPlayerName", "Name", ref _newPlayerName, 100);
         ImGui.SameLine();
-        ImGui.SetNextItemWidth(100);
-        ImGui.InputInt("##Bet", ref _newPlayerBet, 10000);
+        ImGui.SetNextItemWidth(90);
+        ImGui.InputInt("##GBBet", ref _newPlayerBet, 10000);
         ImGui.SameLine();
-        if (ImGui.Button("Add"))
+        if (ImGui.Button("Add##GBPlayer"))
         {
             if (!string.IsNullOrWhiteSpace(_newPlayerName) && _newPlayerBet > 0)
             {
@@ -183,143 +222,82 @@ public class GambaPanel : IToolboxPanel, IDisposable
             }
         }
 
-        if (_players.Count == 0)
+        if (_players.Count > 0)
         {
-            ImGui.TextDisabled("No players.");
-            return;
-        }
-
-        if (ImGui.BeginTable("##BetTable", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
-        {
-            ImGui.TableSetupColumn("Player", ImGuiTableColumnFlags.WidthStretch);
-            ImGui.TableSetupColumn("Bet", ImGuiTableColumnFlags.WidthFixed, 100);
-            ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, 30);
-            ImGui.TableHeadersRow();
-
-            for (int i = 0; i < _players.Count; i++)
-            {
-                ImGui.TableNextRow();
-                ImGui.TableNextColumn(); ImGui.Text(_players[i].Name);
-                ImGui.TableNextColumn(); ImGui.Text($"{_players[i].Bet:N0}");
-                ImGui.TableNextColumn();
-                if (ImGui.SmallButton($"X##{i}"))
-                {
-                    _bankIn -= _players[i].Bet;
-                    _players.RemoveAt(i);
-                    break;
-                }
-            }
-            ImGui.EndTable();
+            ImGui.TextDisabled($"{_players.Count} players | Pool: {_bankIn:N0} Gil");
+            if (ImGui.SmallButton("Clear All##GB")) { _players.Clear(); _rollHistory.Clear(); }
         }
     }
 
     private void DrawRolls()
     {
-        ImGui.Text("Rolls");
+        ImGui.Spacing();
+        ImGui.TextColored(StyleManager.SyncOk, "\u25cf Auto-capture active");
         ImGui.SameLine();
-        ImGui.TextColored(StyleManager.SyncOk, "● Auto-capture active");
-        if (ImGui.Button("/random"))
-            Svc.Commands.ProcessCommand("/random");
+        if (ImGui.Button("/random##GB")) Svc.Commands.ProcessCommand("/random");
         ImGui.SameLine();
-        if (ImGui.Button("/dice"))
-            Svc.Commands.ProcessCommand("/dice");
+        if (ImGui.Button("/dice##GB")) Svc.Commands.ProcessCommand("/dice");
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(70);
+        ImGui.InputInt("##GBManRoll", ref _manualRoll);
+        ImGui.SameLine();
+        if (ImGui.Button("Log##GBManLog")) { _rollHistory.Add(new GambaRollEntry { PlayerName = _players.Count > 0 ? _players[0].Name : "?", Roll = _manualRoll }); }
 
-        ImGui.SameLine();
-        ImGui.SetNextItemWidth(80);
-        ImGui.InputInt("##ManRoll", ref _manualRoll);
-        ImGui.SameLine();
-        if (ImGui.Button("Log Roll"))
-        {
-            _rollHistory.Add(new GambaRollEntry
-            {
-                PlayerName = _players.Count > 0 ? _players[0].Name : "?",
-                Roll = _manualRoll,
-            });
-        }
-
-        // History
         if (_rollHistory.Count > 0)
         {
-            ImGui.TextDisabled("Roll History:");
-            using var rollScroll = ImRaii.Child("RollHistory", new Vector2(0, 100), true);
+            using var rollScroll = ImRaii.Child("GBRollHistory", new Vector2(0, 90), true);
             foreach (var r in _rollHistory.AsEnumerable().Reverse().Take(10))
-            {
                 ImGui.BulletText($"{r.PlayerName}: {r.Roll} ({r.Timestamp:HH:mm:ss})");
-            }
         }
+        ImGui.Spacing();
     }
 
     private void DrawPayoutCalculator()
     {
-        ImGui.Text("Payout Calculator");
+        ImGui.Spacing();
         var presets = _plugin.Configuration.GambaPresets;
         bool hasPreset = _selectedPresetIndex >= 0 && _selectedPresetIndex < presets.Count;
         float mult = hasPreset ? presets[_selectedPresetIndex].DefaultMultiplier : 2.0f;
-
-        if (ImGui.SliderFloat("Multiplier##Calc", ref mult, 1.0f, 10.0f, "%.1fx") && hasPreset)
+        if (ImGui.SliderFloat("Multiplier##GBCalc", ref mult, 1.0f, 10.0f, "%.1fx") && hasPreset)
         {
             presets[_selectedPresetIndex].DefaultMultiplier = mult;
             _plugin.Configuration.Save();
         }
-
         foreach (var p in _players)
+            ImGui.Text($"{p.Name}: {p.Bet:N0} \u00d7 {mult:F1} = {(int)(p.Bet * mult):N0} Gil");
+        if (_players.Count > 0 && ImGui.Button("Pay Winner (Log)##GB"))
         {
-            var payout = (int)(p.Bet * mult);
-            ImGui.Text($"{p.Name}: {p.Bet:N0} × {mult:F1} = {payout:N0} Gil");
-        }
-
-        if (_players.Count > 0 && ImGui.Button("Pay Winner (Log)"))
-        {
-            var winner = _players[0]; // Player picks who won
+            var winner = _players[0];
             var payout = (int)(winner.Bet * mult);
             _bankOut += payout;
-            _plugin.Configuration.Earnings.Add(new EarningsEntry
-            {
-                Role = StaffRole.Gamba,
-                Type = EarningsType.GamePayout,
-                PatronName = winner.Name,
-                Description = $"Payout ({mult:F1}x)",
-                Amount = -payout, // Negative = house pays out
-            });
+            _plugin.Configuration.Earnings.Add(new EarningsEntry { Role = StaffRole.Gamba, Type = EarningsType.GamePayout, PatronName = winner.Name, Description = $"Payout ({mult:F1}x)", Amount = -payout });
             _plugin.Configuration.Save();
         }
+        ImGui.Spacing();
     }
 
     private void DrawHouseBank()
     {
-        ImGui.Text("House Bank");
+        ImGui.Spacing();
         var net = _bankIn - _bankOut;
         var color = net >= 0 ? StyleManager.SyncOk : StyleManager.SyncError;
-
         ImGui.Text($"Bets In:     {_bankIn:N0} Gil");
         ImGui.Text($"Payouts Out: {_bankOut:N0} Gil");
         ImGui.TextColored(color, $"Net P/L:     {net:N0} Gil");
-
-        if (ImGui.Button("Reset Bank"))
-        {
-            _bankIn = 0;
-            _bankOut = 0;
-        }
+        if (ImGui.Button("Reset Bank##GB")) { _bankIn = 0; _bankOut = 0; }
+        ImGui.Spacing();
     }
 
     private void DrawAnnounceMacros()
     {
-        ImGui.Text("Announce");
+        ImGui.Spacing();
         var presets = _plugin.Configuration.GambaPresets;
         if (_selectedPresetIndex >= 0 && _selectedPresetIndex < presets.Count)
         {
             var p = presets[_selectedPresetIndex];
-            if (ImGui.Button("Shout Announce"))
-                Svc.Commands.ProcessCommand($"/shout {p.AnnounceMacro}");
+            if (ImGui.Button("Shout Announce##GB")) Svc.Commands.ProcessCommand($"/shout {p.AnnounceMacro}");
+            if (ImGui.TreeNode("Rules Preview##GB")) { ImGui.TextWrapped(p.Rules); if (ImGui.Button("Paste Rules##GB")) { foreach (var line in p.Rules.Split('\n')) { if (!string.IsNullOrWhiteSpace(line)) Svc.Commands.ProcessCommand($"/say {line.Trim()}"); } } ImGui.TreePop(); }
         }
-
-        if (_players.Count > 0)
-        {
-            if (ImGui.Button("Clear All Players"))
-            {
-                _players.Clear();
-                _rollHistory.Clear();
-            }
-        }
+        ImGui.Spacing();
     }
 }

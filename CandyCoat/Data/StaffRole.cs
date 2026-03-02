@@ -13,4 +13,5 @@ public enum StaffRole
     DJ          = 1 << 4,  // Music / performance
     Management  = 1 << 5,  // Staff oversight
     Owner       = 1 << 6,  // Venue-wide admin
+    Greeter     = 1 << 7,  // Door-facing, first contact, welcome/queue management
 }

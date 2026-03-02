@@ -71,6 +71,15 @@ public class Configuration : IPluginConfiguration
     public int AlertCooldownMinutes { get; set; } = 30;
     public int AlertDismissSeconds { get; set; } = 8;
 
+    // SRT layout preference
+    public bool SrtFeatureAttached { get; set; } = false;
+
+    // Greeter role data
+    public List<MacroTemplate> GreeterWelcomeMacros { get; set; } = new();
+    public List<GreeterBroadcast> GreeterBroadcasts { get; set; } = new();
+    public bool GreeterAutoAddTargetOnOpen { get; set; } = false;
+    public bool GreeterShowTierBadge { get; set; } = true;
+
     // Sync API settings
     public string ApiUrl { get; set; } = string.Empty;
     public string VenueKey { get; set; } = string.Empty;

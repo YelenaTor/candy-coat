@@ -17,7 +17,6 @@ public class ManagementPanel : IToolboxPanel
     public string Name => "Management";
     public StaffRole Role => StaffRole.Management;
 
-    // Incident log
     public enum Severity { Info, Warning, Critical }
     private readonly List<(DateTime Time, Severity Level, string Patron, string Note)> _incidents = new();
     private string _incidentNote = string.Empty;
@@ -25,20 +24,16 @@ public class ManagementPanel : IToolboxPanel
     private int _incidentSeverity = 0;
     private static readonly string[] SeverityLabels = { "Info", "Warning", "Critical" };
 
-    // Staff roster (local config)
-    private string _newStaffName = string.Empty;
-    private static readonly string[] RoleLabels;
-
-    // Patron flagging
     private string _flagPatron = string.Empty;
     private string _flagNote = string.Empty;
 
-    static ManagementPanel()
-    {
-        RoleLabels = Enum.GetValues<StaffRole>().Where(r => r != StaffRole.None).Select(r => r.ToString()).ToArray();
-    }
+    // Settings state
+    private int _capacityWarning = 48;
+    private bool _capacityInit = false;
 
     private readonly StaffPingWidget _pingWidget;
+
+    private static readonly Vector4 CardBg = new(0.16f, 0.12f, 0.20f, 1f);
 
     public ManagementPanel(Plugin plugin)
     {
@@ -46,60 +41,87 @@ public class ManagementPanel : IToolboxPanel
         _pingWidget = new StaffPingWidget(plugin);
     }
 
+    // ─── Features ────────────────────────────────────────────────────────────
+
     public void DrawContent()
     {
-        ImGui.TextColored(StyleManager.SectionHeader, "📋 Management Toolbox");
-        ImGui.Separator();
+        // Inner tab bar as per plan
+        using var innerTabs = ImRaii.TabBar("##MgmtTabs", ImGuiTabBarFlags.FittingPolicyResizeDown);
+        if (!innerTabs) return;
+
+        if (ImGui.BeginTabItem("Floor##Mgmt"))
+        {
+            DrawLiveFloorBoard();
+            DrawCapacity();
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Incidents##Mgmt"))
+        {
+            DrawIncidentLog();
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Patrons##Mgmt"))
+        {
+            DrawPatronFlagging();
+            ImGui.Spacing();
+            DrawPatronNotes();
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Shift##Mgmt"))
+        {
+            DrawShiftOverview();
+            ImGui.Spacing();
+            _pingWidget.Draw();
+            ImGui.EndTabItem();
+        }
+    }
+
+    // ─── Settings ────────────────────────────────────────────────────────────
+
+    public void DrawSettings()
+    {
+        ImGui.TextColored(StyleManager.SectionHeader, "\ud83d\udccb Management Settings");
+        ImGui.TextDisabled("Configure capacity thresholds and roster defaults.");
         ImGui.Spacing();
 
-        DrawLiveFloorBoard();
-        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
-        DrawShiftOverview();
-        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
-        DrawRoomStatusBoard();
-        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
-        DrawIncidentLog();
-        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
-        DrawPatronFlagging();
-        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
-        DrawPatronNotes();
-        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
-        DrawCapacity();
-        ImGui.Spacing(); ImGui.Separator(); ImGui.Spacing();
-        _pingWidget.Draw();
+        // Card: Capacity Thresholds
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, CardBg);
+        using (var card = ImRaii.Child("##MgmtCapCard", new Vector2(0, 100f), true))
+        {
+            ImGui.PopStyleColor();
+            if (!card) return;
+
+            if (!_capacityInit) { _capacityWarning = 48; _capacityInit = true; }
+
+            ImGui.TextColored(StyleManager.SectionHeader, "Capacity Thresholds");
+            ImGui.Separator();
+            ImGui.Spacing();
+            ImGui.SetNextItemWidth(80);
+            ImGui.InputInt("Near-capacity warning at##Mgmt", ref _capacityWarning, 1);
+            if (_capacityWarning < 1) _capacityWarning = 1;
+            ImGui.TextDisabled("Players nearby before showing capacity alert.");
+        }
     }
+
+    // ─── Private Draw Helpers ────────────────────────────────────────────────
 
     private void DrawLiveFloorBoard()
     {
-        ImGui.TextColored(StyleManager.SectionHeader, "Live Floor Board");
         ImGui.Spacing();
-
         var nearbyCount = _plugin.LocatorService.GetNearbyCount();
-        ImGui.Text($"Nearby Players: ");
+        ImGui.Text("Nearby Players: ");
         ImGui.SameLine();
-        var capacityColor = nearbyCount > 48
-            ? new Vector4(1f, 0.8f, 0.2f, 1f)
-            : StyleManager.SyncOk;
+        var capacityColor = nearbyCount > _capacityWarning ? new Vector4(1f, 0.8f, 0.2f, 1f) : StyleManager.SyncOk;
         ImGui.TextColored(capacityColor, $"{nearbyCount}");
-        if (nearbyCount > 48)
-        {
-            ImGui.SameLine();
-            ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "  ⚠ Near capacity");
-        }
-
+        if (nearbyCount > _capacityWarning) { ImGui.SameLine(); ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "  \u26a0 Near capacity"); }
         ImGui.Spacing();
 
         var rooms = _plugin.Configuration.Rooms;
         var onlineStaff = _plugin.SyncService.OnlineStaff;
 
-        if (rooms.Count == 0)
-        {
-            ImGui.TextDisabled("No rooms configured. Add rooms in Owner > Room Editor.");
-            return;
-        }
+        if (rooms.Count == 0) { ImGui.TextDisabled("No rooms configured. Add rooms in Owner > Room Editor."); return; }
 
-        using var table = ImRaii.Table("##FloorBoard", 5,
-            ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingFixedFit);
+        using var table = ImRaii.Table("##FloorBoard", 5, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingFixedFit);
         if (!table) return;
 
         ImGui.TableSetupColumn("Room",   ImGuiTableColumnFlags.WidthStretch);
@@ -113,7 +135,6 @@ public class ManagementPanel : IToolboxPanel
         {
             ImGui.TableNextRow();
             ImGui.TableNextColumn(); ImGui.Text(room.Name);
-
             ImGui.TableNextColumn();
             var statusColor = room.Status switch
             {
@@ -124,8 +145,6 @@ public class ManagementPanel : IToolboxPanel
                 _                      => Vector4.One,
             };
             ImGui.TextColored(statusColor, room.Status.ToString());
-
-            // Staff in room — match from synced staff or local character
             ImGui.TableNextColumn();
             if (!string.IsNullOrEmpty(room.OccupiedBy))
             {
@@ -133,124 +152,70 @@ public class ManagementPanel : IToolboxPanel
                 var roleStr = staffRecord != null ? $" [{staffRecord.Role}]" : string.Empty;
                 ImGui.Text($"{room.OccupiedBy}{roleStr}");
             }
-            else
-            {
-                ImGui.TextDisabled("—");
-            }
-
+            else { ImGui.TextDisabled("\u2014"); }
             ImGui.TableNextColumn();
-            ImGui.Text(string.IsNullOrEmpty(room.PatronName) ? "—" : room.PatronName);
-
-            // Timer since occupied
+            ImGui.Text(string.IsNullOrEmpty(room.PatronName) ? "\u2014" : room.PatronName);
             ImGui.TableNextColumn();
             if (room.Status == RoomStatus.Occupied && room.OccupiedSince.HasValue)
             {
                 var elapsed = DateTime.Now - room.OccupiedSince.Value;
-                ImGui.TextColored(
-                    elapsed.TotalMinutes > 60 ? new Vector4(1f, 0.8f, 0.2f, 1f) : new Vector4(0.8f, 0.8f, 0.8f, 1f),
-                    $"{(int)elapsed.TotalMinutes:D2}:{elapsed.Seconds:D2}");
+                ImGui.TextColored(elapsed.TotalMinutes > 60 ? new Vector4(1f, 0.8f, 0.2f, 1f) : new Vector4(0.8f, 0.8f, 0.8f, 1f), $"{(int)elapsed.TotalMinutes:D2}:{elapsed.Seconds:D2}");
             }
-            else
-            {
-                ImGui.TextDisabled("—");
-            }
+            else { ImGui.TextDisabled("\u2014"); }
         }
 
-        // Staff not in any room
         ImGui.Spacing();
-        var assignedNames = rooms.Where(r => !string.IsNullOrEmpty(r.OccupiedBy))
-                                  .Select(r => r.OccupiedBy).ToHashSet();
+        var assignedNames = rooms.Where(r => !string.IsNullOrEmpty(r.OccupiedBy)).Select(r => r.OccupiedBy).ToHashSet();
         var unassigned = onlineStaff.Where(s => !assignedNames.Contains(s.CharacterName)).ToList();
         if (unassigned.Count > 0)
         {
             ImGui.TextDisabled($"Unassigned online staff ({unassigned.Count}):");
-            foreach (var s in unassigned)
-            {
-                var dnd = s.IsDnd ? " [DND]" : string.Empty;
-                ImGui.BulletText($"{s.CharacterName} [{s.Role}]{dnd}");
-            }
+            foreach (var s in unassigned) ImGui.BulletText($"{s.CharacterName} [{s.Role}]{(s.IsDnd ? " [DND]" : "")}");
         }
+    }
+
+    private void DrawCapacity()
+    {
+        ImGui.Spacing();
+        var nearbyCount = _plugin.LocatorService.GetNearbyCount();
+        if (nearbyCount > _capacityWarning) ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "\u26a0 Venue is near capacity.");
+        ImGui.TextDisabled("Avoid using in heavily populated areas outside the venue.");
     }
 
     private void DrawShiftOverview()
     {
-        ImGui.Text("Shift Overview");
+        ImGui.Spacing();
         var shiftManager = _plugin.ShiftManager;
         if (shiftManager.CurrentShift != null)
         {
             var d = shiftManager.CurrentShift.Duration;
-            ImGui.TextColored(StyleManager.SyncOk,
-                $"You: Clocked In — {d.Hours:D2}:{d.Minutes:D2}:{d.Seconds:D2}");
+            ImGui.TextColored(StyleManager.SyncOk, $"You: Clocked In \u2014 {d.Hours:D2}:{d.Minutes:D2}:{d.Seconds:D2}");
             ImGui.Text($"Earnings this shift: {shiftManager.CurrentShift.GilEarned:N0} Gil");
         }
         else
         {
             ImGui.TextDisabled("You: Clocked Out");
         }
-
         ImGui.Spacing();
         if (_plugin.SyncService.IsConnected)
-            ImGui.TextColored(StyleManager.SyncOk, "🟢 Staff roster synced.");
+            ImGui.TextColored(StyleManager.SyncOk, "\ud83d\udfe2 Staff roster synced.");
         else
-            ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ Staff roster is local-only. Enable sync in Settings.");
-    }
-
-    private void DrawRoomStatusBoard()
-    {
-        ImGui.Text("Room Status Board");
-        var rooms = _plugin.Configuration.Rooms;
-        if (rooms.Count == 0)
-        {
-            ImGui.TextDisabled("No rooms defined. Set up in Owner > Room Editor.");
-            if (_plugin.SyncService.IsConnected)
-                ImGui.TextColored(StyleManager.SyncOk, "🟢 Room status synced.");
-            else
-                ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ Room status is local-only. Enable sync in Settings.");
-            return;
-        }
-
-        using var table = ImRaii.Table("##RoomBoard", 4, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg);
-        if (!table) return;
-
-        ImGui.TableSetupColumn("Room", ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.WidthFixed, 80);
-        ImGui.TableSetupColumn("Staff", ImGuiTableColumnFlags.WidthFixed, 120);
-        ImGui.TableSetupColumn("Patron", ImGuiTableColumnFlags.WidthFixed, 120);
-        ImGui.TableHeadersRow();
-
-        foreach (var room in rooms)
-        {
-            ImGui.TableNextRow();
-            ImGui.TableNextColumn(); ImGui.Text(room.Name);
-            ImGui.TableNextColumn();
-            var color = room.Status switch
-            {
-                RoomStatus.Available => StyleManager.SyncOk,
-                RoomStatus.Occupied  => new Vector4(1f, 0.4f, 0.4f, 1f),
-                RoomStatus.Reserved  => new Vector4(1f, 0.8f, 0.2f, 1f),
-                _                    => new Vector4(0.5f, 0.5f, 0.5f, 1f),
-            };
-            ImGui.TextColored(color, room.Status.ToString());
-            ImGui.TableNextColumn(); ImGui.Text(room.OccupiedBy);
-            ImGui.TableNextColumn(); ImGui.Text(room.PatronName);
-        }
+            ImGui.TextColored(StyleManager.SyncWarn, "\u26a0 Staff roster is local-only.");
     }
 
     private void DrawIncidentLog()
     {
-        ImGui.Text("Incident Log");
         ImGui.Spacing();
-
         ImGui.SetNextItemWidth(80);
-        ImGui.Combo("##Sev", ref _incidentSeverity, SeverityLabels, SeverityLabels.Length);
+        ImGui.Combo("##MgmtSev", ref _incidentSeverity, SeverityLabels, SeverityLabels.Length);
         ImGui.SameLine();
         ImGui.SetNextItemWidth(100);
-        ImGui.InputTextWithHint("##IncPatron", "Patron", ref _incidentPatron, 100);
+        ImGui.InputTextWithHint("##MgmtIncPatron", "Patron", ref _incidentPatron, 100);
         ImGui.SameLine();
         ImGui.SetNextItemWidth(-50);
-        ImGui.InputTextWithHint("##IncNote", "What happened...", ref _incidentNote, 500);
+        ImGui.InputTextWithHint("##MgmtIncNote", "What happened...", ref _incidentNote, 500);
         ImGui.SameLine();
-        if (ImGui.Button("Log"))
+        if (ImGui.Button("Log##Mgmt"))
         {
             if (!string.IsNullOrWhiteSpace(_incidentNote))
             {
@@ -259,95 +224,56 @@ public class ManagementPanel : IToolboxPanel
                 _incidentPatron = string.Empty;
             }
         }
+        if (_incidents.Count == 0) { ImGui.TextDisabled("No incidents logged this session."); return; }
 
-        // Display — 3-column table avoids TextWrapped-after-SameLine layout corruption
-        if (_incidents.Count == 0)
-        {
-            ImGui.TextDisabled("No incidents logged this session.");
-            return;
-        }
-
-        using var incTable = ImRaii.Table("##IncidentLog", 3,
-            ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY,
-            new Vector2(0, 160));
+        using var incTable = ImRaii.Table("##IncidentLog", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY, new Vector2(0, 160));
         if (!incTable) return;
-
         ImGui.TableSetupColumn("Time / Severity", ImGuiTableColumnFlags.WidthFixed, 150);
         ImGui.TableSetupColumn("Patron", ImGuiTableColumnFlags.WidthFixed, 100);
         ImGui.TableSetupColumn("Note", ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableHeadersRow();
-
-        for (int i = _incidents.Count - 1; i >= Math.Max(0, _incidents.Count - 15); i--)
+        for (int i = _incidents.Count - 1; i >= System.Math.Max(0, _incidents.Count - 15); i--)
         {
             var (time, sev, patron, note) = _incidents[i];
-            var sevColor = sev switch
-            {
-                Severity.Warning  => new Vector4(1f, 0.8f, 0.2f, 1f),
-                Severity.Critical => new Vector4(1f, 0.3f, 0.3f, 1f),
-                _                 => new Vector4(0.6f, 0.6f, 0.6f, 1f),
-            };
-
+            var sevColor = sev switch { Severity.Warning => new Vector4(1f, 0.8f, 0.2f, 1f), Severity.Critical => new Vector4(1f, 0.3f, 0.3f, 1f), _ => new Vector4(0.6f, 0.6f, 0.6f, 1f) };
             ImGui.TableNextRow();
-            ImGui.TableNextColumn();
-            ImGui.TextColored(sevColor, $"[{time:HH:mm}] [{sev}]");
-            ImGui.TableNextColumn();
-            ImGui.TextUnformatted(patron);
-            ImGui.TableNextColumn();
-            ImGui.TextWrapped(note);
+            ImGui.TableNextColumn(); ImGui.TextColored(sevColor, $"[{time:HH:mm}] [{sev}]");
+            ImGui.TableNextColumn(); ImGui.TextUnformatted(patron);
+            ImGui.TableNextColumn(); ImGui.TextWrapped(note);
         }
     }
 
     private void DrawPatronFlagging()
     {
-        ImGui.Text("Patron Flagging");
+        ImGui.Spacing();
+        ImGui.Text("Flag Patron");
         ImGui.SetNextItemWidth(120);
-        ImGui.InputTextWithHint("##FlagPat", "Patron Name", ref _flagPatron, 100);
+        ImGui.InputTextWithHint("##MgmtFlagPat", "Patron Name", ref _flagPatron, 100);
         ImGui.SameLine();
         ImGui.SetNextItemWidth(-80);
-        ImGui.InputTextWithHint("##FlagNote", "Reason", ref _flagNote, 200);
+        ImGui.InputTextWithHint("##MgmtFlagNote", "Reason", ref _flagNote, 200);
         ImGui.SameLine();
-        if (ImGui.Button("Flag"))
+        if (ImGui.Button("Flag##Mgmt"))
         {
             if (!string.IsNullOrWhiteSpace(_flagPatron))
             {
                 var patron = _plugin.Configuration.Patrons.FirstOrDefault(p => p.Name == _flagPatron);
-                if (patron != null)
-                {
-                    patron.Status = PatronStatus.Warning;
-                    patron.Notes += $"\n[{DateTime.Now:MM/dd HH:mm} FLAGGED] {_flagNote}";
-                }
-                else
-                {
-                    var newPatron = new Patron
-                    {
-                        Name = _flagPatron,
-                        Status = PatronStatus.Warning,
-                        Notes = $"[{DateTime.Now:MM/dd HH:mm} FLAGGED] {_flagNote}",
-                    };
-                    _plugin.Configuration.Patrons.Add(newPatron);
-                }
+                if (patron != null) { patron.Status = PatronStatus.Warning; patron.Notes += $"\n[{DateTime.Now:MM/dd HH:mm} FLAGGED] {_flagNote}"; }
+                else { _plugin.Configuration.Patrons.Add(new Patron { Name = _flagPatron, Status = PatronStatus.Warning, Notes = $"[{DateTime.Now:MM/dd HH:mm} FLAGGED] {_flagNote}" }); }
                 _plugin.Configuration.Save();
                 _flagPatron = string.Empty;
                 _flagNote = string.Empty;
             }
         }
+        ImGui.Spacing();
     }
 
     private void DrawPatronNotes()
     {
-        ImGui.Text("All Patron Notes (Downstream)");
+        ImGui.Text("All Patron Notes");
         ImGui.TextDisabled("Management sees notes from all roles.");
-
-        var recentNotes = _plugin.Configuration.PatronNotes
-            .OrderByDescending(n => n.Timestamp)
-            .Take(15).ToList();
-
-        if (recentNotes.Count == 0)
-        {
-            ImGui.TextDisabled("No patron notes yet.");
-            return;
-        }
-
+        var recentNotes = _plugin.Configuration.PatronNotes.OrderByDescending(n => n.Timestamp).Take(15).ToList();
+        if (recentNotes.Count == 0) { ImGui.TextDisabled("No patron notes yet."); return; }
         foreach (var n in recentNotes)
         {
             ImGui.TextDisabled($"[{n.Timestamp:MM/dd HH:mm}] [{n.AuthorRole}]");
@@ -356,17 +282,5 @@ public class ManagementPanel : IToolboxPanel
             ImGui.SameLine();
             ImGui.TextWrapped(n.Content);
         }
-    }
-
-    private void DrawCapacity()
-    {
-        ImGui.Text("Venue Capacity");
-        var nearbyCount = _plugin.LocatorService.GetNearbyCount();
-        ImGui.Text($"Nearby Players: {nearbyCount}");
-        if (nearbyCount > 48)
-        {
-            ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "⚠ Venue is near capacity.");
-        }
-        ImGui.TextDisabled("Avoid using in heavily populated areas. Scanning many players may impact performance.");
     }
 }

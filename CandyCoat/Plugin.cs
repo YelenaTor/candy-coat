@@ -10,6 +10,7 @@ using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.ClientState.Objects.Enums;
 using System.Linq;
 using CandyCoat.Windows;
+using CandyCoat.Windows.SRT;
 using CandyCoat.Data;
 using CandyCoat.Services;
 using CandyCoat.IPC;
@@ -55,6 +56,7 @@ public sealed class Plugin : IDalamudPlugin
     public ProfileWindow ProfileWindow { get; init; }
     private PatronDetailsWindow PatronDetailsWindow { get; init; }
     private PatronAlertOverlay PatronAlertOverlay { get; init; }
+    private SrtFeatureWindow SrtFeatureWindow { get; init; }
     private ChatTwoIpc ChatTwoIpc { get; init; }
     private NameplateRenderer NameplateRenderer { get; init; }
 
@@ -85,12 +87,14 @@ public sealed class Plugin : IDalamudPlugin
 
         PatronDetailsWindow = new PatronDetailsWindow(this, glamourerIpc);
         ProfileWindow = new ProfileWindow(this);
-        MainWindow = new MainWindow(this, VenueService, WaitlistManager, ShiftManager, PatronDetailsWindow, goatImagePath, CosmeticWindow, ProfileWindow);
+        SrtFeatureWindow = new SrtFeatureWindow(Configuration);
+        MainWindow = new MainWindow(this, VenueService, WaitlistManager, ShiftManager, PatronDetailsWindow, goatImagePath, CosmeticWindow, ProfileWindow, SrtFeatureWindow);
         SessionWindow = new SessionWindow(SessionManager, PluginInterface.ConfigDirectory.FullName);
         PatronAlertOverlay = new PatronAlertOverlay(this, PatronAlertService);
 
         WindowSystem.AddWindow(PatronDetailsWindow);
         WindowSystem.AddWindow(ProfileWindow);
+        WindowSystem.AddWindow(SrtFeatureWindow);
         WindowSystem.AddWindow(MainWindow);
         WindowSystem.AddWindow(SessionWindow);
         WindowSystem.AddWindow(CosmeticWindow);

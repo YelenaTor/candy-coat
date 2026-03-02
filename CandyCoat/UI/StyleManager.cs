@@ -7,12 +7,12 @@ namespace CandyCoat.UI;
 public static class StyleManager
 {
     // A cute, pastel color palette
-    private static readonly Vector4 PastelPink = new(1.0f, 0.7f, 0.75f, 1.0f);
-    private static readonly Vector4 PastelPinkHover = new(1.0f, 0.8f, 0.85f, 1.0f);
-    private static readonly Vector4 PastelPinkActive = new(1.0f, 0.6f, 0.65f, 1.0f);
+    internal static readonly Vector4 PastelPink = new(1.0f, 0.7f, 0.75f, 1.0f);
+    internal static readonly Vector4 PastelPinkHover = new(1.0f, 0.8f, 0.85f, 1.0f);
+    internal static readonly Vector4 PastelPinkActive = new(1.0f, 0.6f, 0.65f, 1.0f);
 
     private static readonly Vector4 PastelBg = new(0.12f, 0.10f, 0.15f, 0.95f); // Dark but soft purple-ish base
-    private static readonly Vector4 PastelText = new(0.95f, 0.90f, 0.95f, 1.0f);
+    internal static readonly Vector4 PastelText = new(0.95f, 0.90f, 0.95f, 1.0f);
 
     // Sidebar-specific
     internal static readonly Vector4 SidebarBg = new(0.08f, 0.07f, 0.11f, 0.95f);
