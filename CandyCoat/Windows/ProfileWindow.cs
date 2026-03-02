@@ -64,7 +64,7 @@ public class ProfileWindow : Window, IDisposable
         // Venue row
         ImGui.TextColored(dimGrey, "Venue");
         ImGui.SameLine(90);
-        ImGui.Text("Sugar");
+        ImGui.Text(string.IsNullOrEmpty(cfg.VenueName) ? "—" : cfg.VenueName);
 
         ImGui.Separator();
         ImGui.Spacing();

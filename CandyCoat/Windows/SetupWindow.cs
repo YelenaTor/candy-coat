@@ -61,6 +61,7 @@ public class SetupWindow : Window, IDisposable
         _state.MultiRoleToggle        = cfg.MultiRoleEnabled;
         _state.HasGlamourerIntegrated = cfg.EnableGlamourer;
         _state.HasChatTwoIntegrated   = cfg.EnableChatTwo;
+        _state.VenueKeyUnlocked       = cfg.VenueKey == PluginConstants.VenueKey;
     }
 
     private void SaveProgress()

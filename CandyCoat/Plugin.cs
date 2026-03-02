@@ -63,6 +63,7 @@ public sealed class Plugin : IDalamudPlugin
         ECommonsMain.Init(PluginInterface, this);
         
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+        MigrateConfig();
 
         // You might normally want to embed resources and load them from the manifest stream
         var goatImagePath = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "goat.png");
@@ -179,6 +180,27 @@ public sealed class Plugin : IDalamudPlugin
         MainWindow.Toggle();
     }
     
+    /// <summary>
+    /// Backfills permanent constants into config on every load so existing installs
+    /// never need manual entry and are always pointing at the production API.
+    /// </summary>
+    private void MigrateConfig()
+    {
+        var cfg = Configuration;
+        bool dirty = false;
+
+        if (string.IsNullOrEmpty(cfg.ApiUrl))
+            { cfg.ApiUrl = PluginConstants.ProductionApiUrl; dirty = true; }
+
+        if (string.IsNullOrEmpty(cfg.VenueKey))
+            { cfg.VenueKey = PluginConstants.VenueKey; dirty = true; }
+
+        if (string.IsNullOrEmpty(cfg.VenueName))
+            { cfg.VenueName = "Sugar"; dirty = true; }
+
+        if (dirty) cfg.Save();
+    }
+
     public void OnSetupComplete()
     {
         MainWindow.IsOpen = true;

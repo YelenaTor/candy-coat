@@ -26,6 +26,7 @@ public class ShiftManager
         {
             _plugin.Configuration.StaffShifts.Add(new Shift { StartTime = DateTime.UtcNow });
             _plugin.Configuration.Save();
+            _plugin.SyncService.SendHeartbeatAsync();
         }
     }
     

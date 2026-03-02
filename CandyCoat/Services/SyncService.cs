@@ -170,6 +170,34 @@ public class SyncService : IDisposable
     /// Fire-and-forget upsert of venue config (manager password) to the API.
     /// Non-fatal: logs a warning on failure.
     /// </summary>
+    /// <summary>
+    /// Fire-and-forget staff presence heartbeat. Call on clock-in and periodically while clocked in.
+    /// </summary>
+    public void SendHeartbeatAsync()
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var cfg = _plugin.Configuration;
+                var body = new
+                {
+                    CharacterName = cfg.CharacterName,
+                    HomeWorld     = cfg.HomeWorld,
+                    Role          = cfg.PrimaryRole.ToString(),
+                    IsOnline      = true,
+                    IsDnd         = false,
+                    ShiftStart    = _plugin.ShiftManager.CurrentShift?.StartTime
+                };
+                await PostAsync("api/staff/heartbeat", body);
+            }
+            catch (Exception ex)
+            {
+                Svc.Log.Warning($"[SyncService] SendHeartbeatAsync failed: {ex.Message}");
+            }
+        });
+    }
+
     public void UpsertVenueConfigAsync(string managerPw)
     {
         _ = Task.Run(async () =>

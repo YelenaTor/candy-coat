@@ -70,13 +70,9 @@ internal sealed class SetupStep4_Finish
 
             cfg.EnableSync = true;
 
-            // Ensure the production API URL is persisted for all users
-            if (string.IsNullOrEmpty(cfg.ApiUrl))
-                cfg.ApiUrl = PluginConstants.ProductionApiUrl;
-
-            // Persist venue key for owners who completed the key step
-            if (state.VenueKeyUnlocked)
-                cfg.VenueKey = PluginConstants.VenueKey;
+            cfg.ApiUrl    = PluginConstants.ProductionApiUrl;
+            cfg.VenueKey  = PluginConstants.VenueKey;
+            cfg.VenueName = "Sugar";
 
             cfg.IsSetupComplete = true;
             cfg.Save();
