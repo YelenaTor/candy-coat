@@ -5,6 +5,45 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.12.0] — 2026-03-02
+
+### Added
+- **Backstage API — Live on OCI**: `CandyCoat.API` deployed to Oracle Linux 9 VM behind Caddy with automatic Let's Encrypt TLS via `145.241.101.66.nip.io`
+- **`PluginConstants.cs`**: single source of truth for `ProductionApiUrl` and `VenueKey` — all plugin code references constants, not strings
+- **Venue Key Setup Step** (`SetupStep4_VenueKey.cs`): Owner-only wizard step 5 — password gate; non-Owner staff skip directly to finish
+- **Staff Heartbeat on Clock-In**: `ShiftManager.ClockIn()` fires `SyncService.SendHeartbeatAsync()` — populates the `staff` table in Neon with active presence
+- **`MigrateConfig()` on every load**: backfills `ApiUrl`, `VenueKey`, and `VenueName="Sugar"` into existing installs — no manual reconfiguration required after upgrade
+- **Dev environment cleanup**: removed all hardcoded localhost references, dev bypasses, and "Local Dev" UI labels; API auth middleware enforces `X-Venue-Key` in Production
+
+### Changed
+- MainWindow sidebar label: "API: Local Dev" → green "API: Backstage • Online"
+- ProfileWindow: "Local Dev Mode" → green "Connected"; venue row reads `cfg.VenueName` dynamically
+- `SetupStep4_Finish.cs` always writes `ApiUrl`, `VenueKey`, and `VenueName` to config on launch
+- `SetupStepCheckSync` and `SetupStep1_CharacterProfile` use `PluginConstants.ProductionApiUrl`
+
+---
+
+## [0.11.7] — 2026-03-01
+
+### Added
+- **Patron Entry Alerts**: dismissible card overlay (top-right) when a tracked patron enters the housing instance — shows name, tier, distance, visit count, and favourite drink
+- `PatronAlertService` — cooldown-aware alert queue; dispatches to Panel, Chat, or Both
+- `PatronAlertOverlay` — stacked card window; auto-dismisses; "Target" button focuses patron in-game
+- `LocatorService` now fires `OnPatronArrived` event replacing inline chat prints
+- Danger-status patrons (Warning/Blacklisted) always alert regardless of Regular-Only filter
+- Settings: Enable/Disable, Alert Method, Regular-Only filter, Target-on-click, cooldown/dismiss durations
+
+---
+
+## [0.11.5] — 2026-03-01
+
+### Changed
+- Sync is now always-on: removed sync config toggle and all polling/wake/sleep infrastructure from `SyncService`
+- `SyncService.IsConnected` is now a constant `true` — panels degrade gracefully with empty caches
+- Removed post-wizard connection lifecycle and blocking health-check overlay from the setup flow
+
+---
+
 ## [0.10.0] — 2026-02-27
 
 ### Added — Feature Expansion (A → I)

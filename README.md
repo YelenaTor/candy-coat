@@ -33,6 +33,13 @@ Candy Coat is a comprehensive in-game assistant that handles the full operationa
 - When a tracked Regular enters the zone, surfaces a CRM summary: last visit, spend, notes
 - Eye-target button to focus any nearby regular in-game
 
+### Patron Entry Alerts
+- When a tracked Regular or Elite patron enters the housing instance, a dismissible card overlay appears top-right
+- Shows name, loyalty tier badge, distance, visit count, and favourite drink
+- Alert method: in-window card, chat message, or both — configurable per staff member
+- Auto-dismisses after a configurable duration; "Target" button focuses the patron in-game
+- Danger-status patrons (Warning/Blacklisted) always alert regardless of Regular-Only filter
+
 ### Session Capture
 - Start a named chat session to log all messages with a specific patron
 - Pop-out session window with live message feed
@@ -70,10 +77,10 @@ All SRT panels include the **Staff Ping widget** — select any online staff mem
 - Cosmetic profiles are Brotli-compressed and synced to the backend, visible to all connected staff
 
 ### Backend Sync
-Optional self-hosted API (Docker) with PostgreSQL. When connected:
-- **Fast poll (3 s)**: rooms, online staff, cosmetics
-- **Slow poll (30 s)**: earnings, patron notes, patrons, bookings
-- **Heartbeat (15 s)**: staff presence ping
+Permanently hosted API (`CandyCoat.API`) on an OCI VM behind Caddy with automatic TLS. All write operations are fire-and-forget — no polling or blocking:
+- **Staff heartbeat**: fires on clock-in, recording active presence in the shared staff table
+- **Profile sync**: `UpsertProfileAsync` on first setup; `LastSeen` updated on each run
+- **Write ops**: bookings, earnings, patrons, cosmetics, and notes push on create/update
 - Auth via `X-Venue-Key` header — single shared venue key, no user accounts
 
 ---
@@ -88,7 +95,7 @@ Optional self-hosted API (Docker) with PostgreSQL. When connected:
 | OtterGui | Bundled — used for UI helpers |
 | ECommons | Bundled — Dalamud utility library |
 
-The backend API is **optional**. All core features work offline; sync features activate automatically when a valid API URL and venue key are configured.
+The backend API is permanently hosted and configured automatically on first run. All write operations are fire-and-forget; panels degrade gracefully if the API is unreachable.
 
 ---
 
