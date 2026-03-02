@@ -209,11 +209,9 @@ internal sealed class SetupStep1_CharacterProfile
 
     private void StartLookup(Plugin plugin)
     {
-        // DEV: hardcoded to localhost while self-hosted; restore ApiUrl lookup when permanently deployed
-        const string apiUrl = "http://localhost:5000";
         _lookupState = LookupState.InProgress;
         _lookupError = string.Empty;
-        _lookupTask  = SyncService.LookupProfileAsync(apiUrl, _existingIdBuffer.Trim());
+        _lookupTask  = SyncService.LookupProfileAsync(PluginConstants.ProductionApiUrl, _existingIdBuffer.Trim());
     }
 
     // ─── Apply lookup result and skip to dashboard ───

@@ -83,6 +83,6 @@ public class ProfileWindow : Window, IDisposable
 
     private void DrawSyncStatus()
     {
-        ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1f), "Local Dev Mode");
+        ImGui.TextColored(new Vector4(0.2f, 0.9f, 0.4f, 1f), "Connected");
     }
 }

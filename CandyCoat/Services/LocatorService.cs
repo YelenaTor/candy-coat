@@ -53,7 +53,8 @@ public class LocatorService : IDisposable
         foreach (var player in Svc.Objects)
         {
             if (player is not Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter) continue;
-            var playerName = player.Name.ToString();
+            var playerName = player.Name?.ToString();
+            if (string.IsNullOrEmpty(playerName)) continue;
             var patron = _plugin.Configuration.Patrons.Find(p => p.Name == playerName);
             
             if (patron != null && patron.Status != PatronStatus.Neutral)
@@ -69,7 +70,7 @@ public class LocatorService : IDisposable
                 }
                 
                 // Update LastSeen
-                patron.LastSeen = DateTime.Now;
+                patron.LastSeen = DateTime.UtcNow;
             }
         }
 

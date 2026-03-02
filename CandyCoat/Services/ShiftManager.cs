@@ -24,7 +24,7 @@ public class ShiftManager
     {
         if (CurrentShift == null)
         {
-            _plugin.Configuration.StaffShifts.Add(new Shift { StartTime = DateTime.Now });
+            _plugin.Configuration.StaffShifts.Add(new Shift { StartTime = DateTime.UtcNow });
             _plugin.Configuration.Save();
         }
     }
@@ -34,7 +34,7 @@ public class ShiftManager
         var shift = CurrentShift;
         if (shift != null)
         {
-            shift.EndTime = DateTime.Now;
+            shift.EndTime = DateTime.UtcNow;
             _plugin.Configuration.Save();
         }
     }

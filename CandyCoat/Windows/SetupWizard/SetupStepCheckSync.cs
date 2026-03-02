@@ -15,8 +15,6 @@ internal sealed class SetupStepCheckSync
     private static readonly Vector4 Red     = new(1f, 0.3f, 0.3f, 1f);
     private static readonly Vector4 Green   = new(0.2f, 0.9f, 0.4f, 1f);
 
-    // DEV: hardcoded while self-hosted; swap for config when permanently deployed
-    private const string DevApiUrl      = "http://localhost:5000";
     private const float  AnimAreaHeight = 120f;
 
     private enum CheckState { Idle, Checking, Connected, Failed }
@@ -250,6 +248,6 @@ internal sealed class SetupStepCheckSync
     private void StartCheck()
     {
         _state     = CheckState.Checking;
-        _checkTask = SyncService.CheckHealthAsync(DevApiUrl);
+        _checkTask = SyncService.CheckHealthAsync(PluginConstants.ProductionApiUrl);
     }
 }

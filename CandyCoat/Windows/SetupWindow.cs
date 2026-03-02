@@ -16,12 +16,13 @@ public class SetupWindow : Window, IDisposable
     private int _lastSavedStep = -1;
     private readonly WizardState _state = new();
 
-    private readonly SetupStep0_Welcome          _step0    = new();
-    private readonly SetupStepCheckSync          _stepSync = new();
-    private readonly SetupStep1_CharacterProfile _step1    = new();
-    private readonly SetupStep2_ModeSelection    _step2    = new();
-    private readonly SetupStep3_RoleSelection    _step3    = new();
-    private readonly SetupStep4_Finish           _step4    = new();
+    private readonly SetupStep0_Welcome          _step0        = new();
+    private readonly SetupStepCheckSync          _stepSync     = new();
+    private readonly SetupStep1_CharacterProfile _step1        = new();
+    private readonly SetupStep2_ModeSelection    _step2        = new();
+    private readonly SetupStep3_RoleSelection    _step3        = new();
+    private readonly SetupStep4_VenueKey         _stepVenueKey = new();
+    private readonly SetupStep4_Finish           _step4        = new();
 
     public SetupWindow(Plugin plugin) : base("Candy Coat Setup##CandyCoatSetup")
     {
@@ -100,7 +101,8 @@ public class SetupWindow : Window, IDisposable
                 case 2: _step1.DrawContent(ref _currentStep, _state, _plugin, this); break;
                 case 3: DrawModeSelectionWithNav(); break;
                 case 4: DrawRoleSelectionWithNav(); break;
-                case 5: DrawFinishWithNav(); break;
+                case 5: DrawVenueKeyWithNav(); break;
+                case 6: DrawFinishWithNav(); break;
             }
         }
         finally
@@ -136,7 +138,26 @@ public class SetupWindow : Window, IDisposable
         ImGui.SameLine();
         if (!canProceed) ImGui.BeginDisabled();
         if (ImGui.Button("Next##step4next"))
-            _currentStep = 5;
+            _currentStep = _state.SelectedPrimaryRole == StaffRole.Owner ? 5 : 6;
+        if (!canProceed) ImGui.EndDisabled();
+    }
+
+    private void DrawVenueKeyWithNav()
+    {
+        _stepVenueKey.DrawContent(ref _currentStep, _state);
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        if (ImGui.Button("Back##step5back"))
+            _currentStep = 4;
+
+        bool canProceed = _state.VenueKeyUnlocked;
+        ImGui.SameLine();
+        if (!canProceed) ImGui.BeginDisabled();
+        if (ImGui.Button("Next##step5next"))
+            _currentStep = 6;
         if (!canProceed) ImGui.EndDisabled();
     }
 
@@ -145,7 +166,7 @@ public class SetupWindow : Window, IDisposable
         _step4.DrawContent(ref _currentStep, _state, _plugin, this);
 
         ImGui.Spacing();
-        if (ImGui.Button("Back##step5back"))
-            _currentStep = 4;
+        if (ImGui.Button("Back##step6back"))
+            _currentStep = _state.SelectedPrimaryRole == StaffRole.Owner ? 5 : 4;
     }
 }

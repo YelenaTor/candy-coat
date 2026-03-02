@@ -41,3 +41,7 @@ CLAUDE.md
 
 # Release archives
 *.zip
+
+# Private planning docs
+FEATURE_ROADMAP.md
+GPT_Assessment.md

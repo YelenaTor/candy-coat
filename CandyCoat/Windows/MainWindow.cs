@@ -222,7 +222,7 @@ public class MainWindow : Window, IDisposable
         var footerHeight = ImGui.GetFrameHeightWithSpacing() * 4 + ImGui.GetStyle().ItemSpacing.Y;
         ImGui.SetCursorPosY(ImGui.GetWindowHeight() - footerHeight - ImGui.GetStyle().WindowPadding.Y);
 
-        ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1f), "API: Local Dev");
+        ImGui.TextColored(new Vector4(0.2f, 0.9f, 0.4f, 1f), "API: Backstage \u2022 Online");
 
         ImGui.Separator();
 

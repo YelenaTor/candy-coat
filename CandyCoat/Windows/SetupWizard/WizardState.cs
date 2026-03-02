@@ -20,4 +20,6 @@ internal sealed class WizardState
 
     public bool HasGlamourerIntegrated { get; set; } = false;
     public bool HasChatTwoIntegrated   { get; set; } = false;
+
+    public bool VenueKeyUnlocked { get; set; } = false;
 }

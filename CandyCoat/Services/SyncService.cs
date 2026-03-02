@@ -11,16 +11,16 @@ using CandyCoat.Data;
 namespace CandyCoat.Services;
 
 /// <summary>
-/// Manages write-only synchronization between the plugin and the Candy Coat API.
-/// Local-first: IsConnected is always true; all read caches are empty collections.
-/// Write operations fire-and-forget to localhost:5000 — no polling, no blocking overlays.
+/// Manages synchronization between the plugin and the Backstage API.
+/// Write operations are fire-and-forget. IsConnected is always true; read caches
+/// are populated in future polling builds — panels degrade gracefully when empty.
 /// </summary>
 public class SyncService : IDisposable
 {
     private readonly Plugin _plugin;
     private readonly HttpClient _httpClient;
 
-    // Synced data cache — always empty in local dev; panels show "no data" gracefully
+    // Synced data cache — panels degrade gracefully when empty (read polling not yet implemented)
     public List<SyncedRoom> Rooms { get; private set; } = new();
     public List<SyncedStaff> OnlineStaff { get; private set; } = new();
     public List<SyncedPatron> Patrons { get; private set; } = new();
@@ -31,7 +31,7 @@ public class SyncService : IDisposable
     public ConcurrentDictionary<string, CosmeticProfile> Cosmetics { get; } = new();
     public List<SyncedBooking> Bookings { get; private set; } = new();
 
-    // Always true — local dev write-only mode; NameplateRenderer degrades gracefully (empty cache)
+    // Always true — NameplateRenderer degrades gracefully until read polling is implemented
     public bool IsConnected { get; } = true;
 
     public SyncService(Plugin plugin)
@@ -39,7 +39,14 @@ public class SyncService : IDisposable
         _plugin = plugin;
         _httpClient = new HttpClient();
         _httpClient.Timeout = TimeSpan.FromSeconds(5);
-        _httpClient.BaseAddress = new Uri("http://localhost:5000/");
+
+        var apiUrl = !string.IsNullOrEmpty(_plugin.Configuration.ApiUrl)
+            ? _plugin.Configuration.ApiUrl
+            : PluginConstants.ProductionApiUrl;
+        _httpClient.BaseAddress = new Uri(apiUrl.TrimEnd('/') + "/");
+
+        if (!string.IsNullOrEmpty(_plugin.Configuration.VenueKey))
+            _httpClient.DefaultRequestHeaders.Add("X-Venue-Key", _plugin.Configuration.VenueKey);
     }
 
     // ─── Public write methods (panels call these) ───

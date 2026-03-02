@@ -14,7 +14,7 @@ internal sealed class SetupStep4_Finish
         var green   = new Vector4(0.2f, 0.9f, 0.4f, 1f);
         var panelBg = new Vector4(0.1f, 0.07f, 0.14f, 1f);
 
-        ImGui.TextColored(dimGrey, "Step 5 of 5 — Summary");
+        ImGui.TextColored(dimGrey, "Final Step — Summary");
         ImGui.Spacing();
         ImGui.TextWrapped("Review your setup before launching Candy Coat.");
         ImGui.Spacing();
@@ -68,7 +68,16 @@ internal sealed class SetupStep4_Finish
             cfg.EnableGlamourer       = state.HasGlamourerIntegrated;
             cfg.EnableChatTwo         = state.HasChatTwoIntegrated;
 
-            cfg.EnableSync      = true;
+            cfg.EnableSync = true;
+
+            // Ensure the production API URL is persisted for all users
+            if (string.IsNullOrEmpty(cfg.ApiUrl))
+                cfg.ApiUrl = PluginConstants.ProductionApiUrl;
+
+            // Persist venue key for owners who completed the key step
+            if (state.VenueKeyUnlocked)
+                cfg.VenueKey = PluginConstants.VenueKey;
+
             cfg.IsSetupComplete = true;
             cfg.Save();
 
