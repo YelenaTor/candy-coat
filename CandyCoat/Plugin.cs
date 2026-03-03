@@ -36,7 +36,7 @@ public sealed class Plugin : IDalamudPlugin
     public Configuration Configuration { get; init; }
 
     public readonly WindowSystem WindowSystem = new("CandyCoat");
-    private MainWindow MainWindow { get; init; }
+    public MainWindow MainWindow { get; init; }
 
     public SessionManager SessionManager { get; init; }
     public VenueService VenueService { get; init; }
@@ -46,12 +46,14 @@ public sealed class Plugin : IDalamudPlugin
     public ShiftManager ShiftManager { get; init; }
     public SyncService SyncService { get; init; }
     public PatronAlertService PatronAlertService { get; init; }
+    public TellService TellService { get; init; }
+    public TellWindow TellWindow { get; init; }
 
     public CosmeticFontManager CosmeticFontManager { get; init; }
     public CosmeticBadgeManager CosmeticBadgeManager { get; init; }
     public CosmeticWindow CosmeticWindow { get; init; }
 
-    private SessionWindow SessionWindow { get; init; }
+    public SessionWindow SessionWindow { get; init; }
     private SetupWindow SetupWindow { get; init; }
     public ProfileWindow ProfileWindow { get; init; }
     private PatronDetailsWindow PatronDetailsWindow { get; init; }
@@ -83,6 +85,7 @@ public sealed class Plugin : IDalamudPlugin
         ShiftManager = new ShiftManager(this);
         SyncService = new SyncService(this);
         PatronAlertService = new PatronAlertService(this, LocatorService);
+        TellService = new TellService(this);
         var glamourerIpc = new GlamourerIpc();
 
         PatronDetailsWindow = new PatronDetailsWindow(this, glamourerIpc);
@@ -91,6 +94,7 @@ public sealed class Plugin : IDalamudPlugin
         MainWindow = new MainWindow(this, VenueService, WaitlistManager, ShiftManager, PatronDetailsWindow, goatImagePath, CosmeticWindow, ProfileWindow, SrtFeatureWindow);
         SessionWindow = new SessionWindow(SessionManager, PluginInterface.ConfigDirectory.FullName);
         PatronAlertOverlay = new PatronAlertOverlay(this, PatronAlertService);
+        TellWindow = new TellWindow(this);
 
         WindowSystem.AddWindow(PatronDetailsWindow);
         WindowSystem.AddWindow(ProfileWindow);
@@ -99,13 +103,21 @@ public sealed class Plugin : IDalamudPlugin
         WindowSystem.AddWindow(SessionWindow);
         WindowSystem.AddWindow(CosmeticWindow);
         WindowSystem.AddWindow(PatronAlertOverlay);
+        WindowSystem.AddWindow(TellWindow);
 
         // Initialize IPC
-        ChatTwoIpc = new ChatTwoIpc((targetName) =>
-        {
-            SessionManager.StartCapture(targetName);
-            SessionWindow.IsOpen = true;
-        });
+        ChatTwoIpc = new ChatTwoIpc(
+            onStartCapture: (targetName) =>
+            {
+                SessionManager.StartCapture(targetName);
+                SessionWindow.IsOpen = true;
+            },
+            onOpenTells: (targetName) =>
+            {
+                TellService.GetOrCreateConversation(targetName);
+                TellService.SelectConversation(targetName);
+                TellWindow.IsOpen = true;
+            });
         ChatTwoIpc.Enable();
 
         // Initialize Setup Window
@@ -166,6 +178,8 @@ public sealed class Plugin : IDalamudPlugin
         SessionWindow?.Dispose();
         SetupWindow?.Dispose();
         
+        TellService?.Dispose();
+        TellWindow?.Dispose();
         SessionManager?.Dispose();
         LocatorService?.Dispose();
         TradeMonitorService?.Dispose();

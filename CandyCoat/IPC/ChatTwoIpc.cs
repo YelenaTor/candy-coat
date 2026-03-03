@@ -25,10 +25,11 @@ public class ChatTwoIpc : IDisposable
     // The registration ID.
     private string? _id;
 
-    // Callback action when menu item is clicked
+    // Callback actions when menu items are clicked
     private readonly Action<string> _onStartCapture;
+    private readonly Action<string>? _onOpenTells;
 
-    public ChatTwoIpc(Action<string> onStartCapture)
+    public ChatTwoIpc(Action<string> onStartCapture, Action<string>? onOpenTells = null)
     {
         var inter = Svc.PluginInterface;
         this.Register = inter.GetIpcSubscriber<string>("ChatTwo.Register");
@@ -37,6 +38,7 @@ public class ChatTwoIpc : IDisposable
         this.Available = inter.GetIpcSubscriber<object?>("ChatTwo.Available");
 
         this._onStartCapture = onStartCapture;
+        this._onOpenTells = onOpenTells;
     }
 
     public bool IsAvailable()
@@ -101,12 +103,12 @@ public class ChatTwoIpc : IDisposable
         // Draw your custom menu items here.
         if (sender != null && !string.IsNullOrEmpty(sender.PlayerName))
         {
-            if (ImGui.Selectable("Start Candy Session")) {
-                var name = sender.PlayerName;
-                // If cross world, it might contain world name? PlayerPayload generally separates them.
-                // kept simple for now.
+            var name = sender.PlayerName;
+            if (ImGui.Selectable("Start Candy Session"))
                 _onStartCapture?.Invoke(name);
-            }
+
+            if (ImGui.Selectable("Open in Candy Tells"))
+                _onOpenTells?.Invoke(name);
         }
     }
 }

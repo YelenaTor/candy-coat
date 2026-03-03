@@ -40,6 +40,18 @@ Candy Coat is a comprehensive in-game assistant that handles the full operationa
 - Auto-dismisses after a configurable duration; "Target" button focuses the patron in-game
 - Danger-status patrons (Warning/Blacklisted) always alert regardless of Regular-Only filter
 
+### Candy Tells (v0.14.0)
+- Floating `✉ Messages` window that captures all incoming and outgoing /tell traffic as persistent conversations
+- Discord-like conversation list: sorted by last activity, with patron tier icons, unread count badges, pin/unpin, and right-click context menu
+- Per-conversation notes bar for personal observations about each player
+- Scrollable message area with date separators; outgoing messages visually right-biased
+- **Quick Replies**: first 4 macros from your active role shown as one-click buttons to pre-fill the input
+- **Patron integration**: known patrons display their loyalty tier (★ Elite, ◆ Regular, ○ Guest) in the conversation list and header
+- Action buttons in the header: one-click session start, one-click booking creation, conversation export to `.txt`
+- ChatTwo context menu: right-click a player → "Open in Candy Tells" alongside "Start Candy Session"
+- Settings: suppress tells from main chat, auto-open on incoming message, per-conversation message cap
+- History persists across relog and plugin reload
+
 ### Session Capture
 - Start a named chat session to log all messages with a specific patron
 - Pop-out session window with live message feed

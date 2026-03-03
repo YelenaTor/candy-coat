@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.14.0] — 2026-03-03
+
+### Added
+- **Candy Tells** — floating `✉ Messages` window (`TellWindow`) for managing /tell conversations like a Discord DM list
+  - Captures all incoming and outgoing /tell traffic via `IChatGui.ChatMessage` hook (`TellService`)
+  - Persistent conversation history saved to config — survives relog and plugin reload
+  - Left panel: filterable conversation list sorted by pinned → last activity, with patron tier icons (★/◆/○), unread badges, and right-click context menu (Pin/Unpin, Clear History, Delete)
+  - Right panel: conversation header with patron tier icon and action buttons (Session, Booking, Export), per-conversation notes bar, scrollable message area with date separators, and send input with Enter-to-send support
+  - Outgoing messages right-biased to visually distinguish from incoming (left-aligned)
+  - Quick Replies section in left panel: first 4 macros from the user's active role, 2-per-row, click to pre-fill input
+  - **Patron integration**: known patrons display loyalty tier icon (Elite ★, Regular ◆, Guest ○) in conversation list and header
+  - **One-click session start**: Session button → `SessionManager.StartCapture()` + opens SessionWindow
+  - **One-click booking creation**: Booking button → opens BookingsTab in MainWindow
+  - **Export**: saves conversation to `Sessions/Tells_Name_YYYYMMDD_HHmm.txt` in plugin config directory
+  - **Easter egg**: subtle 🌙 moon icon in conversation header when chatting with "Sephy" (owner of The 13th Floor, who requested this feature) — hover for a tooltip
+- **ChatTwo "Open in Candy Tells"** context menu item alongside existing "Start Candy Session"
+- **`✉ Messages [N]` footer button** in MainWindow sidebar with live unread count badge
+- **Candy Tells settings section** in Settings → Integrations area:
+  - Toggle: Suppress tells from in-game chat
+  - Toggle: Auto-open Tells window on incoming message
+  - Slider: Max messages per conversation (50–500, default 200)
+  - Button: Clear all conversation history
+
+---
+
 ## [0.13.3] — 2026-03-03
 
 ### Fixed

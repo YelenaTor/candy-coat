@@ -234,12 +234,21 @@ public class MainWindow : Window, IDisposable
             ImGui.TextDisabled("  Set up in Settings.");
         }
 
-        // ── Footer (API status, Cosmetics, Settings, Ko-Fi) ──
-        var footerHeight = ImGui.GetFrameHeightWithSpacing() * 4 + ImGui.GetStyle().ItemSpacing.Y;
+        // ── Footer (API status, Messages, Cosmetics, Settings, Ko-Fi) ──
+        var footerHeight = ImGui.GetFrameHeightWithSpacing() * 5 + ImGui.GetStyle().ItemSpacing.Y;
         ImGui.SetCursorPosY(ImGui.GetWindowHeight() - footerHeight - ImGui.GetStyle().WindowPadding.Y);
 
         ImGui.TextColored(new Vector4(0.2f, 0.9f, 0.4f, 1f), "API: Backstage \u2022 Online");
         ImGui.Separator();
+
+        int unreadTells = 0;
+        foreach (var conv in plugin.Configuration.TellHistory)
+            unreadTells += conv.UnreadCount;
+        var tellLabel = unreadTells > 0 ? $"\u2709 Messages [{unreadTells}]" : "\u2709 Messages";
+        bool tellOpen = plugin.TellWindow.IsOpen;
+        if (tellOpen) ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.7f, 0.9f, 1f));
+        if (ImGui.Selectable(tellLabel, tellOpen)) plugin.TellWindow.Toggle();
+        if (tellOpen) ImGui.PopStyleColor();
 
         bool cosmeticsOpen = _cosmeticWindow.IsOpen;
         if (cosmeticsOpen) ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.7f, 0.9f, 1f));
@@ -561,6 +570,34 @@ public class MainWindow : Window, IDisposable
                 if (ImGui.InputInt("Auto-dismiss after (seconds)##alertDismiss", ref dismissSecs, 1)) { config.AlertDismissSeconds = System.Math.Max(3, dismissSecs); config.Save(); }
                 ImGui.Unindent();
             }
+            ImGui.Spacing();
+        }
+
+        // ── Candy Tells ──
+        if (ImGui.CollapsingHeader("Candy Tells"))
+        {
+            ImGui.Spacing();
+            var suppressInGame = config.TellSuppressInGame;
+            if (ImGui.Checkbox("Suppress tells from in-game chat", ref suppressInGame))
+            { config.TellSuppressInGame = suppressInGame; config.Save(); }
+            ImGui.TextDisabled("Removes incoming /tell messages from the main chat window.");
+            ImGui.Spacing();
+            var autoOpen = config.TellAutoOpen;
+            if (ImGui.Checkbox("Auto-open Tells window on incoming message", ref autoOpen))
+            { config.TellAutoOpen = autoOpen; config.Save(); }
+            ImGui.Spacing();
+            var maxMsgs = config.TellHistoryMaxMessages;
+            ImGui.SetNextItemWidth(100);
+            if (ImGui.SliderInt("Max messages per conversation##tellMax", ref maxMsgs, 50, 500))
+            { config.TellHistoryMaxMessages = System.Math.Max(50, maxMsgs); config.Save(); }
+            ImGui.Spacing();
+            if (ImGui.Button("Clear all conversation history##clearTells"))
+            {
+                config.TellHistory.Clear();
+                config.Save();
+            }
+            ImGui.SameLine();
+            ImGui.TextDisabled("(Cannot be undone)");
             ImGui.Spacing();
         }
 

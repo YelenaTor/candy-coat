@@ -80,6 +80,12 @@ public class Configuration : IPluginConfiguration
     public bool GreeterAutoAddTargetOnOpen { get; set; } = false;
     public bool GreeterShowTierBadge { get; set; } = true;
 
+    // Candy Tells
+    public List<TellConversation> TellHistory { get; set; } = new();
+    public bool TellSuppressInGame { get; set; } = false;
+    public bool TellAutoOpen { get; set; } = true;
+    public int TellHistoryMaxMessages { get; set; } = 200;
+
     // Sync API settings
     public string ApiUrl { get; set; } = string.Empty;
     public string VenueKey { get; set; } = string.Empty;
