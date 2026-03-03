@@ -51,7 +51,7 @@ public class SweetheartPanel : IToolboxPanel
 
     public void DrawContent()
     {
-        // Tier 1 — Session Timer (fixed ~140px)
+        // Session Timer (always visible)
         ImGui.PushStyleColor(ImGuiCol.ChildBg, CardBg);
         using (var tier1 = ImRaii.Child("##SHTier1", new Vector2(0, 140f), true))
         {
@@ -61,44 +61,37 @@ public class SweetheartPanel : IToolboxPanel
 
         ImGui.Spacing();
 
-        // Tier 2 — Collapsibles
-        ImGui.PushStyleColor(ImGuiCol.Header, HeaderBg);
-        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, HeaderHover);
+        using var tabs = ImRaii.TabBar("##SHTabs", ImGuiTabBarFlags.FittingPolicyResizeDown);
+        if (!tabs) return;
 
-        if (ImGui.CollapsingHeader("Room Assignment##SH", ImGuiTreeNodeFlags.DefaultOpen))
+        if (ImGui.BeginTabItem("Session##SH"))
+        {
             DrawRoomAssignment();
-
-        if (ImGui.CollapsingHeader("Patron Profile##SH", ImGuiTreeNodeFlags.DefaultOpen))
-            DrawPatronProfile();
-
-        if (ImGui.CollapsingHeader("Upcoming Bookings##SH"))
             DrawUpcomingBookings();
-
-        if (ImGui.CollapsingHeader("Quick-Tell Macros##SH", ImGuiTreeNodeFlags.DefaultOpen))
-            DrawQuickTellButtons();
-
-        if (ImGui.CollapsingHeader("Emote Shortcuts##SH", ImGuiTreeNodeFlags.DefaultOpen))
-            DrawEmoteShortcuts();
-
-        if (ImGui.CollapsingHeader("Service Rate Card##SH"))
-            DrawServiceRateCard();
-
-        if (ImGui.CollapsingHeader("Outfit Presets##SH"))
-            DrawGlamourerPresets();
-
-        if (ImGui.CollapsingHeader("Log Earnings##SH", ImGuiTreeNodeFlags.DefaultOpen))
-            DrawEarningsLog();
-
-        if (ImGui.CollapsingHeader("Patron Notes##SH", ImGuiTreeNodeFlags.DefaultOpen))
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Patron##SH"))
+        {
+            DrawPatronProfile();
             DrawPatronNotes();
-
-        if (ImGui.CollapsingHeader("Patron History##SH"))
             DrawPatronHistory();
-
-        if (ImGui.CollapsingHeader("Staff Ping##SH"))
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Tools##SH"))
+        {
+            DrawQuickTellButtons();
+            DrawEmoteShortcuts();
+            DrawServiceRateCard();
+            DrawGlamourerPresets();
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Earnings##SH"))
+        {
+            DrawEarningsLog();
+            ImGui.Spacing();
             _pingWidget.Draw();
-
-        ImGui.PopStyleColor(2);
+            ImGui.EndTabItem();
+        }
     }
 
     // ─── Settings ────────────────────────────────────────────────────────────

@@ -45,7 +45,7 @@ public class BartenderPanel : IToolboxPanel
 
     public void DrawContent()
     {
-        // Tier 1 — Order Queue (fixed ~160px)
+        // Order Queue (always visible)
         ImGui.PushStyleColor(ImGuiCol.ChildBg, CardBg);
         using (var tier1 = ImRaii.Child("##BTTier1", new Vector2(0, 160f), true))
         {
@@ -55,22 +55,30 @@ public class BartenderPanel : IToolboxPanel
 
         ImGui.Spacing();
 
-        ImGui.PushStyleColor(ImGuiCol.Header, HeaderBg);
-        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, HeaderHover);
+        using var tabs = ImRaii.TabBar("##BTTabs", ImGuiTabBarFlags.FittingPolicyResizeDown);
+        if (!tabs) return;
 
-        if (ImGui.CollapsingHeader("Drink Menu##BT", ImGuiTreeNodeFlags.DefaultOpen))
+        if (ImGui.BeginTabItem("Menu##BT"))
+        {
             DrawDrinkMenu();
-
-        if (ImGui.CollapsingHeader("Open Tabs##BT", ImGuiTreeNodeFlags.DefaultOpen))
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Tabs##BT"))
+        {
             DrawTabSystem();
-
-        if (ImGui.CollapsingHeader("RP Emote Macros##BT"))
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Macros##BT"))
+        {
             DrawRPMacroButtons();
-
-        if (ImGui.CollapsingHeader("Staff Ping##BT"))
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Ping##BT"))
+        {
+            ImGui.Spacing();
             _pingWidget.Draw();
-
-        ImGui.PopStyleColor(2);
+            ImGui.EndTabItem();
+        }
     }
 
     // ─── Settings ────────────────────────────────────────────────────────────

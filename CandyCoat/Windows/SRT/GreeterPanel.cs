@@ -30,8 +30,6 @@ public class GreeterPanel : IToolboxPanel
     private readonly StaffPingWidget _pingWidget;
 
     private static readonly Vector4 CardBg = new(0.16f, 0.12f, 0.20f, 1f);
-    private static readonly Vector4 HeaderBg = new(0.22f, 0.16f, 0.28f, 1f);
-    private static readonly Vector4 HeaderHover = new(0.30f, 0.22f, 0.36f, 1f);
 
     public GreeterPanel(Plugin plugin)
     {
@@ -53,29 +51,32 @@ public class GreeterPanel : IToolboxPanel
 
         ImGui.Spacing();
 
-        // Tier 2 — Collapsibles
-        ImGui.PushStyleColor(ImGuiCol.Header, HeaderBg);
-        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, HeaderHover);
+        using var tabs = ImRaii.TabBar("##GRTabs", ImGuiTabBarFlags.FittingPolicyResizeDown);
+        if (!tabs) return;
 
-        if (ImGui.CollapsingHeader("Door Queue##GR", ImGuiTreeNodeFlags.DefaultOpen))
+        if (ImGui.BeginTabItem("Queue##GR"))
+        {
             DrawDoorQueue();
-
-        if (ImGui.CollapsingHeader("Welcome Tells##GR", ImGuiTreeNodeFlags.DefaultOpen))
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Tells##GR"))
+        {
             DrawWelcomeTells();
-
-        if (ImGui.CollapsingHeader("Venue Info Dispatch##GR", ImGuiTreeNodeFlags.DefaultOpen))
             DrawVenueInfoDispatch();
-
-        if (ImGui.CollapsingHeader("Emote Shortcuts##GR", ImGuiTreeNodeFlags.DefaultOpen))
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Tools##GR"))
+        {
             DrawEmoteShortcuts();
-
-        if (ImGui.CollapsingHeader("Room Availability##GR"))
             DrawRoomAvailability();
-
-        if (ImGui.CollapsingHeader("Staff Ping##GR"))
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Ping##GR"))
+        {
+            ImGui.Spacing();
             _pingWidget.Draw();
-
-        ImGui.PopStyleColor(2);
+            ImGui.EndTabItem();
+        }
     }
 
     // ─── Settings ────────────────────────────────────────────────────────────

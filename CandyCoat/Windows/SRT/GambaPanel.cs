@@ -72,7 +72,7 @@ public class GambaPanel : IToolboxPanel, IDisposable
 
     public void DrawContent()
     {
-        // Tier 1 — Active game round (fixed ~160px)
+        // Active game round (always visible)
         ImGui.PushStyleColor(ImGuiCol.ChildBg, CardBg);
         using (var tier1 = ImRaii.Child("##GBTier1", new Vector2(0, 160f), true))
         {
@@ -82,25 +82,31 @@ public class GambaPanel : IToolboxPanel, IDisposable
 
         ImGui.Spacing();
 
-        ImGui.PushStyleColor(ImGuiCol.Header, HeaderBg);
-        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, HeaderHover);
+        using var tabs = ImRaii.TabBar("##GBTabs", ImGuiTabBarFlags.FittingPolicyResizeDown);
+        if (!tabs) return;
 
-        if (ImGui.CollapsingHeader("Roll Tracker##GB", ImGuiTreeNodeFlags.DefaultOpen))
+        if (ImGui.BeginTabItem("Rolls##GB"))
+        {
             DrawRolls();
-
-        if (ImGui.CollapsingHeader("Payout Calculator##GB", ImGuiTreeNodeFlags.DefaultOpen))
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Payout##GB"))
+        {
             DrawPayoutCalculator();
-
-        if (ImGui.CollapsingHeader("House Bank##GB"))
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Bank##GB"))
+        {
             DrawHouseBank();
-
-        if (ImGui.CollapsingHeader("Announce##GB"))
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Announce##GB"))
+        {
             DrawAnnounceMacros();
-
-        if (ImGui.CollapsingHeader("Staff Ping##GB"))
+            ImGui.Spacing();
             _pingWidget.Draw();
-
-        ImGui.PopStyleColor(2);
+            ImGui.EndTabItem();
+        }
     }
 
     // ─── Settings ────────────────────────────────────────────────────────────

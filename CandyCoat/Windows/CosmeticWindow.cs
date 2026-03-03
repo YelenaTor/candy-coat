@@ -28,7 +28,7 @@ public class CosmeticWindow : Window, IDisposable
 
     public override void Draw()
     {
-        var footerHeight = ImGui.GetFrameHeightWithSpacing() + ImGui.GetStyle().ItemSpacing.Y;
+        var footerHeight = ImGui.GetFrameHeightWithSpacing() * 2 + ImGui.GetStyle().ItemSpacing.Y * 2;
         var contentHeight = ImGui.GetContentRegionAvail().Y - footerHeight;
 
         if (ImGui.BeginChild("CosmeticContent", new Vector2(0, contentHeight), false))
@@ -37,8 +37,22 @@ public class CosmeticWindow : Window, IDisposable
 
         ImGui.Separator();
 
+        // Row 1 — On/Off toggle
+        var enabled = _plugin.Configuration.EnableNameplateCosmetics;
+        if (ImGui.Checkbox("Enable Candy Coat Nameplates", ref enabled))
+        {
+            _plugin.Configuration.EnableNameplateCosmetics = enabled;
+            _plugin.Configuration.Save();
+            // Force game nameplate system to reprocess all handlers so
+            // our suppression (or restoration) kicks in immediately.
+            Plugin.NamePlateGui.RequestRedraw();
+        }
+
+        ImGui.Separator();
+
+        // Row 2 — Re-draw controls (local client-side refresh only)
         if (ImGui.Button("↺ Re-draw"))
-            ForcePush();
+            ForceLocalRedraw();
 
         ImGui.SameLine();
 
@@ -49,18 +63,18 @@ public class CosmeticWindow : Window, IDisposable
             _plugin.Configuration.Save();
         }
 
-        // Auto re-draw timer — pushes every 30 s when enabled
+        // Auto re-draw timer — local redraw every 30 s when enabled
         if (_plugin.Configuration.CosmeticAutoRedraw &&
             (DateTime.UtcNow - _lastAutoRedraw).TotalSeconds >= AutoRedrawIntervalSeconds)
         {
-            ForcePush();
+            ForceLocalRedraw();
         }
     }
 
-    private void ForcePush()
+    private void ForceLocalRedraw()
     {
         _lastAutoRedraw = DateTime.UtcNow;
-        _ = _plugin.SyncService.PushCosmeticsAsync(_plugin.Configuration.CosmeticProfile);
+        Plugin.NamePlateGui.RequestRedraw();
     }
 
     public void Dispose() { }

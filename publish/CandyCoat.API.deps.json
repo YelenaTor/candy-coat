@@ -1,0 +1,114 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0/linux-x64",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {},
+    ".NETCoreApp,Version=v10.0/linux-x64": {
+      "CandyCoat.API/1.0.0": {
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "10.0.0-preview.2.25163.8",
+          "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.0-preview.1"
+        },
+        "runtime": {
+          "CandyCoat.API.dll": {}
+        }
+      },
+      "Microsoft.EntityFrameworkCore/10.0.0-preview.2.25163.8": {
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore.Abstractions": "10.0.0-preview.2.25163.8"
+        },
+        "runtime": {
+          "lib/net10.0/Microsoft.EntityFrameworkCore.dll": {
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.25.16308"
+          }
+        }
+      },
+      "Microsoft.EntityFrameworkCore.Abstractions/10.0.0-preview.2.25163.8": {
+        "runtime": {
+          "lib/net10.0/Microsoft.EntityFrameworkCore.Abstractions.dll": {
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.25.16308"
+          }
+        }
+      },
+      "Microsoft.EntityFrameworkCore.Relational/10.0.0-preview.2.25163.8": {
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "10.0.0-preview.2.25163.8"
+        },
+        "runtime": {
+          "lib/net10.0/Microsoft.EntityFrameworkCore.Relational.dll": {
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.25.16308"
+          }
+        }
+      },
+      "Npgsql/9.0.2": {
+        "runtime": {
+          "lib/net8.0/Npgsql.dll": {
+            "assemblyVersion": "9.0.2.0",
+            "fileVersion": "9.0.2.0"
+          }
+        }
+      },
+      "Npgsql.EntityFrameworkCore.PostgreSQL/10.0.0-preview.1": {
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "10.0.0-preview.2.25163.8",
+          "Microsoft.EntityFrameworkCore.Relational": "10.0.0-preview.2.25163.8",
+          "Npgsql": "9.0.2"
+        },
+        "runtime": {
+          "lib/net10.0/Npgsql.EntityFrameworkCore.PostgreSQL.dll": {
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "CandyCoat.API/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.EntityFrameworkCore/10.0.0-preview.2.25163.8": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-L82qytr8lFY6PDLuITQvjcYeSL3n0UeEInB17LzL4tZf5BuamaSWIpgy2/Nv0WP+MGqE6TlGHi8ju1YeqxxSuw==",
+      "path": "microsoft.entityframeworkcore/10.0.0-preview.2.25163.8",
+      "hashPath": "microsoft.entityframeworkcore.10.0.0-preview.2.25163.8.nupkg.sha512"
+    },
+    "Microsoft.EntityFrameworkCore.Abstractions/10.0.0-preview.2.25163.8": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-IB73uhrgpW/s68MapIA3fCF+g4fog5/Z/JbGOQIdZkQxxfLXqpgOoo7bAP9CZbFb5WHZZA1CZ7pstA49tMmoLg==",
+      "path": "microsoft.entityframeworkcore.abstractions/10.0.0-preview.2.25163.8",
+      "hashPath": "microsoft.entityframeworkcore.abstractions.10.0.0-preview.2.25163.8.nupkg.sha512"
+    },
+    "Microsoft.EntityFrameworkCore.Relational/10.0.0-preview.2.25163.8": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-uiyP1tNbJ+ZwGx7m3rGGBCCwhe/1YQOUx8d1omYbpMa/89Hp+/JZZVYVNPZQMeDjHhmZb91o8aFL5SqyF5bM6g==",
+      "path": "microsoft.entityframeworkcore.relational/10.0.0-preview.2.25163.8",
+      "hashPath": "microsoft.entityframeworkcore.relational.10.0.0-preview.2.25163.8.nupkg.sha512"
+    },
+    "Npgsql/9.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-hCbO8box7i/XXiTFqCJ3GoowyLqx3JXxyrbOJ6om7dr+eAknvBNhhUHeJVGAQo44sySZTfdVffp4BrtPeLZOAA==",
+      "path": "npgsql/9.0.2",
+      "hashPath": "npgsql.9.0.2.nupkg.sha512"
+    },
+    "Npgsql.EntityFrameworkCore.PostgreSQL/10.0.0-preview.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-I+eG51L3zK47LyLWviwwy0qsqCryeAO5huexB2LSBfxwEysqsQ4aKZ9haA8A2MaxcNxzVWD6rXO3JC27W2C9HA==",
+      "path": "npgsql.entityframeworkcore.postgresql/10.0.0-preview.1",
+      "hashPath": "npgsql.entityframeworkcore.postgresql.10.0.0-preview.1.nupkg.sha512"
+    }
+  }
+}

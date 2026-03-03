@@ -34,8 +34,6 @@ public class DJPanel : IToolboxPanel
     private readonly StaffPingWidget _pingWidget;
 
     private static readonly Vector4 CardBg = new(0.16f, 0.12f, 0.20f, 1f);
-    private static readonly Vector4 HeaderBg = new(0.22f, 0.16f, 0.28f, 1f);
-    private static readonly Vector4 HeaderHover = new(0.30f, 0.22f, 0.36f, 1f);
 
     public DJPanel(Plugin plugin)
     {
@@ -57,31 +55,33 @@ public class DJPanel : IToolboxPanel
 
         ImGui.Spacing();
 
-        ImGui.PushStyleColor(ImGuiCol.Header, HeaderBg);
-        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, HeaderHover);
+        using var tabs = ImRaii.TabBar("##DJTabs", ImGuiTabBarFlags.FittingPolicyResizeDown);
+        if (!tabs) return;
 
-        if (ImGui.CollapsingHeader("Setlist##DJ", ImGuiTreeNodeFlags.DefaultOpen))
+        if (ImGui.BeginTabItem("Set##DJ"))
+        {
             DrawSetlist();
-
-        if (ImGui.CollapsingHeader("Request Queue##DJ", ImGuiTreeNodeFlags.DefaultOpen))
             DrawRequestQueue();
-
-        if (ImGui.CollapsingHeader("Stream Link##DJ"))
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Engage##DJ"))
+        {
             DrawStreamLink();
-
-        if (ImGui.CollapsingHeader("Crowd Engagement##DJ"))
             DrawCrowdMacros();
-
-        if (ImGui.CollapsingHeader("Tips##DJ"))
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Tips##DJ"))
+        {
             DrawTipsTracker();
-
-        if (ImGui.CollapsingHeader("Performance History##DJ"))
             DrawPerformanceHistory();
-
-        if (ImGui.CollapsingHeader("Staff Ping##DJ"))
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Ping##DJ"))
+        {
+            ImGui.Spacing();
             _pingWidget.Draw();
-
-        ImGui.PopStyleColor(2);
+            ImGui.EndTabItem();
+        }
     }
 
     // ─── Settings ────────────────────────────────────────────────────────────

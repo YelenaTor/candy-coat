@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.16.1] — 2026-03-03
+
+### Changed
+- **SRT panels — collapsible headers replaced with tab bars** — all six role toolboxes (Sweetheart, CandyHeart, Bartender, Gamba, DJ, Greeter) now use `ImRaii.TabBar` matching the ManagementPanel style; reduces vertical clutter and keeps sections consistently accessible
+  - **Sweetheart**: Session | Patron | Tools | Earnings
+  - **CandyHeart**: Session | Patron | Tools | Earnings
+  - **Bartender**: Menu | Tabs | Macros | Ping
+  - **Gamba**: Rolls | Payout | Bank | Announce
+  - **DJ**: Set | Engage | Tips | Ping
+  - **Greeter**: Queue | Tells | Tools | Ping
+- **Candy Tells — send button fix** — replaced `Plugin.CommandManager.ProcessCommand` with `Svc.Commands.ProcessCommand` so `/tell` routes through the game's native command handler correctly
+- **Candy Tells — cross-world sender name fix** — outgoing tells now extract `Name@World` via `PlayerPayload` from the `SeString`, ensuring cross-world conversations are tracked under the correct key
+
+---
+
 ## [0.16.0] — 2026-03-03
 
 ### Added

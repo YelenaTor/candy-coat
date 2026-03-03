@@ -51,7 +51,7 @@ public class CandyHeartPanel : IToolboxPanel
 
     public void DrawContent()
     {
-        // Tier 1 — Session Timer (fixed ~140px)
+        // Session Timer (always visible)
         ImGui.PushStyleColor(ImGuiCol.ChildBg, CardBg);
         using (var tier1 = ImRaii.Child("##CHTier1", new Vector2(0, 140f), true))
         {
@@ -61,38 +61,35 @@ public class CandyHeartPanel : IToolboxPanel
 
         ImGui.Spacing();
 
-        // Tier 2 — Collapsibles
-        ImGui.PushStyleColor(ImGuiCol.Header, HeaderBg);
-        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, HeaderHover);
+        using var tabs = ImRaii.TabBar("##CHTabs", ImGuiTabBarFlags.FittingPolicyResizeDown);
+        if (!tabs) return;
 
-        if (ImGui.CollapsingHeader("Room Assignment##CH", ImGuiTreeNodeFlags.DefaultOpen))
+        if (ImGui.BeginTabItem("Session##CH"))
+        {
             DrawRoomAssignment();
-
-        if (ImGui.CollapsingHeader("Patron Profile##CH", ImGuiTreeNodeFlags.DefaultOpen))
-            DrawPatronProfile();
-
-        if (ImGui.CollapsingHeader("Upcoming Bookings##CH"))
             DrawUpcomingBookings();
-
-        if (ImGui.CollapsingHeader("Quick-Tell Macros##CH", ImGuiTreeNodeFlags.DefaultOpen))
-            DrawMacroBankButtons();
-
-        if (ImGui.CollapsingHeader("Emote Shortcuts##CH", ImGuiTreeNodeFlags.DefaultOpen))
-            DrawEmoteWheel();
-
-        if (ImGui.CollapsingHeader("Log Earnings##CH", ImGuiTreeNodeFlags.DefaultOpen))
-            DrawEarningsLog();
-
-        if (ImGui.CollapsingHeader("Patron Notes##CH", ImGuiTreeNodeFlags.DefaultOpen))
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Patron##CH"))
+        {
+            DrawPatronProfile();
             DrawPatronNotes();
-
-        if (ImGui.CollapsingHeader("Patron History##CH"))
             DrawPatronHistory();
-
-        if (ImGui.CollapsingHeader("Staff Ping##CH"))
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Tools##CH"))
+        {
+            DrawMacroBankButtons();
+            DrawEmoteWheel();
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Earnings##CH"))
+        {
+            DrawEarningsLog();
+            ImGui.Spacing();
             _pingWidget.Draw();
-
-        ImGui.PopStyleColor(2);
+            ImGui.EndTabItem();
+        }
     }
 
     // ─── Settings ────────────────────────────────────────────────────────────
