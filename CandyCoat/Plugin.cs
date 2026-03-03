@@ -67,7 +67,7 @@ public sealed class Plugin : IDalamudPlugin
         ECommonsMain.Init(PluginInterface, this);
         
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-        MigrateConfig();
+        var needsProfileSync = MigrateConfig();
 
         // You might normally want to embed resources and load them from the manifest stream
         var goatImagePath = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "goat.png");
@@ -84,6 +84,18 @@ public sealed class Plugin : IDalamudPlugin
         WaitlistManager = new WaitlistManager();
         ShiftManager = new ShiftManager(this);
         SyncService = new SyncService(this);
+
+        // One-time profile upsert for existing Sugar installs that just got VenueId backfilled
+        if (needsProfileSync && Configuration.IsSetupComplete && !string.IsNullOrEmpty(Configuration.ProfileId))
+        {
+            SyncService.UpsertProfileAsync(
+                Configuration.ProfileId,
+                Configuration.CharacterName,
+                Configuration.HomeWorld,
+                Configuration.UserMode,
+                Configuration.VenueId);
+        }
+
         PatronAlertService = new PatronAlertService(this, LocatorService);
         TellService = new TellService(this);
         var glamourerIpc = new GlamourerIpc();
@@ -201,11 +213,13 @@ public sealed class Plugin : IDalamudPlugin
     /// <summary>
     /// Backfills permanent constants into config on every load so existing installs
     /// never need manual entry and are always pointing at the production API.
+    /// Returns true if VenueId was just backfilled (triggers a one-time profile upsert).
     /// </summary>
-    private void MigrateConfig()
+    private bool MigrateConfig()
     {
         var cfg = Configuration;
         bool dirty = false;
+        bool didSetVenueId = false;
 
         if (string.IsNullOrEmpty(cfg.ApiUrl))
             { cfg.ApiUrl = PluginConstants.ProductionApiUrl; dirty = true; }
@@ -216,7 +230,16 @@ public sealed class Plugin : IDalamudPlugin
         if (string.IsNullOrEmpty(cfg.VenueName))
             { cfg.VenueName = "Sugar"; dirty = true; }
 
+        // Backfill VenueId for existing Sugar installations
+        if (string.IsNullOrEmpty(cfg.VenueId) && cfg.VenueKey == PluginConstants.VenueKey)
+        {
+            cfg.VenueId = PluginConstants.SugarVenueId;
+            dirty = true;
+            didSetVenueId = true;
+        }
+
         if (dirty) cfg.Save();
+        return didSetVenueId;
     }
 
     public void OnSetupComplete()

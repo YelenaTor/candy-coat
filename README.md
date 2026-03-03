@@ -7,8 +7,11 @@
 [![Dalamud API](https://img.shields.io/badge/Dalamud%20API-14-f472b6?style=flat)](https://github.com/goatcorp/Dalamud)
 
 **A private venue operations plugin for FFXIV — built for Sugar Venue staff.**
+**Current version: v0.16.0**
 
 Candy Coat is a comprehensive in-game assistant that handles the full operational stack for adult-friendly FFXIV venues: booking management, patron CRM, shift tracking, earnings logging, team sync, and a role-gated staff toolbox — all from a single ImGui window.
+
+As of v0.16.0, the plugin supports multi-venue registration. Venue Owners can register their venue through the setup wizard to get a unique Venue Key to share with their staff. Staff enter the key during setup to connect to their venue's Backstage API.
 
 ---
 

@@ -18,6 +18,7 @@ public class VenueDbContext : DbContext
     public DbSet<BookingEntity> Bookings => Set<BookingEntity>();
     public DbSet<GlobalProfileEntity> GlobalProfiles => Set<GlobalProfileEntity>();
     public DbSet<VenueConfigEntity> VenueConfig => Set<VenueConfigEntity>();
+    public DbSet<VenueEntity> Venues => Set<VenueEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,9 +31,13 @@ public class VenueDbContext : DbContext
             .HasIndex(p => new { p.VenueId, p.Name })
             .IsUnique();
 
-        // Future: venues table for multi-venue support
-        // modelBuilder.Entity<VenueEntity>(e => { ... });
-        // All entities would FK to VenueEntity.Id
+        modelBuilder.Entity<VenueEntity>(e =>
+        {
+            e.HasKey(v => v.Id);
+            e.HasIndex(v => v.VenueKey).IsUnique();
+            e.Property(v => v.IsActive).HasDefaultValue(true);
+            e.Property(v => v.OwnerProfileId).HasDefaultValue(string.Empty);
+        });
 
         // Indexes for common queries
         modelBuilder.Entity<RoomEntity>().HasIndex(r => r.VenueId);

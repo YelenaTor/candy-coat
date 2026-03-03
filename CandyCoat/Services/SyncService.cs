@@ -307,15 +307,19 @@ public class SyncService : IDisposable
 
     /// <summary>
     /// Fire-and-forget upsert of a character profile to the global profiles table.
-    /// Non-fatal: logs a warning on failure.
+    /// Non-fatal: logs a warning on failure. Pass venueId to register the venue in the profile.
     /// </summary>
     public void UpsertProfileAsync(string profileId, string characterName, string homeWorld, string mode,
-        bool hasGlamourer = false, bool hasChatTwo = false)
+        string venueId = "", bool hasGlamourer = false, bool hasChatTwo = false)
     {
         _ = Task.Run(async () =>
         {
             try
             {
+                Guid? venueGuid = null;
+                if (!string.IsNullOrEmpty(venueId) && Guid.TryParse(venueId, out var vg))
+                    venueGuid = vg;
+
                 var body = new
                 {
                     profileId,
@@ -323,7 +327,8 @@ public class SyncService : IDisposable
                     homeWorld,
                     mode,
                     hasGlamourerIntegrated = hasGlamourer,
-                    hasChatTwoIntegrated = hasChatTwo
+                    hasChatTwoIntegrated   = hasChatTwo,
+                    venueId                = venueGuid
                 };
                 await PostAsync("api/profile", body);
             }
@@ -332,6 +337,84 @@ public class SyncService : IDisposable
                 Svc.Log.Warning($"[SyncService] UpsertProfileAsync failed: {ex.Message}");
             }
         });
+    }
+
+    /// <summary>
+    /// Updates the X-Venue-Key default header on the HttpClient.
+    /// Call after setup completes for non-Sugar venue installs so API calls use the correct key.
+    /// </summary>
+    public void UpdateVenueKey(string key)
+    {
+        _httpClient.DefaultRequestHeaders.Remove("X-Venue-Key");
+        if (!string.IsNullOrEmpty(key))
+            _httpClient.DefaultRequestHeaders.Add("X-Venue-Key", key);
+    }
+
+    /// <summary>
+    /// Validates a venue key against the API. Returns the VenueId and VenueName on success.
+    /// Creates a temporary HttpClient — do not call in a hot loop.
+    /// </summary>
+    public async Task<(bool Valid, Guid VenueId, string VenueName)> ValidateVenueKeyAsync(string key)
+    {
+        try
+        {
+            var apiUrl = !string.IsNullOrEmpty(_plugin.Configuration.ApiUrl)
+                ? _plugin.Configuration.ApiUrl
+                : PluginConstants.ProductionApiUrl;
+
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            var url     = $"{apiUrl.TrimEnd('/')}/api/venues/validate";
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Add("X-Venue-Key", key);
+
+            var response = await client.SendAsync(request);
+            if (!response.IsSuccessStatusCode) return (false, Guid.Empty, string.Empty);
+
+            var json   = await response.Content.ReadAsStringAsync();
+            var result = JsonConvert.DeserializeObject<VenueValidateResult>(json);
+            return result != null
+                ? (true, result.VenueId, result.VenueName)
+                : (false, Guid.Empty, string.Empty);
+        }
+        catch (Exception ex)
+        {
+            Svc.Log.Warning($"[SyncService] ValidateVenueKeyAsync failed: {ex.Message}");
+            return (false, Guid.Empty, string.Empty);
+        }
+    }
+
+    /// <summary>
+    /// Registers a new venue with the API. Returns the VenueId, VenueKey, and VenueName on success.
+    /// Creates a temporary HttpClient — do not call in a hot loop.
+    /// </summary>
+    public async Task<(bool Success, Guid VenueId, string VenueKey, string VenueName)> RegisterVenueAsync(
+        string venueName, string ownerProfileId)
+    {
+        try
+        {
+            var apiUrl = !string.IsNullOrEmpty(_plugin.Configuration.ApiUrl)
+                ? _plugin.Configuration.ApiUrl
+                : PluginConstants.ProductionApiUrl;
+
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            var url  = $"{apiUrl.TrimEnd('/')}/api/venues/register";
+            var body = JsonConvert.SerializeObject(new { venueName, ownerProfileId });
+            var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await client.PostAsync(url, content);
+            if (!response.IsSuccessStatusCode) return (false, Guid.Empty, string.Empty, string.Empty);
+
+            var json   = await response.Content.ReadAsStringAsync();
+            var result = JsonConvert.DeserializeObject<VenueRegisterResult>(json);
+            return result != null
+                ? (true, result.VenueId, result.VenueKey, result.VenueName)
+                : (false, Guid.Empty, string.Empty, string.Empty);
+        }
+        catch (Exception ex)
+        {
+            Svc.Log.Warning($"[SyncService] RegisterVenueAsync failed: {ex.Message}");
+            return (false, Guid.Empty, string.Empty, string.Empty);
+        }
     }
 
     /// <summary>
@@ -550,4 +633,17 @@ public class GlobalProfileLookupResult
     public string Mode { get; set; } = string.Empty;
     public bool HasGlamourerIntegrated { get; set; }
     public bool HasChatTwoIntegrated { get; set; }
+}
+
+internal sealed class VenueValidateResult
+{
+    [JsonProperty("venueId")]   public Guid   VenueId   { get; set; }
+    [JsonProperty("venueName")] public string VenueName { get; set; } = string.Empty;
+}
+
+internal sealed class VenueRegisterResult
+{
+    [JsonProperty("venueId")]   public Guid   VenueId   { get; set; }
+    [JsonProperty("venueKey")]  public string VenueKey  { get; set; } = string.Empty;
+    [JsonProperty("venueName")] public string VenueName { get; set; } = string.Empty;
 }

@@ -26,6 +26,7 @@ public class OwnerPanel : IToolboxPanel
     private string _newRoomName = string.Empty;
     private string _venueNameInput = string.Empty;
     private bool _venueNameInit = false;
+    private bool _venueKeyRevealed = false;
 
     // Content input
     private string _blPatron = string.Empty;
@@ -106,7 +107,60 @@ public class OwnerPanel : IToolboxPanel
         ImGui.TextDisabled("Venue configuration, rooms, menu, and role cosmetics.");
         ImGui.Spacing();
 
-        // Card: Venue Info
+        // Card: Venue Registration (read-only credentials display)
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, CardBg);
+        using (var regCard = ImRaii.Child("##OwnerVenueRegCard", new Vector2(0, 128f), true))
+        {
+            ImGui.PopStyleColor();
+            if (regCard)
+            {
+                var cfg = _plugin.Configuration;
+                ImGui.TextColored(StyleManager.SectionHeader, "Venue Registration");
+                ImGui.Separator();
+                ImGui.Spacing();
+
+                // Venue Name
+                ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1f), "Name:");
+                ImGui.SameLine(60f);
+                ImGui.Text(string.IsNullOrEmpty(cfg.VenueName) ? "(not set)" : cfg.VenueName);
+
+                // Venue ID
+                ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1f), "ID:");
+                ImGui.SameLine(60f);
+                ImGui.Text(string.IsNullOrEmpty(cfg.VenueId) ? "(not set)" : cfg.VenueId);
+                if (!string.IsNullOrEmpty(cfg.VenueId))
+                {
+                    ImGui.SameLine();
+                    if (ImGui.SmallButton("\ud83d\udccb##OwnerCopyVenueId"))
+                        ImGui.SetClipboardText(cfg.VenueId);
+                }
+
+                // Venue Key (masked with reveal toggle)
+                ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1f), "Key:");
+                ImGui.SameLine(60f);
+                if (string.IsNullOrEmpty(cfg.VenueKey))
+                {
+                    ImGui.Text("(not set)");
+                }
+                else
+                {
+                    ImGui.Text(_venueKeyRevealed ? cfg.VenueKey : new string('\u2022', Math.Min(cfg.VenueKey.Length, 22)));
+                    ImGui.SameLine();
+                    if (ImGui.SmallButton(_venueKeyRevealed ? "\ud83d\udc41##OwnerKeyHide" : "\ud83d\udc41##OwnerKeyShow"))
+                        _venueKeyRevealed = !_venueKeyRevealed;
+                    ImGui.SameLine();
+                    if (ImGui.SmallButton("\ud83d\udccb##OwnerCopyVenueKey"))
+                        ImGui.SetClipboardText(cfg.VenueKey);
+                }
+
+                ImGui.Spacing();
+                ImGui.TextColored(new Vector4(0.5f, 0.7f, 1f, 1f), "\u2139 Share the Key with staff — they enter it in the setup wizard.");
+            }
+        }
+
+        ImGui.Spacing();
+
+        // Card: Venue Info (editable name)
         ImGui.PushStyleColor(ImGuiCol.ChildBg, CardBg);
         using (var venueCard = ImRaii.Child("##OwnerVenueCard", new Vector2(0, 80f), true))
         {

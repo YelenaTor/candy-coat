@@ -1,3 +1,4 @@
+using System;
 using CandyCoat.Data;
 
 namespace CandyCoat.Windows.SetupWizard;
@@ -21,5 +22,9 @@ internal sealed class WizardState
     public bool HasGlamourerIntegrated { get; set; } = false;
     public bool HasChatTwoIntegrated   { get; set; } = false;
 
-    public bool VenueKeyUnlocked { get; set; } = false;
+    // Venue registration / validation
+    public Guid   VenueId        { get; set; } = Guid.Empty;
+    public string VenueKey       { get; set; } = string.Empty;
+    public string VenueName      { get; set; } = string.Empty;
+    public bool   VenueConfirmed { get; set; } = false;
 }

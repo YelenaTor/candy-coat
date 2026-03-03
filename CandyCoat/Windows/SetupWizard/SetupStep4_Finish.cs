@@ -71,20 +71,25 @@ internal sealed class SetupStep4_Finish
             cfg.EnableSync = true;
 
             cfg.ApiUrl    = PluginConstants.ProductionApiUrl;
-            cfg.VenueKey  = PluginConstants.VenueKey;
-            cfg.VenueName = "Sugar";
+            cfg.VenueId   = state.VenueId != System.Guid.Empty ? state.VenueId.ToString() : cfg.VenueId;
+            cfg.VenueKey  = !string.IsNullOrEmpty(state.VenueKey) ? state.VenueKey : cfg.VenueKey;
+            cfg.VenueName = !string.IsNullOrEmpty(state.VenueName) ? state.VenueName : cfg.VenueName;
 
             cfg.IsSetupComplete = true;
             cfg.Save();
 
-            // Immediately push the new profile to the API
-            if (!string.IsNullOrEmpty(state.ProfileId))
+            // Update SyncService with the confirmed key so API calls use it immediately
+            plugin.SyncService.UpdateVenueKey(cfg.VenueKey);
+
+            // Push the new profile to the API (after venue is confirmed so RegisteredVenues is populated)
+            if (state.VenueConfirmed && !string.IsNullOrEmpty(state.ProfileId))
             {
                 plugin.SyncService.UpsertProfileAsync(
                     state.ProfileId,
                     cfg.CharacterName,
                     cfg.HomeWorld,
                     state.UserMode,
+                    cfg.VenueId,
                     state.HasGlamourerIntegrated,
                     state.HasChatTwoIntegrated);
             }

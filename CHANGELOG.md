@@ -5,6 +5,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.16.0] — 2026-03-03
+
+### Added
+- **Multi-Venue Registration System** — the plugin can now authenticate against any registered venue, not just Sugar
+  - **`VenueEntity` table** seeded in Neon with Sugar's pre-existing row (deterministic ID from MD5 of the venue key, matching all existing data foreign keys — zero disruption to existing Sugar data)
+  - **DB-backed auth middleware** — API now resolves venue from the `Venues` table on every authenticated request; `VenueId` is injected via `ctx.Items` rather than computed per-request
+  - **`POST /api/venues/register`** (public) — any client can register a new venue; returns a random VenueId + VenueKey; first and only time the key is returned
+  - **`GET /api/venues/validate`** (public, key in header) — validates a venue key and returns VenueId + VenueName without side effects; used by the setup wizard
+  - **`POST /api/profile` VenueId support** — accepts optional `venueId` (Guid?); appends to `RegisteredVenues` JSON array in the global profile record
+- **Setup Wizard — all roles now complete a venue step** (step 5 of 6) instead of Owners only
+  - **Owner path**: "Register Your Venue" form → POST `/api/venues/register` → returns VenueId + VenueKey; key shown with masked display, reveal toggle, and copy button; "Next →" gated on successful registration
+  - **Staff path**: "Enter Venue Key" password input → GET `/api/venues/validate` → confirms venue name; "Next →" gated on successful validation; error shown for invalid keys
+  - **Returning setup**: if VenueId already in config, step shows confirmed state immediately (no re-entry required)
+  - Both paths are non-blocking (async via `Task.Run`); spinner/disabled state shown during in-flight API call
+- **`SyncService` new methods**: `ValidateVenueKeyAsync`, `RegisterVenueAsync`, `UpdateVenueKey`
+- **`UpsertProfileAsync` updated** to accept `string venueId` parameter; includes it in the POST body for `RegisteredVenues` tracking
+- **`MigrateConfig()` backfill** — on every load, existing Sugar installs get `VenueId = SugarVenueId` written to config; triggers a one-time profile upsert to populate `RegisteredVenues` server-side
+- **OwnerPanel → Settings: Venue Registration card** — shows Venue Name, Venue ID (copy button), and masked Venue Key (reveal + copy buttons) read from config; info hint to share the key with staff
+- **`PluginConstants.SugarVenueId`** — hardcoded GUID matching the migration seed; single source of truth for Sugar's deterministic venue ID
+
+### Changed
+- Setup wizard "Next →" on Role Selection (step 4) always advances to step 5 (venue step) for all roles
+- Setup wizard "Back" on Finish (step 6) always returns to step 5 (venue step)
+- `SetupStep4_Finish` writes `cfg.VenueId` and `cfg.VenueKey` from `WizardState` (not hardcoded Sugar constants); calls `SyncService.UpdateVenueKey()` immediately so polling uses the correct key
+- `WizardState` replaces `VenueKeyUnlocked` with `VenueId`, `VenueKey`, `VenueName`, `VenueConfirmed` fields
+
+---
+
 ## [0.15.0] — 2026-03-03
 
 ### Added

@@ -61,7 +61,15 @@ public class SetupWindow : Window, IDisposable
         _state.MultiRoleToggle        = cfg.MultiRoleEnabled;
         _state.HasGlamourerIntegrated = cfg.EnableGlamourer;
         _state.HasChatTwoIntegrated   = cfg.EnableChatTwo;
-        _state.VenueKeyUnlocked       = cfg.VenueKey == PluginConstants.VenueKey;
+
+        // Restore venue registration state
+        if (!string.IsNullOrEmpty(cfg.VenueId) && System.Guid.TryParse(cfg.VenueId, out var restoredVenueId))
+        {
+            _state.VenueId        = restoredVenueId;
+            _state.VenueKey       = cfg.VenueKey;
+            _state.VenueName      = cfg.VenueName;
+            _state.VenueConfirmed = true;
+        }
     }
 
     private void SaveProgress()
@@ -139,13 +147,13 @@ public class SetupWindow : Window, IDisposable
         ImGui.SameLine();
         if (!canProceed) ImGui.BeginDisabled();
         if (ImGui.Button("Next##step4next"))
-            _currentStep = _state.SelectedPrimaryRole == StaffRole.Owner ? 5 : 6;
+            _currentStep = 5;  // All roles go through venue registration step
         if (!canProceed) ImGui.EndDisabled();
     }
 
     private void DrawVenueKeyWithNav()
     {
-        _stepVenueKey.DrawContent(ref _currentStep, _state);
+        _stepVenueKey.DrawContent(ref _currentStep, _state, _plugin);
 
         ImGui.Spacing();
         ImGui.Separator();
@@ -154,7 +162,7 @@ public class SetupWindow : Window, IDisposable
         if (ImGui.Button("Back##step5back"))
             _currentStep = 4;
 
-        bool canProceed = _state.VenueKeyUnlocked;
+        bool canProceed = _state.VenueConfirmed;
         ImGui.SameLine();
         if (!canProceed) ImGui.BeginDisabled();
         if (ImGui.Button("Next##step5next"))
@@ -168,6 +176,6 @@ public class SetupWindow : Window, IDisposable
 
         ImGui.Spacing();
         if (ImGui.Button("Back##step6back"))
-            _currentStep = _state.SelectedPrimaryRole == StaffRole.Owner ? 5 : 4;
+            _currentStep = 5;
     }
 }

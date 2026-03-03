@@ -18,25 +18,37 @@ using (var scope = app.Services.CreateScope())
 }
 
 // ─── Middleware: Venue Key Auth ───
-var venueKey = builder.Configuration["VENUE_KEY"] ?? "";
 app.Use(async (context, next) =>
 {
     // Bypass auth entirely in local Development
     if (app.Environment.IsDevelopment()) { await next(); return; }
 
+    var path = context.Request.Path;
+
     // Public endpoints — no key required
-    if (context.Request.Path.StartsWithSegments("/api/health") ||
-        (context.Request.Method == "GET" && context.Request.Path.StartsWithSegments("/api/profile")))
+    if (path.StartsWithSegments("/api/health") ||
+        path.StartsWithSegments("/api/venues") ||
+        (context.Request.Method == "POST" && path.StartsWithSegments("/api/profile")) ||
+        (context.Request.Method == "GET"  && path.StartsWithSegments("/api/profile")))
     {
         await next(); return;
     }
 
-    if (!context.Request.Headers.TryGetValue("X-Venue-Key", out var key) || key != venueKey)
+    // Resolve venue from DB by key
+    var venueKeyHeader = context.Request.Headers["X-Venue-Key"].ToString();
+    var db = context.RequestServices.GetRequiredService<VenueDbContext>();
+    var venue = await db.Venues.FirstOrDefaultAsync(v => v.VenueKey == venueKeyHeader && v.IsActive);
+
+    if (venue == null)
     {
         context.Response.StatusCode = 401;
         await context.Response.WriteAsync("Invalid venue key");
         return;
     }
+
+    context.Items["VenueId"]   = venue.Id;
+    context.Items["VenueName"] = venue.VenueName;
+
     await next();
 });
 
@@ -52,6 +64,42 @@ app.MapGet("/api/health", async (VenueDbContext db) =>
     {
         return Results.StatusCode(503);
     }
+});
+
+// ═══════════════════════════════════════════
+//  VENUES
+// ═══════════════════════════════════════════
+
+app.MapPost("/api/venues/register", async (VenueDbContext db, VenueRegisterReq req) =>
+{
+    if (string.IsNullOrWhiteSpace(req.VenueName))
+        return Results.BadRequest("VenueName is required");
+
+    var venue = new VenueEntity
+    {
+        Id             = Guid.NewGuid(),
+        VenueKey       = Guid.NewGuid().ToString(),
+        VenueName      = req.VenueName,
+        OwnerProfileId = req.OwnerProfileId ?? string.Empty,
+        CreatedAt      = DateTime.UtcNow,
+        IsActive       = true
+    };
+    db.Venues.Add(venue);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { venueId = venue.Id, venueKey = venue.VenueKey, venueName = venue.VenueName });
+});
+
+app.MapGet("/api/venues/validate", async (VenueDbContext db, HttpContext ctx) =>
+{
+    var key = ctx.Request.Headers["X-Venue-Key"].ToString();
+    if (string.IsNullOrWhiteSpace(key))
+        return Results.BadRequest("X-Venue-Key header required");
+
+    var venue = await db.Venues.FirstOrDefaultAsync(v => v.VenueKey == key && v.IsActive);
+    if (venue == null) return Results.Unauthorized();
+
+    return Results.Ok(new { venueId = venue.Id, venueName = venue.VenueName });
 });
 
 // ═══════════════════════════════════════════
@@ -347,17 +395,17 @@ app.MapGet("/api/cosmetics", async (VenueDbContext db, HttpContext ctx) =>
             lastUpdatedUtc = c.LastUpdatedUtc
         })
         .ToListAsync();
-        
+
     return Results.Ok(cosmetics);
 });
 
 app.MapPost("/api/cosmetics", async (VenueDbContext db, HttpContext ctx, CosmeticSyncEntity req) =>
 {
     var venueId = GetVenueId(ctx);
-    
+
     var existing = await db.CosmeticsSync.FirstOrDefaultAsync(
         c => c.VenueId == venueId && c.CharacterHash == req.CharacterHash);
-        
+
     if (existing != null)
     {
         existing.BrotliBlob = req.BrotliBlob;
@@ -369,7 +417,7 @@ app.MapPost("/api/cosmetics", async (VenueDbContext db, HttpContext ctx, Cosmeti
         req.LastUpdatedUtc = DateTime.UtcNow;
         db.CosmeticsSync.Add(req);
     }
-    
+
     await db.SaveChangesAsync();
     return Results.Ok();
 });
@@ -443,7 +491,8 @@ app.MapGet("/api/profile/{profileId}", async (VenueDbContext db, string profileI
     });
 });
 
-app.MapPost("/api/profile", async (VenueDbContext db, GlobalProfileEntity req) =>
+// Public upsert — no auth required; includes optional VenueId to populate RegisteredVenues
+app.MapPost("/api/profile", async (VenueDbContext db, ProfileUpsertReq req) =>
 {
     if (string.IsNullOrWhiteSpace(req.ProfileId))
         return Results.BadRequest("ProfileId is required");
@@ -451,18 +500,39 @@ app.MapPost("/api/profile", async (VenueDbContext db, GlobalProfileEntity req) =
     var existing = await db.GlobalProfiles.FindAsync(req.ProfileId);
     if (existing != null)
     {
-        existing.CharacterName = req.CharacterName;
-        existing.HomeWorld = req.HomeWorld;
-        existing.Mode = req.Mode;
+        existing.CharacterName          = req.CharacterName;
+        existing.HomeWorld              = req.HomeWorld;
+        existing.Mode                   = req.Mode;
         existing.HasGlamourerIntegrated = req.HasGlamourerIntegrated;
-        existing.HasChatTwoIntegrated = req.HasChatTwoIntegrated;
-        existing.LastSeen = DateTime.UtcNow;
+        existing.HasChatTwoIntegrated   = req.HasChatTwoIntegrated;
+        existing.LastSeen               = DateTime.UtcNow;
+
+        if (req.VenueId.HasValue)
+        {
+            var list  = System.Text.Json.JsonSerializer.Deserialize<List<string>>(existing.RegisteredVenues) ?? new();
+            var idStr = req.VenueId.Value.ToString();
+            if (!list.Contains(idStr)) { list.Add(idStr); existing.RegisteredVenues = System.Text.Json.JsonSerializer.Serialize(list); }
+        }
     }
     else
     {
-        req.CreatedAt = DateTime.UtcNow;
-        req.LastSeen = DateTime.UtcNow;
-        db.GlobalProfiles.Add(req);
+        var profile = new GlobalProfileEntity
+        {
+            ProfileId               = req.ProfileId,
+            CharacterName           = req.CharacterName,
+            HomeWorld               = req.HomeWorld,
+            Mode                    = req.Mode,
+            HasGlamourerIntegrated  = req.HasGlamourerIntegrated,
+            HasChatTwoIntegrated    = req.HasChatTwoIntegrated,
+            StaffData               = "{}",
+            PatronData              = "{}",
+            RegisteredVenues        = req.VenueId.HasValue
+                ? System.Text.Json.JsonSerializer.Serialize(new List<string> { req.VenueId.Value.ToString() })
+                : "[]",
+            CreatedAt = DateTime.UtcNow,
+            LastSeen  = DateTime.UtcNow
+        };
+        db.GlobalProfiles.Add(profile);
     }
 
     await db.SaveChangesAsync();
@@ -507,16 +577,21 @@ app.MapPut("/api/config", async (VenueDbContext db, HttpContext ctx, VenueConfig
 
 app.Run();
 
-// ─── Helper: Extract venue ID from venue key config ───
-// For now (Sugar-only), venue ID is derived from the venue key.
-// Future: look up venue by key in a venues table.
-static Guid GetVenueId(HttpContext ctx)
-{
-    var key = ctx.Request.Headers["X-Venue-Key"].ToString();
-    // Deterministic UUID from the key string (simple hash-based approach)
-    // This means the same key always maps to the same venue ID.
-    return new Guid(System.Security.Cryptography.MD5.HashData(
-        System.Text.Encoding.UTF8.GetBytes(key)));
-}
+// ─── Helper: Extract venue ID from context (set by auth middleware) ───
+// Falls back to MD5 derivation in Development where middleware is bypassed.
+static Guid GetVenueId(HttpContext ctx) =>
+    ctx.Items.TryGetValue("VenueId", out var id) && id is Guid g ? g
+    : new Guid(System.Security.Cryptography.MD5.HashData(
+        System.Text.Encoding.UTF8.GetBytes(
+            ctx.Request.Headers["X-Venue-Key"].ToString())));
 
 record VenueConfigUpdateReq(string? ManagerPw);
+record VenueRegisterReq(string VenueName, string? OwnerProfileId);
+record ProfileUpsertReq(
+    string ProfileId,
+    string CharacterName,
+    string HomeWorld,
+    string Mode,
+    bool HasGlamourerIntegrated,
+    bool HasChatTwoIntegrated,
+    Guid? VenueId = null);
