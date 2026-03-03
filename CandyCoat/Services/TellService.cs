@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.Game.Text.SeStringHandling.Payloads;
 using CandyCoat.Data;
 using ECommons.DalamudServices;
 
@@ -27,11 +28,27 @@ public class TellService : IDisposable
         Svc.Chat.ChatMessage -= OnChatMessage;
     }
 
+    // Returns "Firstname Lastname@World" for cross-world players, or TextValue for same-world.
+    private static string GetSenderName(SeString sender)
+    {
+        foreach (var payload in sender.Payloads)
+        {
+            if (payload is PlayerPayload p)
+            {
+                var worldName = p.World.Value.Name.ToString();
+                if (!string.IsNullOrEmpty(worldName))
+                    return $"{p.PlayerName}@{worldName}";
+                return p.PlayerName;
+            }
+        }
+        return sender.TextValue;
+    }
+
     private void OnChatMessage(XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled)
     {
         if (type == XivChatType.TellIncoming)
         {
-            var playerName = sender.TextValue;
+            var playerName = GetSenderName(sender);
             AddMessage(playerName, message.TextValue, isOutgoing: false);
 
             if (_plugin.Configuration.TellSuppressInGame)
@@ -48,7 +65,7 @@ public class TellService : IDisposable
         else if (type == XivChatType.TellOutgoing)
         {
             // For outgoing tells, the game puts the recipient's name in sender
-            var playerName = sender.TextValue;
+            var playerName = GetSenderName(sender);
             AddMessage(playerName, message.TextValue, isOutgoing: true);
             OnTellReceived?.Invoke();
         }
@@ -108,6 +125,6 @@ public class TellService : IDisposable
     public void SendTell(string playerName, string message)
     {
         // The TellOutgoing chat hook will capture this automatically when the game processes it
-        Plugin.CommandManager.ProcessCommand($"/tell {playerName} {message}");
+        Svc.Commands.ProcessCommand($"/tell {playerName} {message}");
     }
 }
