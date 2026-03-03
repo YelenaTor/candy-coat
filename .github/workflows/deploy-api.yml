@@ -37,7 +37,9 @@ jobs:
           username: ${{ secrets.API_SSH_USER }}
           key: ${{ secrets.API_SSH_KEY }}
           script: |
-            systemctl stop candy-api.service
+            sudo mkdir -p /opt/candy-api
+            sudo chown $USER:$USER /opt/candy-api
+            sudo systemctl stop candy-api.service || true
             rm -rf /opt/candy-api/*
 
       - name: Upload binaries via SCP
@@ -57,6 +59,6 @@ jobs:
           username: ${{ secrets.API_SSH_USER }}
           key: ${{ secrets.API_SSH_KEY }}
           script: |
-            systemctl start candy-api.service
+            sudo systemctl start candy-api.service
             sleep 3
-            systemctl is-active --quiet candy-api.service && echo "Service is running" || (journalctl -u candy-api.service -n 30 --no-pager; exit 1)
+            sudo systemctl is-active --quiet candy-api.service && echo "Service is running" || (sudo journalctl -u candy-api.service -n 30 --no-pager; exit 1)
