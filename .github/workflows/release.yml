@@ -70,7 +70,7 @@ jobs:
         # Stage plugin files + Fonts into a clean directory to preserve subfolder structure
         $stagingDir = "./staging"
         New-Item -ItemType Directory -Force -Path $stagingDir | Out-Null
-        Get-ChildItem -Path $outDir -Include "*.dll","*.json","*.pdb","*.xml" -File | Copy-Item -Destination $stagingDir
+        Get-ChildItem -Path $outDir -File | Where-Object { $_.Extension -in @('.dll','.json','.pdb','.xml') } | Copy-Item -Destination $stagingDir
         if (Test-Path "$outDir/Fonts") {
             Copy-Item -Path "$outDir/Fonts" -Destination "$stagingDir/Fonts" -Recurse
         }
