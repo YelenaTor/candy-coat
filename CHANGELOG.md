@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.13.3] — 2026-03-03
+
+### Fixed
+- **Nameplate jumps to top-left when zoomed out**: `GetNamePlateWorldPosition` writes `(0,0,0)` when a character's nameplate is not actively loaded (common at any distance beyond close range). `WorldToScreen(0,0,0)` silently succeeds and returns the screen projection of the world origin — which is top-left at any meaningful camera distance. Added zero-position guard and character-proximity sanity check before projecting; the method now returns false and the anchor chain falls through to the known-working dual-projection fallback.
+- **`AnchorFreshFrameBudget` raised from 2 → 6 frames**: `OnDataUpdate` does not fire every render frame; a 2-frame window caused frequent stale misses and unintended fallthrough to the broken world-position path.
+
+---
+
 ## [0.13.2] — 2026-03-03
 
 ### Fixed

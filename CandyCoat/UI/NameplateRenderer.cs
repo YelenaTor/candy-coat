@@ -23,7 +23,7 @@ public class NameplateRenderer : IDisposable
     private bool _nativeAnchorSubscriptionActive;
     private int _lastAnchorCleanupFrame;
 
-    private const int AnchorFreshFrameBudget = 2;
+    private const int AnchorFreshFrameBudget = 6;
     private const int AnchorStaleFrameBudget = 180;
     private const float LegacyBaseYOffset = 30f;
 
@@ -302,6 +302,21 @@ public class NameplateRenderer : IDisposable
 
         FFXIVClientStructs.FFXIV.Common.Math.Vector3 worldPos = default;
         gameObject->GetNamePlateWorldPosition(&worldPos);
+
+        // Guard: GetNamePlateWorldPosition writes (0,0,0) when the nameplate is not
+        // loaded or the character is culled (common when zoomed out). WorldToScreen
+        // happily succeeds on (0,0,0) and returns the world-origin projected to screen,
+        // which ends up in the top-left — reject it before it poisons the draw call.
+        if (worldPos.X == 0f && worldPos.Y == 0f && worldPos.Z == 0f)
+            return false;
+
+        // Sanity: nameplate should be within ~2 units horizontally and above the feet.
+        // Mounted/large races may push it to ~4 units up, so allow up to 6 for safety.
+        if (MathF.Abs(worldPos.X - pc.Position.X) > 2f || MathF.Abs(worldPos.Z - pc.Position.Z) > 2f)
+            return false;
+        if (worldPos.Y < pc.Position.Y || worldPos.Y > pc.Position.Y + 6f)
+            return false;
+
         if (!Svc.GameGui.WorldToScreen(new Vector3(worldPos.X, worldPos.Y, worldPos.Z), out var screenPos))
             return false;
 
