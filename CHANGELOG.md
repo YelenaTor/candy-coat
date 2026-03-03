@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.13.2] — 2026-03-03
+
+### Fixed
+- **Nameplate cosmetic flicker every 3 seconds**: `SyncService.ApplyCosmetics` previously called `Cosmetics.Clear()` before repopulating, creating a frame window where all cosmetic profiles were empty and vanilla nameplates briefly reappeared. Now uses a swap pattern — stale keys are surgically removed and new ones upserted, so the dictionary is never fully empty.
+- **`LegacyBaseYOffset` misapplied to all anchor methods**: the 30px base Y offset was originally tuned for the dual-projection fallback (feet → head-height lift). It was incorrectly applied to native (`OnDataUpdate`) and world-position anchors, which already land at the nameplate position. Offset is now applied only to the dual-projection path.
+- **Inconsistent hash computation in `OnNamePlateUpdate`**: was inlining `Convert.ToBase64String(...)` instead of using the `BuildCharacterHash` helper already defined in the same class.
+- **Duplicate/misplaced XML summary comment** on `SendHeartbeatAsync` cleaned up; summary moved to the correct method (`UpsertVenueConfigAsync`).
+
+---
+
 ## [0.13.1] — 2026-03-02
 
 ### Changed

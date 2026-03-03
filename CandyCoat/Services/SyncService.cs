@@ -1,8 +1,12 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
+using System.IO;
+using System.IO.Compression;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using ECommons.DalamudServices;
@@ -12,15 +16,21 @@ namespace CandyCoat.Services;
 
 /// <summary>
 /// Manages synchronization between the plugin and the Backstage API.
-/// Write operations are fire-and-forget. IsConnected is always true; read caches
-/// are populated in future polling builds — panels degrade gracefully when empty.
+/// Write operations are fire-and-forget. Read caches are refreshed via fast polling.
 /// </summary>
 public class SyncService : IDisposable
 {
     private readonly Plugin _plugin;
     private readonly HttpClient _httpClient;
+    private readonly CancellationTokenSource _pollCts = new();
+    private readonly Task _pollTask;
+    private int _connectedState = 1;
+    private int _consecutivePollFailures;
 
-    // Synced data cache — panels degrade gracefully when empty (read polling not yet implemented)
+    private const int FastPollIntervalSeconds = 3;
+    private const int OfflineFailureThreshold = 2;
+
+    // Synced data cache
     public List<SyncedRoom> Rooms { get; private set; } = new();
     public List<SyncedStaff> OnlineStaff { get; private set; } = new();
     public List<SyncedPatron> Patrons { get; private set; } = new();
@@ -31,8 +41,19 @@ public class SyncService : IDisposable
     public ConcurrentDictionary<string, CosmeticProfile> Cosmetics { get; } = new();
     public List<SyncedBooking> Bookings { get; private set; } = new();
 
-    // Always true — NameplateRenderer degrades gracefully until read polling is implemented
-    public bool IsConnected { get; } = true;
+    public bool IsConnected => Volatile.Read(ref _connectedState) == 1;
+
+    private sealed class SyncedCosmeticEnvelopeRead
+    {
+        [JsonProperty("characterHash")]
+        public string CharacterHash { get; set; } = string.Empty;
+
+        [JsonProperty("brotliBlob")]
+        public byte[] BrotliBlob { get; set; } = Array.Empty<byte>();
+
+        [JsonProperty("lastUpdatedUtc")]
+        public DateTime LastUpdatedUtc { get; set; }
+    }
 
     public SyncService(Plugin plugin)
     {
@@ -47,6 +68,8 @@ public class SyncService : IDisposable
 
         if (!string.IsNullOrEmpty(_plugin.Configuration.VenueKey))
             _httpClient.DefaultRequestHeaders.Add("X-Venue-Key", _plugin.Configuration.VenueKey);
+
+        _pollTask = Task.Run(() => PollFastLoopAsync(_pollCts.Token));
     }
 
     // ─── Public write methods (panels call these) ───
@@ -88,15 +111,11 @@ public class SyncService : IDisposable
     {
         try
         {
-            var json = JsonConvert.SerializeObject(profile);
-            var bytes = Encoding.UTF8.GetBytes(json);
-            
-            using var ms = new System.IO.MemoryStream();
-            using (var bs = new System.IO.Compression.BrotliStream(ms, System.IO.Compression.CompressionLevel.Optimal))
+            if (!TryEncodeCosmeticProfile(profile, out var compressedBytes))
             {
-                await bs.WriteAsync(bytes, 0, bytes.Length);
+                Svc.Log.Error("[SyncService] PushCosmeticsAsync failed: unable to encode cosmetic profile.");
+                return;
             }
-            var compressedBytes = ms.ToArray();
             
             var name = _plugin.Configuration.CharacterName ?? "Unknown";
             var world = _plugin.Configuration.HomeWorld ?? "Unknown";
@@ -114,6 +133,155 @@ public class SyncService : IDisposable
         catch (Exception ex)
         {
             Svc.Log.Error($"[SyncService] PushCosmeticsAsync failed: {ex.Message}");
+        }
+    }
+
+    private async Task PollFastLoopAsync(CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
+        {
+            try
+            {
+                await RefreshFastCachesAsync(token);
+                MarkConnected();
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                RegisterPollFailure(ex);
+            }
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(FastPollIntervalSeconds), token);
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                break;
+            }
+        }
+    }
+
+    private async Task RefreshFastCachesAsync(CancellationToken token)
+    {
+        var staffTask = FetchOnlineStaffAsync(token);
+        var cosmeticsTask = FetchCosmeticsAsync(token);
+        await Task.WhenAll(staffTask, cosmeticsTask);
+
+        OnlineStaff = staffTask.Result;
+        ApplyCosmetics(cosmeticsTask.Result);
+    }
+
+    private async Task<List<SyncedStaff>> FetchOnlineStaffAsync(CancellationToken token)
+    {
+        using var response = await _httpClient.GetAsync("api/staff/online", token);
+        response.EnsureSuccessStatusCode();
+        var json = await response.Content.ReadAsStringAsync(token);
+        return JsonConvert.DeserializeObject<List<SyncedStaff>>(json) ?? [];
+    }
+
+    private async Task<List<SyncedCosmeticEnvelopeRead>> FetchCosmeticsAsync(CancellationToken token)
+    {
+        using var response = await _httpClient.GetAsync("api/cosmetics", token);
+        response.EnsureSuccessStatusCode();
+        var json = await response.Content.ReadAsStringAsync(token);
+        return JsonConvert.DeserializeObject<List<SyncedCosmeticEnvelopeRead>>(json) ?? [];
+    }
+
+    private void ApplyCosmetics(List<SyncedCosmeticEnvelopeRead> envelopes)
+    {
+        // Build the incoming set first — never clear the live dictionary entirely,
+        // as the draw thread reads it every frame and would see empty plates.
+        var incoming = new Dictionary<string, CosmeticProfile>(envelopes.Count);
+        foreach (var envelope in envelopes)
+        {
+            if (string.IsNullOrWhiteSpace(envelope.CharacterHash))
+                continue;
+
+            if (!TryDecodeCosmeticProfile(envelope.BrotliBlob, out var profile))
+            {
+                Svc.Log.Warning($"[SyncService] Skipping corrupt cosmetic profile for hash '{envelope.CharacterHash}'.");
+                continue;
+            }
+
+            incoming[envelope.CharacterHash] = profile;
+        }
+
+        // Remove stale keys, upsert new/updated ones — no full-empty window.
+        foreach (var key in Cosmetics.Keys.ToList())
+        {
+            if (!incoming.ContainsKey(key))
+                Cosmetics.TryRemove(key, out _);
+        }
+        foreach (var kvp in incoming)
+            Cosmetics[kvp.Key] = kvp.Value;
+    }
+
+    private void MarkConnected()
+    {
+        Interlocked.Exchange(ref _consecutivePollFailures, 0);
+        Interlocked.Exchange(ref _connectedState, 1);
+    }
+
+    private void RegisterPollFailure(Exception ex)
+    {
+        var failures = Interlocked.Increment(ref _consecutivePollFailures);
+        if (failures >= OfflineFailureThreshold)
+            Interlocked.Exchange(ref _connectedState, 0);
+
+        if (failures == OfflineFailureThreshold)
+            Svc.Log.Warning($"[SyncService] Polling degraded after {failures} consecutive failures: {ex.Message}");
+    }
+
+    private static bool TryEncodeCosmeticProfile(CosmeticProfile profile, out byte[] compressedBytes)
+    {
+        compressedBytes = Array.Empty<byte>();
+        try
+        {
+            var json = JsonConvert.SerializeObject(profile);
+            var bytes = Encoding.UTF8.GetBytes(json);
+            using var outStream = new MemoryStream();
+            using (var brotli = new BrotliStream(outStream, CompressionLevel.Optimal, leaveOpen: true))
+            {
+                brotli.Write(bytes, 0, bytes.Length);
+            }
+
+            compressedBytes = outStream.ToArray();
+            return compressedBytes.Length > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool TryDecodeCosmeticProfile(byte[] compressedBytes, out CosmeticProfile profile)
+    {
+        profile = new CosmeticProfile();
+        try
+        {
+            if (compressedBytes == null || compressedBytes.Length == 0)
+                return false;
+
+            using var input = new MemoryStream(compressedBytes);
+            using var brotli = new BrotliStream(input, CompressionMode.Decompress);
+            using var output = new MemoryStream();
+            brotli.CopyTo(output);
+
+            var json = Encoding.UTF8.GetString(output.ToArray());
+            var decoded = JsonConvert.DeserializeObject<CosmeticProfile>(json);
+            if (decoded == null)
+                return false;
+
+            profile = decoded;
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 
@@ -167,10 +335,6 @@ public class SyncService : IDisposable
     }
 
     /// <summary>
-    /// Fire-and-forget upsert of venue config (manager password) to the API.
-    /// Non-fatal: logs a warning on failure.
-    /// </summary>
-    /// <summary>
     /// Fire-and-forget staff presence heartbeat. Call on clock-in and periodically while clocked in.
     /// </summary>
     public void SendHeartbeatAsync()
@@ -198,6 +362,10 @@ public class SyncService : IDisposable
         });
     }
 
+    /// <summary>
+    /// Fire-and-forget upsert of venue config (manager password) to the API.
+    /// Non-fatal: logs a warning on failure.
+    /// </summary>
     public void UpsertVenueConfigAsync(string managerPw)
     {
         _ = Task.Run(async () =>
@@ -259,6 +427,16 @@ public class SyncService : IDisposable
 
     public void Dispose()
     {
+        _pollCts.Cancel();
+        try
+        {
+            _pollTask.Wait(TimeSpan.FromSeconds(1));
+        }
+        catch
+        {
+            // Best-effort shutdown; disposal continues.
+        }
+        _pollCts.Dispose();
         _httpClient.Dispose();
     }
 }

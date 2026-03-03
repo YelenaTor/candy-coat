@@ -6,7 +6,11 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Gui.NamePlate;
 using ECommons.DalamudServices;
+using ECommons.GameFunctions;
 using CandyCoat.Data;
+using CandyCoat.Services;
+using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace CandyCoat.UI;
 
@@ -15,6 +19,13 @@ public class NameplateRenderer : IDisposable
     private readonly Plugin _plugin;
     private readonly CosmeticFontManager _fontManager;
     private readonly CosmeticBadgeManager _badgeManager;
+    private readonly Dictionary<string, NameplateAnchor> _nameplateAnchors = new(StringComparer.Ordinal);
+    private bool _nativeAnchorSubscriptionActive;
+    private int _lastAnchorCleanupFrame;
+
+    private const int AnchorFreshFrameBudget = 2;
+    private const int AnchorStaleFrameBudget = 180;
+    private const float LegacyBaseYOffset = 30f;
 
     public NameplateRenderer(Plugin plugin, CosmeticFontManager fontManager, CosmeticBadgeManager badgeManager)
     {
@@ -23,12 +34,49 @@ public class NameplateRenderer : IDisposable
         _badgeManager = badgeManager;
         Svc.PluginInterface.UiBuilder.Draw += DrawNameplates;
         Plugin.NamePlateGui.OnNamePlateUpdate += OnNamePlateUpdate;
+        try
+        {
+            Plugin.NamePlateGui.OnDataUpdate += OnDataUpdate;
+            _nativeAnchorSubscriptionActive = true;
+        }
+        catch (Exception ex)
+        {
+            Svc.Log.Warning($"[NameplateRenderer] OnDataUpdate unavailable, using fallback placement only: {ex.Message}");
+            _nativeAnchorSubscriptionActive = false;
+        }
+    }
+
+    private void OnDataUpdate(
+        INamePlateUpdateContext context,
+        IReadOnlyList<INamePlateUpdateHandler> handlers)
+    {
+        if (!_nativeAnchorSubscriptionActive)
+            return;
+
+        int frame = ImGui.GetFrameCount();
+        foreach (var handler in handlers)
+        {
+            var pc = handler.PlayerCharacter;
+            if (pc == null) continue;
+
+            if (!TryReadNativeAnchor(handler, out var anchor))
+                continue;
+
+            var hash = BuildCharacterHash(pc.Name.ToString(), pc.HomeWorld.Value.Name.ToString());
+            _nameplateAnchors[hash] = new NameplateAnchor(anchor, frame);
+        }
+
+        CleanupStaleAnchors(frame);
     }
 
     private void OnNamePlateUpdate(
         INamePlateUpdateContext context,
         IReadOnlyList<INamePlateUpdateHandler> handlers)
     {
+        var localName = _plugin.Configuration.CharacterName;
+        var localWorld = _plugin.Configuration.HomeWorld;
+        var staffLookup = BuildStaffLookup();
+
         foreach (var handler in handlers)
         {
             var pc = handler.PlayerCharacter;
@@ -36,13 +84,10 @@ public class NameplateRenderer : IDisposable
 
             var name  = pc.Name.ToString();
             var world = pc.HomeWorld.Value.Name.ToString();
-            var hash  = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{name}@{world}"));
+            var hash  = BuildCharacterHash(name, world);
 
-            bool hasProfile =
-                (_plugin.SyncService.IsConnected && _plugin.SyncService.Cosmetics.ContainsKey(hash)) ||
-                (name == _plugin.Configuration.CharacterName && world == _plugin.Configuration.HomeWorld);
-
-            if (!hasProfile) continue;
+            if (!TryResolveRenderDecision(name, world, hash, localName, localWorld, staffLookup, out _, out _))
+                continue;
 
             handler.RemoveField(NamePlateStringField.Name);
             handler.RemoveField(NamePlateStringField.Title);
@@ -58,6 +103,7 @@ public class NameplateRenderer : IDisposable
         var drawList = ImGui.GetBackgroundDrawList();
         var localName  = _plugin.Configuration.CharacterName;
         var localWorld = _plugin.Configuration.HomeWorld;
+        var staffLookup = BuildStaffLookup();
 
         foreach (var obj in Svc.Objects)
         {
@@ -66,47 +112,23 @@ public class NameplateRenderer : IDisposable
             var name  = pc.Name.ToString();
             var world = pc.HomeWorld.Value.Name.ToString();
             var hash  = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{name}@{world}"));
+            var isLocalCharacter = name == localName && world == localWorld;
 
-            // Synced profile takes priority when connected
-            CosmeticProfile? profile = null;
-            if (_plugin.SyncService.IsConnected)
-                _plugin.SyncService.Cosmetics.TryGetValue(hash, out profile);
+            if (!TryResolveRenderDecision(name, world, hash, localName, localWorld, staffLookup, out var profile, out var staffMatch))
+                continue;
 
-            // Local player falls back to their own configured profile
-            if (profile == null && name == localName && world == localWorld)
-                profile = _plugin.Configuration.CosmeticProfile;
+            if (!TryResolveAnchor(pc, hash, out var anchorCenter, out var isLegacyAnchor))
+                continue;
 
-            // Role defaults: give staff with no personal profile a role-based cosmetic
-            if (profile == null && _plugin.SyncService.IsConnected)
-            {
-                var sm = _plugin.SyncService.OnlineStaff.Find(s => s.CharacterName == name && s.HomeWorld == world);
-                if (sm != null
-                    && Enum.TryParse<Data.StaffRole>(sm.Role, out var smRole)
-                    && _plugin.Configuration.RoleDefaults.TryGetValue(smRole, out var rd)
-                    && rd.Enabled)
-                    profile = BuildRoleDefaultProfile(rd);
-            }
-
-            if (profile == null) continue;
-
-            var staffMatch  = _plugin.SyncService.OnlineStaff.Find(s => s.CharacterName == name && s.HomeWorld == world);
-            bool isClockedIn = staffMatch?.ShiftStart != null;
-
-            // Project feet and 1 world-unit above to get pixels-per-world-unit at
-            // the current camera distance/FOV, then lift by ~head height (1.7 world units).
-            if (!Svc.GameGui.WorldToScreen(pc.Position, out var feetScreen)) continue;
-            if (!Svc.GameGui.WorldToScreen(
-                    new Vector3(pc.Position.X, pc.Position.Y + 1f, pc.Position.Z),
-                    out var oneUnitUp)) continue;
-
-            float pxPerUnit = feetScreen.Y - oneUnitUp.Y;   // pixels per 1 world unit
-            float pixelLift = pxPerUnit * 1.7f;             // ~head height above feet
-
+            // LegacyBaseYOffset only compensates for the dual-projection fallback, which
+            // anchors at computed head-height above feet and needs a small downward nudge.
+            // Native and world-position anchors already land at the nameplate position.
             var screenPos = new Vector2(
-                MathF.Round(feetScreen.X + profile.OffsetX),
-                MathF.Round(feetScreen.Y - pixelLift + profile.OffsetY + 30f));
+                MathF.Round(anchorCenter.X + profile.OffsetX),
+                MathF.Round(anchorCenter.Y + profile.OffsetY + (isLegacyAnchor ? LegacyBaseYOffset : 0f)));
 
-            float alphaMult = profile.EnableClockInAlpha && !isClockedIn ? 0.3f : 1f;
+            bool? isClockedIn = ResolveClockedInState(isLocalCharacter, staffMatch);
+            float alphaMult = profile.EnableClockInAlpha && isClockedIn == false ? 0.3f : 1f;
 
             // SFW/NSFW tint: clone profile so the cached original is never mutated
             var renderProfile = profile;
@@ -124,7 +146,7 @@ public class NameplateRenderer : IDisposable
             // Blend role badge + glow onto profiles that have no badge configured
             if (staffMatch != null
                 && renderProfile.RoleIconTemplate == "None"
-                && Enum.TryParse<Data.StaffRole>(staffMatch.Role, out var matchRole)
+                && Enum.TryParse<Data.StaffRole>(staffMatch.Role, true, out var matchRole)
                 && _plugin.Configuration.RoleDefaults.TryGetValue(matchRole, out var roleDefault)
                 && roleDefault.Enabled)
             {
@@ -147,6 +169,167 @@ public class NameplateRenderer : IDisposable
                 _badgeManager,
                 name.GetHashCode());
         }
+    }
+
+    private void CleanupStaleAnchors(int frame)
+    {
+        if (frame - _lastAnchorCleanupFrame < 60)
+            return;
+
+        _lastAnchorCleanupFrame = frame;
+        List<string>? staleKeys = null;
+        foreach (var kvp in _nameplateAnchors)
+        {
+            if (frame - kvp.Value.Frame > AnchorStaleFrameBudget)
+            {
+                staleKeys ??= [];
+                staleKeys.Add(kvp.Key);
+            }
+        }
+
+        if (staleKeys == null)
+            return;
+
+        foreach (var key in staleKeys)
+            _nameplateAnchors.Remove(key);
+    }
+
+    private bool TryResolveRenderDecision(
+        string name,
+        string world,
+        string hash,
+        string localName,
+        string localWorld,
+        Dictionary<string, SyncedStaff> staffLookup,
+        out CosmeticProfile profile,
+        out SyncedStaff? staffMatch)
+    {
+        staffLookup.TryGetValue(BuildStaffKey(name, world), out staffMatch);
+
+        if (_plugin.SyncService.Cosmetics.TryGetValue(hash, out var syncedProfile) && syncedProfile != null)
+        {
+            profile = syncedProfile;
+            return true;
+        }
+
+        if (name == localName && world == localWorld)
+        {
+            profile = _plugin.Configuration.CosmeticProfile;
+            return true;
+        }
+
+        if (staffMatch != null
+            && Enum.TryParse<Data.StaffRole>(staffMatch.Role, true, out var smRole)
+            && _plugin.Configuration.RoleDefaults.TryGetValue(smRole, out var rd)
+            && rd.Enabled)
+        {
+            profile = BuildRoleDefaultProfile(rd);
+            return true;
+        }
+
+        profile = null!;
+        return false;
+    }
+
+    private static string BuildCharacterHash(string name, string world) =>
+        Convert.ToBase64String(Encoding.UTF8.GetBytes($"{name}@{world}"));
+
+    private static string BuildStaffKey(string name, string world) => $"{name}@{world}";
+
+    private Dictionary<string, SyncedStaff> BuildStaffLookup()
+    {
+        var lookup = new Dictionary<string, SyncedStaff>(StringComparer.Ordinal);
+        foreach (var staff in _plugin.SyncService.OnlineStaff)
+        {
+            if (string.IsNullOrWhiteSpace(staff.CharacterName) || string.IsNullOrWhiteSpace(staff.HomeWorld))
+                continue;
+            lookup[BuildStaffKey(staff.CharacterName, staff.HomeWorld)] = staff;
+        }
+
+        return lookup;
+    }
+
+    private bool TryResolveAnchor(IPlayerCharacter pc, string hash, out Vector2 center, out bool isLegacyAnchor)
+    {
+        if (_nativeAnchorSubscriptionActive && TryGetNativeAnchor(hash, out center))
+        { isLegacyAnchor = false; return true; }
+        if (TryGetNameplateWorldAnchor(pc, out center))
+        { isLegacyAnchor = false; return true; }
+        isLegacyAnchor = true;
+        return TryGetDualProjectionAnchor(pc, out center);
+    }
+
+    private bool TryGetNativeAnchor(string hash, out Vector2 center)
+    {
+        center = default;
+        if (!_nameplateAnchors.TryGetValue(hash, out var anchor))
+            return false;
+
+        var age = ImGui.GetFrameCount() - anchor.Frame;
+        if (age > AnchorFreshFrameBudget)
+            return false;
+
+        center = anchor.Center;
+        return true;
+    }
+
+    private static unsafe bool TryReadNativeAnchor(INamePlateUpdateHandler handler, out Vector2 center)
+    {
+        center = default;
+        if (handler.NamePlateObjectAddress == 0)
+            return false;
+
+        var nameplateObject = (AddonNamePlate.NamePlateObject*)handler.NamePlateObjectAddress;
+        if (nameplateObject == null || nameplateObject->RootComponentNode == null)
+            return false;
+
+        var node = (AtkResNode*)nameplateObject->RootComponentNode;
+        if (node == null)
+            return false;
+        if (node->ScreenX == 0f && node->ScreenY == 0f)
+            return false;
+
+        center = new Vector2(node->ScreenX + node->Width / 2f, node->ScreenY + node->Height / 2f);
+        return true;
+    }
+
+    private static unsafe bool TryGetNameplateWorldAnchor(IPlayerCharacter pc, out Vector2 center)
+    {
+        center = default;
+        var gameObject = pc.Struct();
+        if (gameObject == null)
+            return false;
+
+        FFXIVClientStructs.FFXIV.Common.Math.Vector3 worldPos = default;
+        gameObject->GetNamePlateWorldPosition(&worldPos);
+        if (!Svc.GameGui.WorldToScreen(new Vector3(worldPos.X, worldPos.Y, worldPos.Z), out var screenPos))
+            return false;
+
+        center = new Vector2(screenPos.X, screenPos.Y);
+        return true;
+    }
+
+    private static bool TryGetDualProjectionAnchor(IPlayerCharacter pc, out Vector2 center)
+    {
+        center = default;
+        if (!Svc.GameGui.WorldToScreen(pc.Position, out var feetScreen))
+            return false;
+        if (!Svc.GameGui.WorldToScreen(new Vector3(pc.Position.X, pc.Position.Y + 1f, pc.Position.Z), out var oneUnitUp))
+            return false;
+
+        var pxPerUnit = feetScreen.Y - oneUnitUp.Y;
+        var pixelLift = pxPerUnit * 1.7f;
+        center = new Vector2(feetScreen.X, feetScreen.Y - pixelLift);
+        return true;
+    }
+
+    private bool? ResolveClockedInState(bool isLocalCharacter, SyncedStaff? staffMatch)
+    {
+        if (isLocalCharacter)
+            return _plugin.ShiftManager.CurrentShift != null;
+        if (staffMatch != null)
+            return staffMatch.ShiftStart != null;
+        return null;
     }
 
     private static CosmeticProfile BuildRoleDefaultProfile(Data.RoleDefaultCosmetic rd) => new()
@@ -203,5 +386,9 @@ public class NameplateRenderer : IDisposable
     {
         Svc.PluginInterface.UiBuilder.Draw -= DrawNameplates;
         Plugin.NamePlateGui.OnNamePlateUpdate -= OnNamePlateUpdate;
+        if (_nativeAnchorSubscriptionActive)
+            Plugin.NamePlateGui.OnDataUpdate -= OnDataUpdate;
     }
+
+    private readonly record struct NameplateAnchor(Vector2 Center, int Frame);
 }
