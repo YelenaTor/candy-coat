@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Numerics;
 using Dalamud.Interface.Windowing;
 using Dalamud.Interface.Utility.Raii;
@@ -6,6 +7,7 @@ using Dalamud.Bindings.ImGui;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using CandyCoat.Data;
 using CandyCoat.IPC;
+using CandyCoat.UI;
 
 namespace CandyCoat.Windows;
 
@@ -15,6 +17,10 @@ public class PatronDetailsWindow : Window, IDisposable
     private readonly GlamourerIpc _glamourer;
     public Patron? SelectedPatron { get; set; }
 
+    // VIP tab state
+    private int _vipDropdownIdx = 0;
+    private int _vipOverridePrice = 0;
+
     public PatronDetailsWindow(Plugin plugin, GlamourerIpc glamourer)
         : base("Patron Details###PatronDetailsWindow", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
     {
@@ -23,7 +29,7 @@ public class PatronDetailsWindow : Window, IDisposable
             MinimumSize = new Vector2(400, 300),
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
         };
-        
+
         _plugin = plugin;
         _glamourer = glamourer;
         IsOpen = false;
@@ -41,6 +47,7 @@ public class PatronDetailsWindow : Window, IDisposable
 
             DrawInfoTab(SelectedPatron);
             DrawGlamourTab(SelectedPatron);
+            DrawVipTab(SelectedPatron);
         }
         finally
         {
@@ -65,7 +72,7 @@ public class PatronDetailsWindow : Window, IDisposable
         ImGui.SameLine();
         ImGui.TextColored(tierColor, $"[{tier}]");
         ImGui.Text($"Last Visit: {patron.LastVisitDate:d} at {patron.LastVisitDate:t}");
-        
+
         if (_plugin.Configuration.IsManagementModeEnabled)
         {
             var statusStrs = Enum.GetNames<PatronStatus>();
@@ -118,7 +125,7 @@ public class PatronDetailsWindow : Window, IDisposable
             patron.RpHooks = hooks;
             _plugin.Configuration.Save();
         }
-        
+
         if (ImGui.Button("Scrape Open Search Info"))
         {
             var text = ScrapeSearchInfo();
@@ -132,16 +139,16 @@ public class PatronDetailsWindow : Window, IDisposable
                 ECommons.DalamudServices.Svc.Log.Warning("Could not scrape search info. Is the Examine window open?");
             }
         }
-        
+
         ImGui.Spacing();
         ImGui.Separator();
         ImGui.Text("Automated Actions");
-        
+
         if (ImGui.Button("Send Default Welcome"))
         {
             ECommons.DalamudServices.Svc.Commands.ProcessCommand($"/t {patron.Name} Welcome to Candy Coat! Your VIP room is ready.");
         }
-        
+
         // Custom macros
         foreach (var macro in _plugin.Configuration.Macros)
         {
@@ -165,7 +172,7 @@ public class PatronDetailsWindow : Window, IDisposable
         foreach (var designId in patron.QuickSwitchDesignIds.ToArray())
         {
             var name = allDesigns.TryGetValue(designId, out var designName) ? designName : designId.ToString();
-            
+
             if (ImGui.Button($"Apply: {name}"))
             {
                 _glamourer.ApplyDesign(designId);
@@ -194,6 +201,183 @@ public class PatronDetailsWindow : Window, IDisposable
             }
         }
     }
+
+    // ─── VIP Tab ──────────────────────────────────────────────────────────────
+
+    private void DrawVipTab(Patron patron)
+    {
+        using var vipTab = ImRaii.TabItem("💎 VIP");
+        if (!vipTab) return;
+
+        ImGui.Spacing();
+
+        if (patron.ActiveVip == null)
+            DrawVipAssignForm(patron);
+        else if (!patron.ActiveVip.IsExpired)
+            DrawVipActiveView(patron);
+        else
+            DrawVipExpiredView(patron);
+    }
+
+    private void DrawVipAssignForm(Patron patron)
+    {
+        ImGui.TextDisabled("No VIP Package Assigned");
+        ImGui.Spacing();
+
+        var activePackages = _plugin.Configuration.VipPackages
+            .Where(p => p.IsActive)
+            .ToList();
+
+        if (activePackages.Count == 0)
+        {
+            ImGui.TextDisabled("No VIP packages configured. Ask the Owner to set up packages.");
+            return;
+        }
+
+        var names = activePackages.Select(p => p.Name).ToArray();
+        if (_vipDropdownIdx >= names.Length) _vipDropdownIdx = 0;
+
+        ImGui.SetNextItemWidth(200f);
+        ImGui.Combo("Package##VipAssign", ref _vipDropdownIdx, names, names.Length);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(110f);
+        ImGui.InputInt("Override Price##VipAssign", ref _vipOverridePrice, 10000);
+        ImGui.SameLine();
+
+        if (ImGui.Button("Assign##VipAssign"))
+        {
+            var pkg = activePackages[_vipDropdownIdx];
+            var sub = new VipSubscription
+            {
+                PackageId    = pkg.Id,
+                PackageName  = pkg.Name,
+                Tier         = pkg.Tier,
+                DurationType = pkg.DurationType,
+                PurchasedAt  = DateTime.Now,
+                ExpiresAt    = pkg.DurationType == VipDurationType.Monthly
+                                   ? DateTime.Now.AddMonths(1)
+                                   : null,
+                AssignedBy = _plugin.Configuration.CharacterName,
+                PaidGil    = _vipOverridePrice > 0 ? _vipOverridePrice : pkg.PriceGil
+            };
+            patron.ActiveVip = sub;
+            _plugin.Configuration.Save();
+            _vipOverridePrice = 0;
+        }
+
+        ImGui.TextDisabled("Override Price: leave 0 to use package default");
+    }
+
+    private void DrawVipActiveView(Patron patron)
+    {
+        var vip = patron.ActiveVip!;
+        var tierCol = VipColours.GetTierColour(vip.Tier);
+
+        ImGui.TextColored(new Vector4(1f, 0.82f, 0.15f, 1f), "💎");
+        ImGui.SameLine();
+        ImGui.TextColored(tierCol, vip.PackageName);
+        ImGui.SameLine();
+        ImGui.TextDisabled($"[VIP {vip.Tier.ToString().ToUpperInvariant()}]");
+
+        ImGui.Spacing();
+
+        ImGui.Text($"Purchased:  {vip.PurchasedAt:yyyy-MM-dd}");
+        ImGui.SameLine(0, 20f);
+        ImGui.Text($"Assigned by: {vip.AssignedBy}");
+
+        if (vip.ExpiresAt.HasValue)
+        {
+            var daysLeft = vip.DaysRemaining;
+            ImGui.Text($"Expires:    {vip.ExpiresAt.Value:yyyy-MM-dd}");
+            ImGui.SameLine(0, 20f);
+            var expiryCol = daysLeft <= 7
+                ? new Vector4(1f, 0.6f, 0.2f, 1f)
+                : new Vector4(0.6f, 0.9f, 0.6f, 1f);
+            ImGui.TextColored(expiryCol, $"({daysLeft} day{(daysLeft != 1 ? "s" : "")} remaining)");
+        }
+        else
+        {
+            ImGui.Text("Expires:    Never");
+            ImGui.SameLine(0, 20f);
+            ImGui.TextColored(new Vector4(0.6f, 0.9f, 0.6f, 1f), "(Permanent)");
+        }
+
+        ImGui.Text($"Paid:       {vip.PaidGil:N0} gil");
+
+        // Perks from the package definition (if still exists)
+        var pkg = _plugin.Configuration.VipPackages.FirstOrDefault(p => p.Id == vip.PackageId);
+        if (pkg != null && pkg.Perks.Count > 0)
+        {
+            ImGui.Spacing();
+            ImGui.TextDisabled("Perks:");
+            foreach (var perk in pkg.Perks)
+                ImGui.BulletText(perk);
+        }
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        if (vip.DurationType == VipDurationType.Monthly)
+        {
+            if (ImGui.Button("Renew for 1 month##VipRenew"))
+            {
+                vip.ExpiresAt = DateTime.Now.AddMonths(1);
+                _plugin.Configuration.Save();
+            }
+            ImGui.SameLine();
+        }
+
+        if (ImGui.Button("Remove VIP##VipRemove"))
+        {
+            patron.ActiveVip = null;
+            _plugin.Configuration.Save();
+        }
+    }
+
+    private void DrawVipExpiredView(Patron patron)
+    {
+        var vip = patron.ActiveVip!;
+
+        ImGui.TextColored(new Vector4(1f, 0.6f, 0.2f, 1f), "⚠ VIP EXPIRED");
+        ImGui.SameLine();
+        ImGui.TextDisabled($"— {vip.PackageName}");
+
+        ImGui.Spacing();
+
+        if (vip.ExpiresAt.HasValue)
+        {
+            var daysAgo = (int)(DateTime.Now - vip.ExpiresAt.Value).TotalDays;
+            ImGui.Text($"Expired:  {vip.ExpiresAt.Value:yyyy-MM-dd}");
+            ImGui.SameLine(0, 20f);
+            ImGui.TextColored(new Vector4(1f, 0.3f, 0.3f, 1f),
+                $"({daysAgo} day{(daysAgo != 1 ? "s" : "")} ago)");
+        }
+
+        ImGui.Text($"Paid:     {vip.PaidGil:N0} gil");
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        if (vip.DurationType == VipDurationType.Monthly)
+        {
+            if (ImGui.Button("Renew for 1 month##VipExpRenew"))
+            {
+                vip.ExpiresAt = DateTime.Now.AddMonths(1);
+                _plugin.Configuration.Save();
+            }
+            ImGui.SameLine();
+        }
+
+        if (ImGui.Button("Remove VIP##VipExpRemove"))
+        {
+            patron.ActiveVip = null;
+            _plugin.Configuration.Save();
+        }
+    }
+
+    // ─── Misc ─────────────────────────────────────────────────────────────────
 
     public void OpenForPatron(Patron patron)
     {

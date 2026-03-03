@@ -40,6 +40,16 @@ Candy Coat is a comprehensive in-game assistant that handles the full operationa
 - Auto-dismisses after a configurable duration; "Target" button focuses the patron in-game
 - Danger-status patrons (Warning/Blacklisted) always alert regardless of Regular-Only filter
 
+### VIP Package Tracking (v0.15.0)
+A full membership subscription layer sitting above the existing loyalty tier system:
+- **Owners** define reusable VIP package templates in the Owner Panel: name, tier (Bronze / Silver / Gold / Platinum), duration (Monthly / One-Time / Permanent), Gil price, description, and a free-form perks list
+- **Staff** assign packages to patrons via the new 💎 VIP tab in PatronDetailsWindow; the actual Gil paid can be overridden from the template price
+- **Monthly** packages automatically set a one-month expiry; **Permanent** and **One-Time** packages never expire
+- **Active subscription** shows package name, tier badge, expiry with colour-coded days-remaining, paid amount, perks list, and Renew / Remove actions
+- **Entry alert cards**: active VIP patrons get a gold-tinted alert card with 💎 package name; expired VIP patrons get a muted grey card with "VIP EXPIRED"
+- **Chat alerts**: active VIP patrons include package name and days left; expired VIP patrons are tagged `[VIP EXPIRED]`
+- **Locator tab**: all patron list rows show a gold 💎 badge with hover tooltip for active VIP patrons
+
 ### Candy Tells (v0.14.0)
 - Floating `✉ Messages` window that captures all incoming and outgoing /tell traffic as persistent conversations
 - Discord-like conversation list: sorted by last activity, with patron tier icons, unread count badges, pin/unpin, and right-click context menu

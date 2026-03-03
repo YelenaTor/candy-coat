@@ -111,15 +111,42 @@ public class PatronAlertService : IDisposable
 
     internal static string BuildCrmSummary(Patron patron, PatronTier tier, float distance)
     {
+        var vip          = patron.ActiveVip;
+        bool hasActiveVip  = vip != null && !vip.IsExpired;
+        bool hasExpiredVip = vip != null && vip.IsExpired;
+
         var sb = new StringBuilder();
-        sb.Append($"[CandyCoat] ♥ {patron.Name} [{tier}] is here! ({distance:F1}m) — ");
-        sb.Append($"{patron.VisitCount} visit{(patron.VisitCount != 1 ? "s" : "")}");
 
-        if (patron.TotalGilSpent > 0)
-            sb.Append($" · {patron.TotalGilSpent:N0} Gil");
-
-        if (!string.IsNullOrWhiteSpace(patron.FavoriteDrink))
-            sb.Append($" · Drink: {patron.FavoriteDrink}");
+        if (hasActiveVip)
+        {
+            var vipLabel = $"VIP {vip!.Tier.ToString().ToUpperInvariant()} · {vip.PackageName}";
+            sb.Append($"[CandyCoat] 💎 {patron.Name} [{vipLabel}] is here! ({distance:F1}m) — ");
+            sb.Append($"{patron.VisitCount} visit{(patron.VisitCount != 1 ? "s" : "")}");
+            if (patron.TotalGilSpent > 0)
+                sb.Append($" · {patron.TotalGilSpent:N0} Gil");
+            var daysRemaining = vip.DaysRemaining;
+            sb.Append(daysRemaining == -1
+                ? " · Permanent"
+                : $" · {daysRemaining} day{(daysRemaining != 1 ? "s" : "")} left");
+        }
+        else if (hasExpiredVip)
+        {
+            sb.Append($"[CandyCoat] ♥ {patron.Name} [VIP EXPIRED] is here! ({distance:F1}m) — ");
+            sb.Append($"{patron.VisitCount} visit{(patron.VisitCount != 1 ? "s" : "")}");
+            if (patron.TotalGilSpent > 0)
+                sb.Append($" · {patron.TotalGilSpent:N0} Gil");
+            if (!string.IsNullOrWhiteSpace(patron.FavoriteDrink))
+                sb.Append($" · Drink: {patron.FavoriteDrink}");
+        }
+        else
+        {
+            sb.Append($"[CandyCoat] ♥ {patron.Name} [{tier}] is here! ({distance:F1}m) — ");
+            sb.Append($"{patron.VisitCount} visit{(patron.VisitCount != 1 ? "s" : "")}");
+            if (patron.TotalGilSpent > 0)
+                sb.Append($" · {patron.TotalGilSpent:N0} Gil");
+            if (!string.IsNullOrWhiteSpace(patron.FavoriteDrink))
+                sb.Append($" · Drink: {patron.FavoriteDrink}");
+        }
 
         return sb.ToString();
     }

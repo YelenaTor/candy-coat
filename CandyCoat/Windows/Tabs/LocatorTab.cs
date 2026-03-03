@@ -123,7 +123,15 @@ public class LocatorTab : ITab
                 ? $" [{tier}]" : string.Empty;
 
             ImGui.TextColored(color, $"{icon} {patron.Name}{tierLabel} is here! ({distance:F1}m away)");
-            
+
+            if (patron.ActiveVip != null && !patron.ActiveVip.IsExpired)
+            {
+                ImGui.SameLine(0, 4f);
+                ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "💎");
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip($"VIP: {patron.ActiveVip.PackageName}");
+            }
+
             // Add Target Eye button
             ImGui.SameLine();
             if (ImGui.SmallButton($"👁##target{patron.Name}"))
@@ -154,6 +162,14 @@ public class LocatorTab : ITab
             {
                 SelectedPatron = p;
                 OnPatronSelected?.Invoke(p);
+            }
+
+            if (p.ActiveVip != null && !p.ActiveVip.IsExpired)
+            {
+                ImGui.SameLine(0, 4f);
+                ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "💎");
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip($"VIP: {p.ActiveVip.PackageName}");
             }
 
             if (ImGui.BeginPopupContextItem($"PatronContext{p.Name}"))

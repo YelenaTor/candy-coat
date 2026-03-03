@@ -31,10 +31,34 @@ public class OwnerPanel : IToolboxPanel
     private string _blPatron = string.Empty;
     private string _blReason = string.Empty;
 
+    // VIP package fields — add form
+    private string _vipNewName = string.Empty;
+    private string _vipNewDesc = string.Empty;
+    private string _vipNewPerks = string.Empty;
+    private int _vipNewPrice = 0;
+    private int _vipNewTierIdx = 0;
+    private int _vipNewDurationIdx = 0;
+
+    // VIP package fields — edit form
+    private Guid _vipEditingId = Guid.Empty;
+    private string _vipEditName = string.Empty;
+    private string _vipEditDesc = string.Empty;
+    private string _vipEditPerks = string.Empty;
+    private int _vipEditPrice = 0;
+    private int _vipEditTierIdx = 0;
+    private int _vipEditDurationIdx = 0;
+    private bool _vipEditIsActive = true;
+
+    // VIP delete confirmation
+    private Guid _vipDeleteConfirmId = Guid.Empty;
+
+    private static readonly string[] VipTierLabels     = { "Bronze", "Silver", "Gold", "Platinum" };
+    private static readonly string[] VipDurationLabels = { "Monthly", "One-Time", "Permanent" };
+
     private readonly StaffPingWidget _pingWidget;
 
-    private static readonly Vector4 CardBg = new(0.16f, 0.12f, 0.20f, 1f);
-    private static readonly Vector4 HeaderBg = new(0.22f, 0.16f, 0.28f, 1f);
+    private static readonly Vector4 CardBg     = new(0.16f, 0.12f, 0.20f, 1f);
+    private static readonly Vector4 HeaderBg   = new(0.22f, 0.16f, 0.28f, 1f);
     private static readonly Vector4 HeaderHover = new(0.30f, 0.22f, 0.36f, 1f);
 
     public OwnerPanel(Plugin plugin)
@@ -179,6 +203,22 @@ public class OwnerPanel : IToolboxPanel
 
         ImGui.Spacing();
 
+        // Card: VIP Packages
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, CardBg);
+        using (var vipCard = ImRaii.Child("##OwnerVipCard", new Vector2(0, 430f), true))
+        {
+            ImGui.PopStyleColor();
+            if (vipCard)
+            {
+                ImGui.TextColored(StyleManager.SectionHeader, "💎 VIP Packages");
+                ImGui.Separator();
+                ImGui.Spacing();
+                DrawVipPackages();
+            }
+        }
+
+        ImGui.Spacing();
+
         // Card: Loyalty Tier Thresholds
         ImGui.PushStyleColor(ImGuiCol.ChildBg, CardBg);
         using (var tierCard = ImRaii.Child("##OwnerTierCard", new Vector2(0, 140f), true))
@@ -196,6 +236,175 @@ public class OwnerPanel : IToolboxPanel
         {
             ImGui.PopStyleColor();
             if (cosCard) DrawRoleCosmeticDefaults();
+        }
+    }
+
+    // ─── VIP Package Management ──────────────────────────────────────────────
+
+    private void DrawVipPackages()
+    {
+        var cfg      = _plugin.Configuration;
+        var packages = cfg.VipPackages;
+
+        // Package list
+        if (packages.Count == 0)
+        {
+            ImGui.TextDisabled("No VIP packages yet. Create one below.");
+        }
+        else
+        {
+            float listH = Math.Min(packages.Count * 28f + 4f, 140f);
+            using var listChild = ImRaii.Child("##VipPkgList", new Vector2(0, listH), false);
+            for (int i = 0; i < packages.Count; i++)
+            {
+                var pkg = packages[i];
+                ImGui.PushID($"vippkg{i}");
+
+                var tierCol = VipColours.GetTierColour(pkg.Tier);
+                ImGui.TextColored(tierCol, $"◆ {pkg.Tier}");
+                ImGui.SameLine(0, 6f);
+                ImGui.Text(pkg.Name);
+                ImGui.SameLine(0, 6f);
+                ImGui.TextDisabled($"[{pkg.DurationType}]");
+                ImGui.SameLine(0, 6f);
+                ImGui.TextDisabled($"{pkg.PriceGil:N0} Gil");
+                ImGui.SameLine(0, 6f);
+                if (pkg.IsActive)
+                    ImGui.TextColored(StyleManager.SyncOk, "Active");
+                else
+                    ImGui.TextDisabled("Disabled");
+                ImGui.SameLine(0, 6f);
+                if (ImGui.SmallButton("Edit##VipPkg"))
+                {
+                    _vipEditingId       = pkg.Id;
+                    _vipEditName        = pkg.Name;
+                    _vipEditDesc        = pkg.Description;
+                    _vipEditPerks       = string.Join("\n", pkg.Perks);
+                    _vipEditPrice       = pkg.PriceGil;
+                    _vipEditTierIdx     = (int)pkg.Tier;
+                    _vipEditDurationIdx = (int)pkg.DurationType;
+                    _vipEditIsActive    = pkg.IsActive;
+                }
+                ImGui.SameLine(0, 4f);
+                if (ImGui.SmallButton("Del##VipPkg"))
+                    _vipDeleteConfirmId = pkg.Id;
+
+                ImGui.PopID();
+            }
+        }
+
+        // Inline edit form
+        if (_vipEditingId != Guid.Empty)
+        {
+            var editPkg = packages.FirstOrDefault(p => p.Id == _vipEditingId);
+            if (editPkg != null)
+            {
+                ImGui.Spacing();
+                ImGui.TextColored(StyleManager.SectionHeader, "Edit Package");
+                ImGui.Separator();
+                ImGui.SetNextItemWidth(150f); ImGui.InputText("Name##VipE", ref _vipEditName, 100);
+                ImGui.SameLine();
+                ImGui.SetNextItemWidth(90f);  ImGui.Combo("Tier##VipE", ref _vipEditTierIdx, VipTierLabels, VipTierLabels.Length);
+                ImGui.SameLine();
+                ImGui.SetNextItemWidth(90f);  ImGui.Combo("Duration##VipE", ref _vipEditDurationIdx, VipDurationLabels, VipDurationLabels.Length);
+                ImGui.SameLine();
+                ImGui.SetNextItemWidth(80f);  ImGui.InputInt("Price##VipE", ref _vipEditPrice, 0);
+                ImGui.Checkbox("Active##VipE", ref _vipEditIsActive);
+                ImGui.InputTextMultiline("Desc##VipEDesc", ref _vipEditDesc, 200, new Vector2(0, 36f));
+                ImGui.InputTextMultiline("Perks (one per line)##VipEPerks", ref _vipEditPerks, 500, new Vector2(0, 54f));
+
+                if (ImGui.Button("Save##VipE"))
+                {
+                    editPkg.Name         = _vipEditName;
+                    editPkg.Description  = _vipEditDesc;
+                    editPkg.Perks        = _vipEditPerks.Split('\n', StringSplitOptions.RemoveEmptyEntries).ToList();
+                    editPkg.PriceGil     = _vipEditPrice;
+                    editPkg.Tier         = (VipTier)_vipEditTierIdx;
+                    editPkg.DurationType = (VipDurationType)_vipEditDurationIdx;
+                    editPkg.IsActive     = _vipEditIsActive;
+                    cfg.Save();
+                    _vipEditingId = Guid.Empty;
+                }
+                ImGui.SameLine();
+                if (ImGui.Button("Cancel##VipE")) _vipEditingId = Guid.Empty;
+            }
+            else
+            {
+                _vipEditingId = Guid.Empty;
+            }
+        }
+
+        ImGui.Spacing();
+        ImGui.Separator();
+
+        // Add new package form
+        ImGui.TextColored(StyleManager.SectionHeader, "+ Add Package");
+        ImGui.SetNextItemWidth(150f); ImGui.InputTextWithHint("##VipNewN", "Name", ref _vipNewName, 100);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(80f);  ImGui.Combo("##VipNewT", ref _vipNewTierIdx, VipTierLabels, VipTierLabels.Length);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(85f);  ImGui.Combo("##VipNewD", ref _vipNewDurationIdx, VipDurationLabels, VipDurationLabels.Length);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(80f);  ImGui.InputInt("##VipNewP", ref _vipNewPrice, 0);
+        ImGui.InputTextMultiline("Desc##VipNewDesc", ref _vipNewDesc, 200, new Vector2(0, 36f));
+        ImGui.InputTextMultiline("Perks (one per line)##VipNewPerks", ref _vipNewPerks, 500, new Vector2(0, 54f));
+
+        if (ImGui.Button("Create##VipNew"))
+        {
+            if (!string.IsNullOrWhiteSpace(_vipNewName))
+            {
+                packages.Add(new VipPackageDefinition
+                {
+                    Name         = _vipNewName,
+                    Description  = _vipNewDesc,
+                    Perks        = _vipNewPerks.Split('\n', StringSplitOptions.RemoveEmptyEntries).ToList(),
+                    PriceGil     = _vipNewPrice,
+                    Tier         = (VipTier)_vipNewTierIdx,
+                    DurationType = (VipDurationType)_vipNewDurationIdx,
+                    IsActive     = true
+                });
+                cfg.Save();
+                _vipNewName = _vipNewDesc = _vipNewPerks = string.Empty;
+                _vipNewPrice = _vipNewTierIdx = _vipNewDurationIdx = 0;
+            }
+        }
+
+        // Delete confirmation popup
+        if (_vipDeleteConfirmId != Guid.Empty)
+            ImGui.OpenPopup("VipDeleteConfirm##Owner");
+
+        if (ImGui.BeginPopup("VipDeleteConfirm##Owner"))
+        {
+            var delPkg = packages.FirstOrDefault(p => p.Id == _vipDeleteConfirmId);
+            if (delPkg != null)
+            {
+                ImGui.Text($"Delete package: {delPkg.Name}?");
+                var activeCount = cfg.Patrons.Count(p =>
+                    p.ActiveVip != null && p.ActiveVip.PackageId == _vipDeleteConfirmId);
+                if (activeCount > 0)
+                    ImGui.TextColored(new Vector4(1f, 0.6f, 0.2f, 1f),
+                        $"Warning: {activeCount} patron{(activeCount != 1 ? "s" : "")} hold an active subscription.");
+
+                if (ImGui.Button("Delete##VipDelConfirm"))
+                {
+                    packages.RemoveAll(p => p.Id == _vipDeleteConfirmId);
+                    cfg.Save();
+                    _vipDeleteConfirmId = Guid.Empty;
+                    ImGui.CloseCurrentPopup();
+                }
+                ImGui.SameLine();
+                if (ImGui.Button("Cancel##VipDelConfirm"))
+                {
+                    _vipDeleteConfirmId = Guid.Empty;
+                    ImGui.CloseCurrentPopup();
+                }
+            }
+            else
+            {
+                _vipDeleteConfirmId = Guid.Empty;
+                ImGui.CloseCurrentPopup();
+            }
+            ImGui.EndPopup();
         }
     }
 

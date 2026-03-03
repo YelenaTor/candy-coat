@@ -20,4 +20,7 @@ public class Patron
     public string BlacklistReason { get; set; } = string.Empty;
     public DateTime? BlacklistDate { get; set; }
     public string BlacklistFlaggedBy { get; set; } = string.Empty;
+
+    // VIP subscription
+    public VipSubscription? ActiveVip { get; set; } = null;
 }

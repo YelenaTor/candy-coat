@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.15.0] — 2026-03-03
+
+### Added
+- **VIP Package Tracking System** — full-featured membership subscription layer on top of the existing loyalty tier system
+  - **VIP Package Templates** (Owner Panel → Settings → 💎 VIP Packages): Owners define reusable packages with name, tier (Bronze / Silver / Gold / Platinum), duration type (Monthly / One-Time / Permanent), price in Gil, description, and a free-form perks list
+  - **Package assignment** (PatronDetailsWindow → 💎 VIP tab): Staff assign a package to any patron; system snapshots name, tier, and duration at purchase time and sets expiry automatically for Monthly packages (now + 1 month); Permanent and One-Time packages never expire
+  - **Override price** field on assignment allows recording the actual Gil paid regardless of the package list price
+  - **Active subscription view**: shows package name, tier badge, purchase date, assigned-by, expiry with colour-coded days-remaining (amber ≤ 7 days), paid amount, and perks list sourced from the package definition
+  - **Expired subscription view**: highlights expiry date and days-since with "Renew for 1 month" / "Remove VIP" action buttons
+  - **Entry alert overlay** (PatronAlertOverlay): VIP patrons get a gold-tinted card (`#401D0A` background) with 💎 + package name instead of tier label; expired VIP shows muted purple-grey card with "VIP EXPIRED" label; days-remaining or "Permanent" shown on row 2
+  - **Chat alert** (PatronAlertService): VIP active → `[CandyCoat] 💎 Name [VIP GOLD · PackageName] is here!` with days left; VIP expired → `[CandyCoat] ♥ Name [VIP EXPIRED] is here!`
+  - **Locator tab** 💎 badge: VIP patrons in both the nearby-regulars list and the tracked-patron list display a gold 💎 icon with a hover tooltip showing the package name
+  - **Owner Panel — VIP package CRUD**: table view with tier colour badge, duration, price, active/disabled status; inline edit form; delete with active-subscriber warning popup; "+ Add Package" inline creation form with multiline perks field (one perk per line)
+- New data models: `VipTier` (enum), `VipDurationType` (enum), `VipPackageDefinition`, `VipSubscription`
+- `VipColours.GetTierColour(VipTier)` static helper — Bronze copper, Silver grey, Gold gold, Platinum purple — reused across overlay, details window, and owner panel
+- `Configuration.VipPackages` — new `List<VipPackageDefinition>` field (default empty, no migration needed)
+- `Patron.ActiveVip` — nullable `VipSubscription` field; serialised as part of existing patron sync flow
+
+---
+
 ## [0.14.0] — 2026-03-03
 
 ### Added

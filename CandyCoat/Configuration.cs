@@ -86,11 +86,15 @@ public class Configuration : IPluginConfiguration
     public bool TellAutoOpen { get; set; } = true;
     public int TellHistoryMaxMessages { get; set; } = 200;
 
+    // VIP Packages (Owner-configurable templates)
+    public List<VipPackageDefinition> VipPackages { get; set; } = new();
+
     // Sync API settings
     public string ApiUrl { get; set; } = string.Empty;
     public string VenueKey { get; set; } = string.Empty;
     public string VenueId { get; set; } = string.Empty; // Future: multi-venue
     public bool EnableSync { get; set; } = true; // always on — managed via API
+    public bool EnableNameplateCosmetics { get; set; } = true;
     public bool CosmeticAutoRedraw { get; set; } = false;
     public DateTime LastSyncTimestamp { get; set; } = DateTime.MinValue;
 
