@@ -67,12 +67,20 @@ jobs:
         $manifest | Add-Member -Force -NotePropertyName "DownloadLinkUpdate" -NotePropertyValue "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
         $manifest | ConvertTo-Json -Depth 10 | Set-Content $manifestPath
         
+        # Stage plugin files + Fonts into a clean directory to preserve subfolder structure
+        $stagingDir = "./staging"
+        New-Item -ItemType Directory -Force -Path $stagingDir | Out-Null
+        Get-ChildItem -Path $outDir -Include "*.dll","*.json","*.pdb","*.xml" -File | Copy-Item -Destination $stagingDir
+        if (Test-Path "$outDir/Fonts") {
+            Copy-Item -Path "$outDir/Fonts" -Destination "$stagingDir/Fonts" -Recurse
+        }
+
         # List files to zip
         Write-Host "=== Files to be zipped ==="
-        Get-ChildItem -Path $outDir -File | Select-Object Name, Length
-        
-        # Zip ONLY files (not subdirectories) directly from publish
-        Compress-Archive -Path "$outDir/*.dll","$outDir/*.json","$outDir/*.pdb","$outDir/*.xml" -DestinationPath $zipName -Force
+        Get-ChildItem -Path $stagingDir -Recurse | Select-Object FullName, Length
+
+        # Zip staging directory — preserves Fonts/ subfolder structure in the archive
+        Compress-Archive -Path "$stagingDir/*" -DestinationPath $zipName -Force
         
         # Generate repo.json as array
         $repoArray = @($manifest)
