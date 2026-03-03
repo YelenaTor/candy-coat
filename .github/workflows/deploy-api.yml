@@ -1,0 +1,62 @@
+name: Deploy API
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'CandyCoat.API/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+          quality: preview
+
+      - name: Publish API (linux-x64)
+        run: |
+          dotnet publish CandyCoat.API/CandyCoat.API.csproj \
+            --configuration Release \
+            --runtime linux-x64 \
+            --self-contained false \
+            --output ./api-publish
+
+      - name: Deploy to OCI via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.API_SSH_HOST }}
+          username: ${{ secrets.API_SSH_USER }}
+          key: ${{ secrets.API_SSH_KEY }}
+          script: |
+            systemctl stop candy-api.service
+            rm -rf /opt/candy-api/*
+
+      - name: Upload binaries via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.API_SSH_HOST }}
+          username: ${{ secrets.API_SSH_USER }}
+          key: ${{ secrets.API_SSH_KEY }}
+          source: ./api-publish/*
+          target: /opt/candy-api/
+          strip_components: 2
+
+      - name: Start service
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.API_SSH_HOST }}
+          username: ${{ secrets.API_SSH_USER }}
+          key: ${{ secrets.API_SSH_KEY }}
+          script: |
+            systemctl start candy-api.service
+            sleep 3
+            systemctl is-active --quiet candy-api.service && echo "Service is running" || (journalctl -u candy-api.service -n 30 --no-pager; exit 1)
