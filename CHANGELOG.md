@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.16.2] — 2026-03-04
+
+### Changed
+- **OwnerPanel — collapsible headers replaced with tab bars** — matches all other SRT panels; tabs are Revenue | Patrons | Manage | Ping
+- **OwnerPanel — emoji buttons replaced with text labels** — Copy/Show/Hide buttons in the Venue Registration card now use plain text that renders correctly for all users; VIP Packages header emoji removed; connected indicator changed to U+25CF (BMP-safe filled circle)
+- **Candy Tells — send fix** — replaced `Svc.Commands.ProcessCommand` (only handles Dalamud-registered plugin commands) with `ECommons.Automation.Chat.ExecuteCommand` which routes through `UIModule.ProcessChatBoxEntry`, the game's actual chat processor; `/tell` now dispatches correctly from both the Send button and Enter key
+
+---
+
 ## [0.16.1] — 2026-03-03
 
 ### Changed

@@ -58,9 +58,7 @@ public class OwnerPanel : IToolboxPanel
 
     private readonly StaffPingWidget _pingWidget;
 
-    private static readonly Vector4 CardBg     = new(0.16f, 0.12f, 0.20f, 1f);
-    private static readonly Vector4 HeaderBg   = new(0.22f, 0.16f, 0.28f, 1f);
-    private static readonly Vector4 HeaderHover = new(0.30f, 0.22f, 0.36f, 1f);
+    private static readonly Vector4 CardBg = new(0.16f, 0.12f, 0.20f, 1f);
 
     public OwnerPanel(Plugin plugin)
     {
@@ -72,38 +70,40 @@ public class OwnerPanel : IToolboxPanel
 
     public void DrawContent()
     {
-        ImGui.PushStyleColor(ImGuiCol.Header, HeaderBg);
-        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, HeaderHover);
+        using var tabs = ImRaii.TabBar("##OwnerTabs", ImGuiTabBarFlags.FittingPolicyResizeDown);
+        if (!tabs) return;
 
-        if (ImGui.CollapsingHeader("Revenue Dashboard##Owner", ImGuiTreeNodeFlags.DefaultOpen))
+        if (ImGui.BeginTabItem("Revenue##Owner"))
+        {
             DrawRevenueDashboard();
-
-        if (ImGui.CollapsingHeader("Earnings by Role##Owner", ImGuiTreeNodeFlags.DefaultOpen))
             DrawStaffLeaderboard();
-
-        if (ImGui.CollapsingHeader("Patron Analytics##Owner"))
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Patrons##Owner"))
+        {
             DrawPatronAnalytics();
-
-        if (ImGui.CollapsingHeader("All Patron Notes##Owner"))
             DrawPatronNotes();
-
-        if (ImGui.CollapsingHeader("Blacklist Management##Owner"))
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Manage##Owner"))
+        {
             DrawBlacklistManagement();
-
-        if (ImGui.CollapsingHeader("Export##Owner"))
             DrawExport();
-
-        if (ImGui.CollapsingHeader("Staff Ping##Owner"))
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Ping##Owner"))
+        {
+            ImGui.Spacing();
             _pingWidget.Draw();
-
-        ImGui.PopStyleColor(2);
+            ImGui.EndTabItem();
+        }
     }
 
     // ─── Settings (Configuration / Admin) ────────────────────────────────────
 
     public void DrawSettings()
     {
-        ImGui.TextColored(StyleManager.SectionHeader, "\ud83d\udc51 Owner Settings");
+        ImGui.TextColored(StyleManager.SectionHeader, "Owner Settings");
         ImGui.TextDisabled("Venue configuration, rooms, menu, and role cosmetics.");
         ImGui.Spacing();
 
@@ -131,7 +131,7 @@ public class OwnerPanel : IToolboxPanel
                 if (!string.IsNullOrEmpty(cfg.VenueId))
                 {
                     ImGui.SameLine();
-                    if (ImGui.SmallButton("\ud83d\udccb##OwnerCopyVenueId"))
+                    if (ImGui.SmallButton("Copy##OwnerCopyVenueId"))
                         ImGui.SetClipboardText(cfg.VenueId);
                 }
 
@@ -146,10 +146,10 @@ public class OwnerPanel : IToolboxPanel
                 {
                     ImGui.Text(_venueKeyRevealed ? cfg.VenueKey : new string('\u2022', Math.Min(cfg.VenueKey.Length, 22)));
                     ImGui.SameLine();
-                    if (ImGui.SmallButton(_venueKeyRevealed ? "\ud83d\udc41##OwnerKeyHide" : "\ud83d\udc41##OwnerKeyShow"))
+                    if (ImGui.SmallButton(_venueKeyRevealed ? "Hide##OwnerKeyHide" : "Show##OwnerKeyShow"))
                         _venueKeyRevealed = !_venueKeyRevealed;
                     ImGui.SameLine();
-                    if (ImGui.SmallButton("\ud83d\udccb##OwnerCopyVenueKey"))
+                    if (ImGui.SmallButton("Copy##OwnerCopyVenueKey"))
                         ImGui.SetClipboardText(cfg.VenueKey);
                 }
 
@@ -264,7 +264,7 @@ public class OwnerPanel : IToolboxPanel
             ImGui.PopStyleColor();
             if (vipCard)
             {
-                ImGui.TextColored(StyleManager.SectionHeader, "💎 VIP Packages");
+                ImGui.TextColored(StyleManager.SectionHeader, "VIP Packages");
                 ImGui.Separator();
                 ImGui.Spacing();
                 DrawVipPackages();
@@ -498,7 +498,7 @@ public class OwnerPanel : IToolboxPanel
     private void DrawStaffLeaderboard()
     {
         ImGui.Spacing();
-        if (_plugin.SyncService.IsConnected) ImGui.TextColored(StyleManager.SyncOk, "\ud83d\udfe2 Showing synced data."); else ImGui.TextColored(StyleManager.SyncWarn, "\u26a0 Local data only.");
+        if (_plugin.SyncService.IsConnected) ImGui.TextColored(StyleManager.SyncOk, "\u25cf Showing synced data."); else ImGui.TextColored(StyleManager.SyncWarn, "\u26a0 Local data only.");
         var myEarnings = _plugin.Configuration.Earnings.GroupBy(e => e.Role).Select(g => (Role: g.Key, Total: g.Sum(e => e.Amount))).OrderByDescending(x => x.Total).ToList();
         if (myEarnings.Count == 0) { ImGui.TextDisabled("No earnings logged."); ImGui.Spacing(); return; }
         foreach (var (role, total) in myEarnings) ImGui.BulletText($"{role}: {total:N0} Gil");

@@ -4,6 +4,7 @@ using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using CandyCoat.Data;
+using ECommons.Automation;
 using ECommons.DalamudServices;
 
 namespace CandyCoat.Services;
@@ -124,7 +125,16 @@ public class TellService : IDisposable
 
     public void SendTell(string playerName, string message)
     {
-        // The TellOutgoing chat hook will capture this automatically when the game processes it
-        Svc.Commands.ProcessCommand($"/tell {playerName} {message}");
+        // Chat.ExecuteCommand routes through UIModule.ProcessChatBoxEntry — the actual game chat processor.
+        // Must be called from the game/framework thread; DrawInputArea() satisfies this since it runs on ImGui draw.
+        // Svc.Commands.ProcessCommand only handles Dalamud-registered plugin commands, not native /tell.
+        try
+        {
+            Chat.ExecuteCommand($"/tell {playerName} {message}");
+        }
+        catch (Exception ex)
+        {
+            Svc.Log.Warning($"[CandyCoat] SendTell failed: {ex.Message}");
+        }
     }
 }
