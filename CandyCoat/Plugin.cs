@@ -18,6 +18,7 @@ using CandyCoat.UI;
 
 using ECommons;
 using ECommons.DalamudServices;
+using Una.Drawing;
 
 namespace CandyCoat;
 
@@ -65,7 +66,8 @@ public sealed class Plugin : IDalamudPlugin
     public Plugin()
     {
         ECommonsMain.Init(PluginInterface, this);
-        
+        DrawingLib.Setup(PluginInterface);
+
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         var needsProfileSync = MigrateConfig();
 
@@ -170,8 +172,9 @@ public sealed class Plugin : IDalamudPlugin
 
     public void Dispose()
     {
+        DrawingLib.Dispose();
         ECommonsMain.Dispose();
-        
+
         // Unregister all actions to not leak anythign during disposal of plugin
         Svc.ContextMenu.OnMenuOpened -= OnMenuOpened;
         PluginInterface.UiBuilder.Draw -= WindowSystem.Draw;
