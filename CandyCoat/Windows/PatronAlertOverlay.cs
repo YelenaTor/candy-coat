@@ -8,6 +8,7 @@ using ECommons.DalamudServices;
 using CandyCoat.Data;
 using CandyCoat.Services;
 using CandyCoat.UI;
+using Una.Drawing;
 
 namespace CandyCoat.Windows;
 
@@ -23,6 +24,10 @@ public class PatronAlertOverlay : Window, IDisposable
 
     private const float CardWidth = 310f;
 
+    // Una.Drawing root — rebuilt when alert count changes
+    private Node? _root;
+    private int   _builtAlertCount = -1;
+
     public PatronAlertOverlay(Plugin plugin, PatronAlertService alertService)
         : base("##CandyCoatAlerts",
             ImGuiWindowFlags.NoTitleBar       |
@@ -37,7 +42,37 @@ public class PatronAlertOverlay : Window, IDisposable
         RespectCloseHotkey = false;
     }
 
-    public void Dispose() { }
+    public void Dispose()
+    {
+        _root?.Dispose();
+        _root = null;
+    }
+
+    private void BuildRoot(int alertCount)
+    {
+        _root?.Dispose();
+        _builtAlertCount = alertCount;
+
+        if (alertCount == 0)
+        {
+            _root = CandyUI.Column("alert-root", 0);
+            return;
+        }
+
+        // Spacer column — one InputSpacer per alert card.
+        // Actual card rendering is done via ImGui overlays in DrawOverlays().
+        var children = new Node[alertCount];
+        for (int i = 0; i < alertCount; i++)
+        {
+            bool showTarget = _plugin.Configuration.EnableTargetOnAlertClick;
+            int  rows       = showTarget ? 3 : 2;
+            // Approximate card height: 22px per row + 12px padding
+            var cardSpacer = CandyUI.InputSpacer($"alert-card-spacer-{i}", (int)CardWidth, rows * 22 + 12);
+            children[i] = cardSpacer;
+        }
+
+        _root = CandyUI.Column("alert-root", 6, children);
+    }
 
     public override void PreDraw()
     {
@@ -56,6 +91,23 @@ public class PatronAlertOverlay : Window, IDisposable
             .ToList();
 
         if (alerts.Count == 0) return;
+
+        if (_root == null || _builtAlertCount != alerts.Count)
+            BuildRoot(alerts.Count);
+
+        var region = ImGui.GetContentRegionAvail();
+        _root!.Style.Size = new Size((int)region.X, (int)region.Y);
+
+        var pos = ImGui.GetWindowPos() + ImGui.GetWindowContentRegionMin();
+        _root.Render(ImGui.GetWindowDrawList(), pos);
+        ImGui.Dummy(region);
+
+        DrawOverlays(alerts);
+    }
+
+    private void DrawOverlays(System.Collections.Generic.List<PatronAlertEntry> alerts)
+    {
+        ImGui.SetCursorPos(new Vector2(0, 0));
 
         for (int i = 0; i < alerts.Count; i++)
         {
@@ -103,19 +155,19 @@ public class PatronAlertOverlay : Window, IDisposable
             nameCol = patron.Status == PatronStatus.Blacklisted
                 ? new Vector4(1f, 0.25f, 0.25f, 1f)
                 : new Vector4(1f, 0.78f, 0.2f, 1f);
-            icon      = patron.Status == PatronStatus.Blacklisted ? "🚫" : "⚠";
+            icon      = patron.Status == PatronStatus.Blacklisted ? "!!" : "!";
             tierLabel = patron.Status.ToString().ToUpperInvariant();
         }
         else if (hasActiveVip)
         {
             nameCol   = VipColours.GetTierColour(vip!.Tier);
-            icon      = "💎";
+            icon      = "[VIP]";
             tierLabel = vip.PackageName;
         }
         else if (hasExpiredVip)
         {
             nameCol   = new Vector4(0.55f, 0.50f, 0.58f, 1f);
-            icon      = "♥";
+            icon      = "[x]";
             tierLabel = "VIP EXPIRED";
         }
         else
@@ -123,7 +175,7 @@ public class PatronAlertOverlay : Window, IDisposable
             nameCol = alert.Tier == PatronTier.Elite
                 ? new Vector4(1f, 0.85f, 0.2f, 1f)
                 : new Vector4(1f, 0.65f, 0.85f, 1f);
-            icon      = alert.Tier == PatronTier.Elite ? "★" : "♥";
+            icon      = alert.Tier == PatronTier.Elite ? "*" : "+";
             tierLabel = alert.Tier.ToString();
         }
 
@@ -133,11 +185,11 @@ public class PatronAlertOverlay : Window, IDisposable
 
         // Dismiss button — right-aligned
         float dismissX = ImGui.GetWindowWidth()
-                       - ImGui.CalcTextSize("✕").X
+                       - ImGui.CalcTextSize("x").X
                        - ImGui.GetStyle().FramePadding.X * 2f
                        - ImGui.GetStyle().WindowPadding.X;
         ImGui.SameLine(dismissX);
-        if (ImGui.SmallButton($"✕##D{alert.Id}"))
+        if (ImGui.SmallButton($"x##D{alert.Id}"))
             _alertService.Dismiss(alert.Id);
 
         // ── Row 2: distance · visits · VIP status or drink ─────────────────
@@ -160,13 +212,13 @@ public class PatronAlertOverlay : Window, IDisposable
         else if (!string.IsNullOrWhiteSpace(patron.FavoriteDrink))
         {
             ImGui.SameLine();
-            ImGui.TextDisabled($"· 🍹 {patron.FavoriteDrink}");
+            ImGui.TextDisabled($"· {patron.FavoriteDrink}");
         }
 
         // ── Row 3 (optional): Target button ────────────────────────────────
         if (showTarget)
         {
-            if (ImGui.SmallButton($"👁 Target##{alert.Id}"))
+            if (ImGui.SmallButton($"[>] Target##{alert.Id}"))
             {
                 var obj = Svc.Objects.FirstOrDefault(o => o.Name.ToString() == patron.Name);
                 if (obj != null)

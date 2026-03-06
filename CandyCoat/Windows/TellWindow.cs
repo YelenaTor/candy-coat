@@ -8,7 +8,9 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Bindings.ImGui;
 using CandyCoat.Data;
+using CandyCoat.UI;
 using ECommons.DalamudServices;
+using Una.Drawing;
 
 namespace CandyCoat.Windows;
 
@@ -26,8 +28,11 @@ public class TellWindow : Window, IDisposable
     private const float LeftPanelWidth = 190f;
     private const float InputRowHeight = 38f;
 
+    // Una.Drawing root
+    private Node? _root;
+
     public TellWindow(Plugin plugin)
-        : base("\u2709 Candy Tells##CandyTellsWindow",
+        : base("Candy Tells##CandyTellsWindow",
                ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
     {
         _plugin = plugin;
@@ -46,12 +51,25 @@ public class TellWindow : Window, IDisposable
     public void Dispose()
     {
         _plugin.TellService.OnTellReceived -= OnTellReceived;
+        _root?.Dispose();
+        _root = null;
     }
 
     private void OnTellReceived()
     {
         if (_selectedConversation != null)
             _scrollToBottom = true;
+    }
+
+    private void BuildRoot()
+    {
+        _root?.Dispose();
+        // Outer shell: sidebar column + content column side-by-side.
+        // All actual content is drawn as ImGui overlays.
+        _root = CandyUI.WindowRoot(
+            CandyUI.Sidebar(),
+            CandyUI.ContentPanel()
+        );
     }
 
     public override void Draw()
@@ -64,6 +82,22 @@ public class TellWindow : Window, IDisposable
             _notesBuffer = _selectedConversation.Notes;
             _scrollToBottom = true;
         }
+
+        if (_root == null) BuildRoot();
+
+        var region = ImGui.GetContentRegionAvail();
+        _root!.Style.Size = new Size((int)region.X, (int)region.Y);
+
+        var pos = ImGui.GetWindowPos() + ImGui.GetWindowContentRegionMin();
+        _root.Render(ImGui.GetWindowDrawList(), pos);
+        ImGui.Dummy(region);
+
+        DrawOverlays();
+    }
+
+    private void DrawOverlays()
+    {
+        ImGui.SetCursorPos(new Vector2(0, 0));
 
         var contentRegion = ImGui.GetContentRegionAvail();
 

@@ -2,12 +2,15 @@ using System;
 using System.Numerics;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
+using CandyCoat.UI;
+using Una.Drawing;
 
 namespace CandyCoat.Windows;
 
 public class ProfileWindow : Window, IDisposable
 {
     private readonly Plugin _plugin;
+    private Node? _root;
 
     public ProfileWindow(Plugin plugin) : base("My Profile##CandyCoatProfile")
     {
@@ -23,57 +26,88 @@ public class ProfileWindow : Window, IDisposable
         Flags |= ImGuiWindowFlags.NoResize;
     }
 
-    public void Dispose() { }
+    public void Dispose()
+    {
+        _root?.Dispose();
+        _root = null;
+    }
+
+    private void BuildRoot()
+    {
+        _root?.Dispose();
+        var cfg = _plugin.Configuration;
+
+        var charValue    = string.IsNullOrEmpty(cfg.CharacterName) ? "—" : cfg.CharacterName;
+        var profileValue = string.IsNullOrEmpty(cfg.ProfileId)     ? "—" : cfg.ProfileId;
+        var venueValue   = string.IsNullOrEmpty(cfg.VenueName)     ? "—" : cfg.VenueName;
+
+        // Profile ID row: label + pink value + copy button
+        var profileIdNode = new Node {
+            Id    = "prof-id-value",
+            NodeValue = profileValue,
+            Style = new Style {
+                AutoSize  = (Una.Drawing.AutoSize.Fit, Una.Drawing.AutoSize.Fit),
+                Color     = new Color(CandyTheme.TextAccent),
+                FontSize  = 13,
+                TextAlign = Anchor.MiddleLeft,
+            },
+        };
+
+        Node profileIdRow;
+        if (!string.IsNullOrEmpty(cfg.ProfileId))
+        {
+            var copyBtn = CandyUI.SmallButton("prof-copy-btn", "Copy",
+                () => ImGui.SetClipboardText(cfg.ProfileId));
+            profileIdRow = CandyUI.Row("prof-id-row", 6,
+                CandyUI.Muted("prof-id-label", "Profile ID"),
+                profileIdNode,
+                copyBtn);
+        }
+        else
+        {
+            profileIdRow = CandyUI.Row("prof-id-row", 6,
+                CandyUI.Muted("prof-id-label", "Profile ID"),
+                profileIdNode);
+        }
+
+        // Sync status badge
+        var syncBadge = CandyUI.StatusBadge("prof-sync-badge", "Connected", CandyTheme.StatusOnline);
+
+        _root = CandyUI.Column("profile-root", 8,
+            CandyUI.Card("profile-card",
+                CandyUI.Row("prof-char-row", 6,
+                    CandyUI.Muted("prof-char-label", "Character"),
+                    CandyUI.Label("prof-char-value", charValue)),
+                profileIdRow,
+                CandyUI.Row("prof-venue-row", 6,
+                    CandyUI.Muted("prof-venue-label", "Venue"),
+                    CandyUI.Label("prof-venue-value", venueValue)),
+                CandyUI.Separator("prof-sep"),
+                CandyUI.Row("prof-sync-row", 6,
+                    CandyUI.Muted("prof-sync-label", "Sync Status"),
+                    syncBadge)
+            )
+        );
+    }
 
     public override void Draw()
     {
-        DrawContent();
+        // Rebuild every frame so dynamic config values (CharacterName, ProfileId, etc.) stay fresh.
+        BuildRoot();
+
+        var region = ImGui.GetContentRegionAvail();
+        _root!.Style.Size = new Size((int)region.X, (int)region.Y - 28);
+
+        var pos = ImGui.GetWindowPos() + ImGui.GetWindowContentRegionMin();
+        _root.Render(ImGui.GetWindowDrawList(), pos);
+        ImGui.Dummy(new Vector2(region.X, region.Y - 28));
+
+        DrawOverlays();
     }
 
-    private void DrawContent()
+    private void DrawOverlays()
     {
-        var cfg     = _plugin.Configuration;
-        var dimGrey = new Vector4(0.6f, 0.6f, 0.6f, 1f);
-        var pink    = new Vector4(1f, 0.6f, 0.8f, 1f);
-
-        // Character row
-        ImGui.TextColored(dimGrey, "Character");
-        ImGui.SameLine(90);
-        ImGui.Text(string.IsNullOrEmpty(cfg.CharacterName) ? "—" : cfg.CharacterName);
-
-        // Profile ID row
-        ImGui.TextColored(dimGrey, "Profile ID");
-        ImGui.SameLine(90);
-        ImGui.TextColored(pink, string.IsNullOrEmpty(cfg.ProfileId) ? "—" : cfg.ProfileId);
-        if (!string.IsNullOrEmpty(cfg.ProfileId))
-        {
-            ImGui.SameLine();
-            if (ImGui.SmallButton("Copy##profCopy"))
-                ImGui.SetClipboardText(cfg.ProfileId);
-        }
-
-        // Venue row
-        ImGui.TextColored(dimGrey, "Venue");
-        ImGui.SameLine(90);
-        ImGui.Text(string.IsNullOrEmpty(cfg.VenueName) ? "—" : cfg.VenueName);
-
-        ImGui.Separator();
-        ImGui.Spacing();
-
-        // Sync Status
-        ImGui.TextColored(dimGrey, "Sync Status");
-        ImGui.SameLine(90);
-        DrawSyncStatus();
-
-        ImGui.Spacing();
-        ImGui.Spacing();
-
         if (ImGui.Button("Close", new Vector2(-1, 0)))
             IsOpen = false;
-    }
-
-    private void DrawSyncStatus()
-    {
-        ImGui.TextColored(new Vector4(0.2f, 0.9f, 0.4f, 1f), "Connected");
     }
 }

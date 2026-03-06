@@ -8,6 +8,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using CandyCoat.Data;
 using CandyCoat.IPC;
 using CandyCoat.UI;
+using Una.Drawing;
 
 namespace CandyCoat.Windows;
 
@@ -20,6 +21,9 @@ public class PatronDetailsWindow : Window, IDisposable
     // VIP tab state
     private int _vipDropdownIdx = 0;
     private int _vipOverridePrice = 0;
+
+    // Una.Drawing root
+    private Node? _root;
 
     public PatronDetailsWindow(Plugin plugin, GlamourerIpc glamourer)
         : base("Patron Details###PatronDetailsWindow", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
@@ -35,16 +39,40 @@ public class PatronDetailsWindow : Window, IDisposable
         IsOpen = false;
     }
 
+    private void BuildRoot()
+    {
+        _root?.Dispose();
+        _root = CandyUI.Column("patron-details-root", 0,
+            CandyUI.InputSpacer("patron-details-content-spacer", 0, 0));
+        _root.Style.AutoSize = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Grow);
+    }
+
     public override void Draw()
     {
         if (SelectedPatron == null) return;
 
+        if (_root == null) BuildRoot();
+
+        var region = ImGui.GetContentRegionAvail();
+        _root!.Style.Size = new Size((int)region.X, (int)region.Y);
+
+        var pos = ImGui.GetWindowPos() + ImGui.GetWindowContentRegionMin();
+        _root.Render(ImGui.GetWindowDrawList(), pos);
+        ImGui.Dummy(region);
+
+        DrawOverlays(SelectedPatron);
+    }
+
+    private void DrawOverlays(Patron patron)
+    {
+        ImGui.SetCursorPos(new Vector2(0, 0));
+
         using var subTabBar = ImRaii.TabBar("PatronDetailsTabs");
         if (!subTabBar) return;
 
-        DrawInfoTab(SelectedPatron);
-        DrawGlamourTab(SelectedPatron);
-        DrawVipTab(SelectedPatron);
+        DrawInfoTab(patron);
+        DrawGlamourTab(patron);
+        DrawVipTab(patron);
     }
 
     private void DrawInfoTab(Patron patron)
@@ -379,7 +407,8 @@ public class PatronDetailsWindow : Window, IDisposable
 
     public void Dispose()
     {
-        // Nothing disposable currently
+        _root?.Dispose();
+        _root = null;
     }
 
     private unsafe string? ScrapeSearchInfo()

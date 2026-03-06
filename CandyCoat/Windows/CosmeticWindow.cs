@@ -4,6 +4,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
 using CandyCoat.UI;
 using CandyCoat.Windows.Tabs;
+using Una.Drawing;
 
 namespace CandyCoat.Windows;
 
@@ -11,11 +12,12 @@ public class CosmeticWindow : Window, IDisposable
 {
     private readonly Plugin _plugin;
     private readonly CosmeticDrawerTab _tab;
+    private Node? _root;
     private DateTime _lastAutoRedraw = DateTime.MinValue;
     private const double AutoRedrawIntervalSeconds = 30.0;
 
     public CosmeticWindow(Plugin plugin, CosmeticFontManager fontManager, CosmeticBadgeManager badgeManager)
-        : base("✨ Cosmetic Drawer##CandyCoatCosmetics", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+        : base("Cosmetic Drawer##CandyCoatCosmetics", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
     {
         SizeConstraints = new WindowSizeConstraints
         {
@@ -26,8 +28,44 @@ public class CosmeticWindow : Window, IDisposable
         _tab = new CosmeticDrawerTab(plugin, fontManager, badgeManager);
     }
 
+    public void Dispose()
+    {
+        _root?.Dispose();
+        _root = null;
+    }
+
+    private void BuildRoot()
+    {
+        _root?.Dispose();
+
+        // The content area is a spacer — actual tab content and footer are ImGui overlays.
+        _root = CandyUI.Column("cosmetic-root", 0,
+            CandyUI.Card("cosmetic-content-card",
+                CandyUI.InputSpacer("cosmetic-content-spacer", 0, 0))
+        );
+        // Content card grows to fill; footer overlays sit below it.
+        _root.QuerySelector("#cosmetic-content-card")!.Style.AutoSize =
+            (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Grow);
+    }
+
     public override void Draw()
     {
+        if (_root == null) BuildRoot();
+
+        var region = ImGui.GetContentRegionAvail();
+        _root!.Style.Size = new Size((int)region.X, (int)region.Y);
+
+        var pos = ImGui.GetWindowPos() + ImGui.GetWindowContentRegionMin();
+        _root.Render(ImGui.GetWindowDrawList(), pos);
+        ImGui.Dummy(region);
+
+        DrawOverlays();
+    }
+
+    private void DrawOverlays()
+    {
+        ImGui.SetCursorPos(new Vector2(0, 0));
+
         var footerHeight = ImGui.GetFrameHeightWithSpacing() * 2 + ImGui.GetStyle().ItemSpacing.Y * 2;
         var contentHeight = ImGui.GetContentRegionAvail().Y - footerHeight;
 
@@ -43,15 +81,13 @@ public class CosmeticWindow : Window, IDisposable
         {
             _plugin.Configuration.EnableNameplateCosmetics = enabled;
             _plugin.Configuration.Save();
-            // Force game nameplate system to reprocess all handlers so
-            // our suppression (or restoration) kicks in immediately.
             Plugin.NamePlateGui.RequestRedraw();
         }
 
         ImGui.Separator();
 
         // Row 2 — Re-draw controls (local client-side refresh only)
-        if (ImGui.Button("↺ Re-draw"))
+        if (ImGui.Button("Re-draw"))
             ForceLocalRedraw();
 
         ImGui.SameLine();
@@ -76,6 +112,4 @@ public class CosmeticWindow : Window, IDisposable
         _lastAutoRedraw = DateTime.UtcNow;
         Plugin.NamePlateGui.RequestRedraw();
     }
-
-    public void Dispose() { }
 }
