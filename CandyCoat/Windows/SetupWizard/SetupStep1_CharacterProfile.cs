@@ -7,6 +7,8 @@ using Dalamud.Interface.Utility.Raii;
 using ECommons.DalamudServices;
 using CandyCoat.Helpers;
 using CandyCoat.Services;
+using CandyCoat.UI;
+using Una.Drawing;
 
 namespace CandyCoat.Windows.SetupWizard;
 
@@ -23,16 +25,28 @@ internal sealed class SetupStep1_CharacterProfile
     private bool    _scanDetected    = false;
     private string? _validationError = null;
 
-    // Existing profile lookup state machine
     private string   _existingIdBuffer = string.Empty;
     private enum LookupState { Idle, InProgress, NotFound, Error }
     private LookupState _lookupState = LookupState.Idle;
     private Task<GlobalProfileLookupResult?>? _lookupTask;
     private string _lookupError = string.Empty;
 
-    public void DrawContent(ref int step, WizardState state, Plugin plugin, SetupWindow window)
+    // ─── Una.Drawing node ────────────────────────────────────────────────────
+
+    public Node BuildStepNode(WizardState state)
     {
-        // ── Poll async lookup task ──
+        return CandyUI.Column("step1-content", 8,
+            CandyUI.Muted("step1-subtitle", "Step 2 of 5 — Character Profile"),
+            // Reserve the full overlay area — the overlay draws everything
+            CandyUI.InputSpacer("step1-overlay-spacer", 0, 300)
+        );
+    }
+
+    // ─── Raw ImGui overlay ────────────────────────────────────────────────────
+
+    public void DrawOverlays(WizardState state, ref int step, Plugin plugin, SetupWindow window)
+    {
+        // Poll async lookup task
         if (_lookupState == LookupState.InProgress && _lookupTask?.IsCompleted == true)
         {
             if (_lookupTask.IsFaulted)
@@ -46,24 +60,21 @@ internal sealed class SetupStep1_CharacterProfile
                 if (result != null)
                 {
                     ApplyLookupResult(result, plugin, window);
-                    return; // window closing — skip further draw
+                    return;
                 }
                 _lookupState = LookupState.NotFound;
             }
             _lookupTask = null;
         }
 
-        // ── Auto-scan on first draw ──
+        // Auto-scan on first draw
         if (!_hasAutoScanned)
         {
             TryScan(state);
             _hasAutoScanned = true;
         }
 
-        ImGui.TextColored(DimGrey, "Step 2 of 5 — Character Profile");
-        ImGui.Spacing();
-
-        // ── Scan status + Retry ──
+        // Scan status + Retry
         if (_scanDetected)
             ImGui.TextColored(Green, "\u2714 Character detected");
         else
@@ -78,14 +89,14 @@ internal sealed class SetupStep1_CharacterProfile
 
         ImGui.Spacing();
 
-        // ── If ID is already confirmed, show the confirmation panel ──
+        // If ID already confirmed, show the confirmation panel
         if (state.IdGenerated)
         {
             DrawIdConfirmed(ref step, state);
             return;
         }
 
-        // ── New User section ──
+        // New User section
         ImGui.PushStyleColor(ImGuiCol.ChildBg, PanelBg);
         using (ImRaii.Child("##newUserPanel", new Vector2(-1, 165), true))
         {
@@ -93,7 +104,6 @@ internal sealed class SetupStep1_CharacterProfile
             DrawNewUserPanel(state);
         }
 
-        // ── Validation error ──
         if (_validationError != null)
         {
             ImGui.Spacing();
@@ -102,13 +112,12 @@ internal sealed class SetupStep1_CharacterProfile
 
         ImGui.Spacing();
 
-        // ── "or" separator ──
         ImGui.Separator();
         ImGui.Spacing();
         ImGui.TextDisabled("Already have a Profile ID?");
         ImGui.Spacing();
 
-        // ── Existing Profile ID section ──
+        // Existing Profile ID section
         ImGui.PushStyleColor(ImGuiCol.ChildBg, PanelBg);
         using (ImRaii.Child("##existUserPanel", new Vector2(-1, 80), true))
         {
@@ -117,7 +126,7 @@ internal sealed class SetupStep1_CharacterProfile
         }
     }
 
-    // ─── Scan ───
+    // ─── Scan ─────────────────────────────────────────────────────────────────
 
     private void TryScan(WizardState state)
     {
@@ -138,7 +147,7 @@ internal sealed class SetupStep1_CharacterProfile
                      && !string.IsNullOrEmpty(state.HomeWorld);
     }
 
-    // ─── New User panel ───
+    // ─── New User panel ───────────────────────────────────────────────────────
 
     private void DrawNewUserPanel(WizardState state)
     {
@@ -172,7 +181,7 @@ internal sealed class SetupStep1_CharacterProfile
         if (!allFilled) ImGui.EndDisabled();
     }
 
-    // ─── Existing User panel ───
+    // ─── Existing User panel ──────────────────────────────────────────────────
 
     private void DrawExistingUserPanel(Plugin plugin, SetupWindow window, WizardState state)
     {
@@ -205,7 +214,7 @@ internal sealed class SetupStep1_CharacterProfile
         }
     }
 
-    // ─── Start lookup task ───
+    // ─── Lookup ───────────────────────────────────────────────────────────────
 
     private void StartLookup(Plugin plugin)
     {
@@ -213,8 +222,6 @@ internal sealed class SetupStep1_CharacterProfile
         _lookupError = string.Empty;
         _lookupTask  = SyncService.LookupProfileAsync(PluginConstants.ProductionApiUrl, _existingIdBuffer.Trim());
     }
-
-    // ─── Apply lookup result and skip to dashboard ───
 
     private static void ApplyLookupResult(GlobalProfileLookupResult result, Plugin plugin, SetupWindow window)
     {
@@ -232,7 +239,7 @@ internal sealed class SetupStep1_CharacterProfile
         plugin.OnSetupComplete();
     }
 
-    // ─── Validation ───
+    // ─── Validation ───────────────────────────────────────────────────────────
 
     private void ValidateAndConfirm(WizardState state)
     {
@@ -260,7 +267,7 @@ internal sealed class SetupStep1_CharacterProfile
         state.IdGenerated = true;
     }
 
-    // ─── ID Confirmed panel ───
+    // ─── ID Confirmed panel ───────────────────────────────────────────────────
 
     private void DrawIdConfirmed(ref int step, WizardState state)
     {

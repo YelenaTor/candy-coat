@@ -2,6 +2,8 @@ using System;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using CandyCoat.Data;
+using CandyCoat.UI;
+using Una.Drawing;
 
 namespace CandyCoat.Windows.SetupWizard;
 
@@ -23,30 +25,48 @@ internal sealed class SetupStep3_RoleSelection
     private static readonly string[] ComboLabels = Array.ConvertAll(Roles,
         r => $"{r.Icon}  {r.Role} — {r.Desc}");
 
-    // Pending protected-role unlock
-    private int       _comboIndex      = 0;
-    private bool      _comboInitDone   = false;
-    private StaffRole _pendingRole     = StaffRole.None;
+    private int       _comboIndex    = 0;
+    private bool      _comboInitDone = false;
+    private StaffRole _pendingRole   = StaffRole.None;
     private string    _pendingPwBuffer = string.Empty;
     private bool      _pendingPwError  = false;
     private bool      _mgmtNoPassword  = false;
 
-    public void DrawContent(ref int step, WizardState state, Plugin plugin)
+    // ─── Una.Drawing node ────────────────────────────────────────────────────
+
+    public Node BuildStepNode(WizardState state)
     {
-        var dimGrey = new Vector4(0.6f, 0.6f, 0.6f, 1f);
-        var amber   = new Vector4(1f, 0.8f, 0.2f, 1f);
-        var red     = new Vector4(1f, 0.3f, 0.3f, 1f);
+        return CandyUI.Column("step3-content", 8,
+            CandyUI.Muted("step3-subtitle", "Step 4 of 5 — Role Selection"),
+            new Node
+            {
+                Id        = "step3-desc",
+                NodeValue = "Select your primary role at the venue. This determines which toolbox panels you'll see in the Sugar Role Toolbox (SRT).",
+                Style     = new Style
+                {
+                    AutoSize  = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Fit),
+                    Color     = new Color(CandyTheme.TextSecondary),
+                    FontSize  = 12,
+                    TextAlign = Anchor.MiddleLeft,
+                },
+            },
+            // Reserve space for the combo, password prompt, multi-role section
+            CandyUI.InputSpacer("step3-overlay-spacer", 0, 220)
+        );
+    }
 
-        ImGui.TextColored(dimGrey, "Step 4 of 5 — Role Selection");
-        ImGui.Spacing();
-        ImGui.TextWrapped("Select your primary role at the venue. This determines which toolbox panels you'll see in the Sugar Role Toolbox (SRT).");
-        ImGui.Spacing();
+    // ─── Raw ImGui overlay ────────────────────────────────────────────────────
 
-        // ── Sync combo index from state (only when no pending unlock in progress) ──
+    public void DrawOverlays(WizardState state, ref int step, Plugin plugin)
+    {
+        var amber = new Vector4(1f, 0.8f, 0.2f, 1f);
+        var red   = new Vector4(1f, 0.3f, 0.3f, 1f);
+
+        // Sync combo index from state (only when no pending unlock)
         if (!_comboInitDone || _pendingRole == StaffRole.None)
         {
             _comboInitDone = true;
-            _comboIndex = 0;
+            _comboIndex    = 0;
             for (int i = 0; i < Roles.Length; i++)
             {
                 if (Roles[i].Role == state.SelectedPrimaryRole)
@@ -70,7 +90,7 @@ internal sealed class SetupStep3_RoleSelection
                 if (string.IsNullOrEmpty(plugin.Configuration.ManagerPassword))
                 {
                     _mgmtNoPassword = true;
-                    _comboIndex     = prevIndex; // revert — no password set yet
+                    _comboIndex     = prevIndex;
                 }
                 else
                 {
@@ -90,14 +110,12 @@ internal sealed class SetupStep3_RoleSelection
             }
         }
 
-        // ── Management locked message ──
         if (_mgmtNoPassword)
         {
             ImGui.Spacing();
             ImGui.TextColored(amber, "\u26a0 Management requires a Manager Password to be set by an Owner first.");
         }
 
-        // ── Pending password prompt ──
         if (_pendingRole != StaffRole.None)
         {
             ImGui.Spacing();
@@ -132,7 +150,6 @@ internal sealed class SetupStep3_RoleSelection
         ImGui.Separator();
         ImGui.Spacing();
 
-        // ── Multi-role ──
         var multiRole = state.MultiRoleToggle;
         if (ImGui.Checkbox("I regularly do more than one role", ref multiRole))
             state.MultiRoleToggle = multiRole;
@@ -147,7 +164,7 @@ internal sealed class SetupStep3_RoleSelection
             {
                 if (role == state.SelectedPrimaryRole) continue;
 
-                bool enabled = state.SelectedSecondaryRoles.HasFlag(role);
+                bool enabled    = state.SelectedSecondaryRoles.HasFlag(role);
                 bool mgmtLocked = role == StaffRole.Management
                                && string.IsNullOrEmpty(plugin.Configuration.ManagerPassword);
                 bool ownerLocked = role == StaffRole.Owner;

@@ -3,6 +3,8 @@ using System.Numerics;
 using System.Threading.Tasks;
 using Dalamud.Bindings.ImGui;
 using CandyCoat.Data;
+using CandyCoat.UI;
+using Una.Drawing;
 
 namespace CandyCoat.Windows.SetupWizard;
 
@@ -13,31 +15,45 @@ internal sealed class SetupStep4_VenueKey
     private static readonly Vector4 Red     = new(1f, 0.3f, 0.3f, 1f);
     private static readonly Vector4 Amber   = new(1f, 0.8f, 0.2f, 1f);
 
-    // Owner register fields
     private string _venueNameBuffer = string.Empty;
+    private string _keyBuffer       = string.Empty;
+    private bool   _pending         = false;
+    private string? _error          = null;
+    private bool _keyRevealed       = false;
 
-    // Staff validate fields
-    private string _keyBuffer = string.Empty;
+    // ─── Una.Drawing node ────────────────────────────────────────────────────
 
-    // Shared async state
-    private bool   _pending    = false;
-    private string? _error     = null;
-
-    // Key reveal for Owner confirmed display
-    private bool _keyRevealed = false;
-
-    public void DrawContent(ref int step, WizardState state, Plugin plugin)
+    public Node BuildStepNode(WizardState state)
     {
         bool isOwner = state.SelectedPrimaryRole.HasFlag(StaffRole.Owner);
 
-        ImGui.TextColored(DimGrey, "Step 5 of 6 — Venue Registration");
-        ImGui.Spacing();
-        ImGui.TextWrapped(isOwner
-            ? "Register your venue to generate a Venue Key to share with your staff."
-            : "Enter the Venue Key provided by your venue Owner to connect.");
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
+        return CandyUI.Column("stepVK-content", 8,
+            CandyUI.Muted("stepVK-subtitle", "Step 5 of 6 — Venue Registration"),
+            new Node
+            {
+                Id        = "stepVK-desc",
+                NodeValue = isOwner
+                    ? "Register your venue to generate a Venue Key to share with your staff."
+                    : "Enter the Venue Key provided by your venue Owner to connect.",
+                Style     = new Style
+                {
+                    AutoSize  = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Fit),
+                    Color     = new Color(CandyTheme.TextSecondary),
+                    FontSize  = 12,
+                    TextAlign = Anchor.MiddleLeft,
+                },
+            },
+            CandyUI.Separator("stepVK-sep"),
+            // Reserve space for the owner/staff form drawn as overlay
+            CandyUI.InputSpacer("stepVK-overlay-spacer", 0, 180)
+        );
+    }
+
+    // ─── Raw ImGui overlay ────────────────────────────────────────────────────
+
+    public void DrawOverlays(WizardState state, ref int step, Plugin plugin)
+    {
+        bool isOwner = state.SelectedPrimaryRole.HasFlag(StaffRole.Owner);
 
         if (state.VenueConfirmed)
         {

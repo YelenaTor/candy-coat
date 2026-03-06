@@ -1,28 +1,47 @@
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
+using CandyCoat.UI;
+using Una.Drawing;
 
 namespace CandyCoat.Windows.SetupWizard;
 
 internal sealed class SetupStep2_ModeSelection
 {
-    public void DrawContent(ref int step, WizardState state)
+    // ─── Una.Drawing node ────────────────────────────────────────────────────
+
+    public Node BuildStepNode(WizardState state)
     {
-        var dimGrey = new Vector4(0.6f, 0.6f, 0.6f, 1f);
+        return CandyUI.Column("step2-content", 8,
+            CandyUI.Muted("step2-subtitle", "Step 3 of 5 — Choose Your Mode"),
+            new Node
+            {
+                Id        = "step2-desc",
+                NodeValue = "How will you be using Candy Coat?",
+                Style     = new Style
+                {
+                    AutoSize  = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Fit),
+                    Color     = new Color(CandyTheme.TextPrimary),
+                    FontSize  = 13,
+                    TextAlign = Anchor.MiddleLeft,
+                },
+            },
+            // Reserve space for the two mode-selection cards drawn as overlay
+            CandyUI.InputSpacer("step2-cards-spacer", 0, 140)
+        );
+    }
+
+    // ─── Raw ImGui overlay ────────────────────────────────────────────────────
+
+    public void DrawOverlays(WizardState state, ref int step)
+    {
         var pink    = new Vector4(1f, 0.6f, 0.8f, 1f);
         var cardBg  = new Vector4(0.12f, 0.08f, 0.16f, 1f);
-        var cardHov = new Vector4(0.18f, 0.12f, 0.24f, 1f);
-
-        ImGui.TextColored(dimGrey, "Step 3 of 5 — Choose Your Mode");
-        ImGui.Spacing();
-        ImGui.TextWrapped("How will you be using Candy Coat?");
-        ImGui.Spacing();
-        ImGui.Spacing();
 
         const float CardWidth  = 200f;
         const float CardHeight = 120f;
 
-        // ── Staff Card ──
+        // Staff Card
         ImGui.PushStyleColor(ImGuiCol.ChildBg, cardBg);
         using (var staffCard = ImRaii.Child("##staffCard", new Vector2(CardWidth, CardHeight), true))
         {
@@ -51,7 +70,7 @@ internal sealed class SetupStep2_ModeSelection
 
         ImGui.SameLine(0, 16f);
 
-        // ── Patron Card (disabled / coming soon) ──
+        // Patron Card (disabled)
         ImGui.BeginDisabled();
         ImGui.PushStyleColor(ImGuiCol.ChildBg, cardBg);
         using (var patronCard = ImRaii.Child("##patronCard", new Vector2(CardWidth, CardHeight), true))
