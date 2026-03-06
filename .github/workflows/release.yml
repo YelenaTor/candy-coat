@@ -52,19 +52,33 @@ jobs:
         $outDir = "./publish"
         $zipName = "CandyCoat-latest.zip"
         $manifestPath = "$outDir/CandyCoat.json"
-        
+
         # Debug: Show what's in publish
         Write-Host "=== Contents of publish directory ==="
         Get-ChildItem -Path $outDir -Recurse | Select-Object FullName
-        
+
         # Remove any zip files in output
         Get-ChildItem -Path $outDir -Filter "*.zip" -Recurse | Remove-Item -Force
-        
+
+        # Extract latest changelog section from CHANGELOG.md
+        $changelogText = ""
+        $lines = Get-Content "CHANGELOG.md"
+        $inSection = $false
+        foreach ($line in $lines) {
+          if ($line -match "^## \[$version\]") { $inSection = $true; continue }
+          elseif ($inSection -and $line -match "^## \[") { break }
+          elseif ($inSection) { $changelogText += $line + "`n" }
+        }
+        $changelogText = $changelogText.Trim()
+
         # Modify manifest
         $manifest = Get-Content $manifestPath | ConvertFrom-Json
-        $manifest.AssemblyVersion = $version
+        $manifest.AssemblyVersion = "$version.0"
         $manifest | Add-Member -Force -NotePropertyName "DownloadLinkInstall" -NotePropertyValue "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
         $manifest | Add-Member -Force -NotePropertyName "DownloadLinkUpdate" -NotePropertyValue "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
+        if ($changelogText) {
+          $manifest | Add-Member -Force -NotePropertyName "Changelog" -NotePropertyValue $changelogText
+        }
         $manifest | ConvertTo-Json -Depth 10 | Set-Content $manifestPath
         
         # Stage plugin files + Fonts into a clean directory to preserve subfolder structure
