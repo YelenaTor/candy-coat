@@ -1,9 +1,11 @@
 using System;
+using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
 using CandyCoat.Services;
+using CandyCoat.UI;
 using Una.Drawing;
 
 namespace CandyCoat.Windows.Tabs;
@@ -254,5 +256,106 @@ public class BookingsTab : ITab
         }
     }
 
-    public Node BuildNode() => new Node { Id = "stub" };
+    public Node BuildNode()
+    {
+        var root = CandyUI.Column("bookings-root", 8);
+        root.AppendChild(CandyUI.SectionHeader("bookings-header", "Bookings"));
+        root.AppendChild(CandyUI.Separator("bookings-sep1"));
+
+        // Input form card — live ImGui inputs are rendered in DrawOverlays()
+        var formCard = CandyUI.Card("bookings-form-card");
+        formCard.AppendChild(CandyUI.Label("bookings-form-title", "New Booking", 13));
+
+        var row1 = CandyUI.Row("bookings-row1", 8);
+        row1.AppendChild(CandyUI.InputSpacer("bookings-patron-input",  200));
+        row1.AppendChild(CandyUI.InputSpacer("bookings-service-input", 200));
+        formCard.AppendChild(row1);
+
+        var row2 = CandyUI.Row("bookings-row2", 8);
+        row2.AppendChild(CandyUI.InputSpacer("bookings-room-input", 200));
+        row2.AppendChild(CandyUI.InputSpacer("bookings-gil-input",  200));
+        formCard.AppendChild(row2);
+
+        formCard.AppendChild(CandyUI.InputSpacer("bookings-add-btn", 120, 32));
+        root.AppendChild(formCard);
+
+        root.AppendChild(CandyUI.Separator("bookings-sep2"));
+
+        // Current bookings summary card
+        var listCard = CandyUI.Card("bookings-list-card");
+        var count = _plugin.Configuration.Bookings.Count;
+        if (count == 0)
+        {
+            listCard.AppendChild(CandyUI.Muted("bookings-empty", "No bookings recorded yet."));
+        }
+        else
+        {
+            var activeCount = _plugin.Configuration.Bookings.Count(b => b.State == BookingState.Active);
+            listCard.AppendChild(CandyUI.Label("bookings-count-label",
+                $"{activeCount} active / {count} total bookings"));
+            listCard.AppendChild(CandyUI.Muted("bookings-table-hint", "Full booking table rendered below."));
+        }
+        root.AppendChild(listCard);
+
+        // Spacer so the ImGui table rendered in DrawOverlays() has room
+        root.AppendChild(CandyUI.InputSpacer("bookings-table-spacer", 0, 300));
+
+        return root;
+    }
+
+    public void DrawOverlays()
+    {
+        // Row 1: Patron Name + Service
+        ImGui.SetNextItemWidth(200);
+        ImGui.InputTextWithHint("##bookingPatron",  "Patron Name", ref newBookingName,    100);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(200);
+        ImGui.InputTextWithHint("##bookingService", "Service",     ref newBookingService, 100);
+
+        // Row 2: Room + Gil Amount
+        ImGui.SetNextItemWidth(200);
+        ImGui.InputTextWithHint("##bookingRoom", "Room", ref newBookingRoom, 50);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(200);
+        ImGui.InputInt("##bookingGil", ref newBookingGil, 0);
+
+        // Add Booking button
+        if (ImGui.Button("Add Booking", new Vector2(120, 32)))
+        {
+            if (!string.IsNullOrWhiteSpace(newBookingName))
+            {
+                var newBooking = _venueService.AddBooking(newBookingName, newBookingService, newBookingRoom, newBookingGil);
+
+                if (newBooking != null)
+                {
+                    _ = _plugin.SyncService.UpsertBookingAsync(new CandyCoat.Services.SyncedBooking
+                    {
+                        Id          = newBooking.Id,
+                        PatronName  = newBooking.PatronName,
+                        Service     = newBooking.Service,
+                        Room        = newBooking.Room,
+                        Gil         = newBooking.Gil,
+                        State       = newBooking.State.ToString(),
+                        StaffName   = _plugin.Configuration.CharacterName,
+                        Timestamp   = newBooking.Timestamp,
+                        Duration    = newBooking.Duration,
+                    });
+                }
+
+                newBookingName    = string.Empty;
+                newBookingService = string.Empty;
+                newBookingRoom    = string.Empty;
+                newBookingGil     = 0;
+            }
+        }
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+        DrawBookingsTable();
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+        DrawTeamBookings();
+    }
 }

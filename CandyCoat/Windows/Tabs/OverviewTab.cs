@@ -4,6 +4,7 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
+using CandyCoat.UI;
 using Una.Drawing;
 
 namespace CandyCoat.Windows.Tabs;
@@ -99,5 +100,79 @@ public class OverviewTab : ITab
         }
     }
 
-    public Node BuildNode() => new Node { Id = "stub" };
+    public Node BuildNode()
+    {
+        var root = CandyUI.Column("overview-root", 8);
+        root.AppendChild(CandyUI.SectionHeader("overview-header", "Overview"));
+        root.AppendChild(CandyUI.Separator("overview-sep1"));
+
+        var cfg = _plugin.Configuration;
+
+        if (cfg.IsManagementModeEnabled)
+        {
+            var today          = DateTime.Now.ToString("yyyy-MM-dd");
+            var dailyEarnings  = cfg.DailyEarnings.TryGetValue(today, out var dVal) ? dVal : 0;
+            var totalEarnings  = cfg.DailyEarnings.Values.Sum();
+
+            var earningsCard = CandyUI.Card("overview-earnings-card");
+            earningsCard.AppendChild(CandyUI.Label("overview-earnings-title", "Dashboard & Analytics", 13));
+            earningsCard.AppendChild(CandyUI.Label("overview-daily",  $"Today's Earnings: {dailyEarnings:N0} Gil"));
+            earningsCard.AppendChild(CandyUI.Label("overview-total",  $"All-Time Earnings: {totalEarnings:N0} Gil"));
+            root.AppendChild(earningsCard);
+
+            var spendersCard = CandyUI.Card("overview-spenders-card");
+            spendersCard.AppendChild(CandyUI.Label("overview-spenders-title", "Top 5 Spenders", 13));
+
+            var topSpenders = cfg.Patrons
+                .Where(p => p.TotalGilSpent > 0)
+                .OrderByDescending(p => p.TotalGilSpent)
+                .Take(5)
+                .ToList();
+
+            if (topSpenders.Count == 0)
+            {
+                spendersCard.AppendChild(CandyUI.Muted("overview-no-spenders", "No spending data yet."));
+            }
+            else
+            {
+                for (int i = 0; i < topSpenders.Count; i++)
+                {
+                    var p = topSpenders[i];
+                    spendersCard.AppendChild(CandyUI.Label($"overview-spender-{i}", $"{p.Name}: {p.TotalGilSpent:N0} Gil"));
+                }
+            }
+            root.AppendChild(spendersCard);
+        }
+        else
+        {
+            var shift = _plugin.ShiftManager.CurrentShift;
+            var statusCard = CandyUI.Card("overview-status-card");
+
+            if (shift != null)
+            {
+                var dur = shift.Duration;
+                statusCard.AppendChild(CandyUI.Label("overview-clockin-label",
+                    $"Clocked in — {dur.Hours:D2}:{dur.Minutes:D2}:{dur.Seconds:D2}"));
+                statusCard.AppendChild(CandyUI.Muted("overview-shift-earnings",
+                    $"Earnings this shift: {shift.GilEarned:N0} Gil"));
+            }
+            else
+            {
+                statusCard.AppendChild(CandyUI.Muted("overview-clocked-out", "Not clocked in."));
+            }
+
+            var activeBookings = cfg.Bookings.Count(b => b.State == BookingState.Active);
+            var waitlistCount  = _plugin.WaitlistManager.Entries.Count;
+
+            statusCard.AppendChild(CandyUI.Separator("overview-status-sep"));
+            statusCard.AppendChild(CandyUI.Label("overview-bookings-count", $"Active Bookings: {activeBookings}"));
+            statusCard.AppendChild(CandyUI.Label("overview-waitlist-count", $"Waitlist Queue: {waitlistCount}"));
+            root.AppendChild(statusCard);
+
+            root.AppendChild(CandyUI.Muted("overview-hint",
+                "Head to Bookings, Waitlist, or Staff Shifts to get started."));
+        }
+
+        return root;
+    }
 }

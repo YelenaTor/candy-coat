@@ -8,6 +8,7 @@ using Dalamud.Game.ClientState.Objects.Types;
 using ECommons.DalamudServices;
 using CandyCoat.Data;
 using CandyCoat.Services;
+using CandyCoat.UI;
 using Una.Drawing;
 
 namespace CandyCoat.Windows.Tabs;
@@ -188,5 +189,134 @@ public class LocatorTab : ITab
         }
     }
 
-    public Node BuildNode() => new Node { Id = "stub" };
+    public Node BuildNode()
+    {
+        var root = CandyUI.Column("locator-root", 8);
+        root.AppendChild(CandyUI.SectionHeader("locator-header", "Patron Locator"));
+        root.AppendChild(CandyUI.Separator("locator-sep1"));
+
+        // Track-patron input row — live inputs in DrawOverlays()
+        var addCard = CandyUI.Card("locator-add-card");
+        addCard.AppendChild(CandyUI.Label("locator-add-title", "Track a Patron", 13));
+
+        var inputRow = CandyUI.Row("locator-input-row", 8);
+        inputRow.AppendChild(CandyUI.InputSpacer("locator-fname",  120));
+        inputRow.AppendChild(CandyUI.InputSpacer("locator-lname",  120));
+        inputRow.AppendChild(CandyUI.InputSpacer("locator-world",  120));
+        inputRow.AppendChild(CandyUI.InputSpacer("locator-track-btn", 60));
+        addCard.AppendChild(inputRow);
+
+        addCard.AppendChild(CandyUI.InputSpacer("locator-detect-btn", 140, 28));
+        root.AppendChild(addCard);
+
+        root.AppendChild(CandyUI.Separator("locator-sep2"));
+
+        // Nearby summary card
+        var nearby = _plugin.LocatorService.NearbyRegulars;
+        var nearbyCard = CandyUI.Card("locator-nearby-card");
+
+        if (nearby.Count == 0)
+        {
+            nearbyCard.AppendChild(CandyUI.Muted("locator-no-nearby", "No tracked patrons nearby."));
+        }
+        else
+        {
+            nearbyCard.AppendChild(CandyUI.Label("locator-nearby-title",
+                $"{nearby.Count} tracked patron(s) nearby", 13));
+
+            for (int i = 0; i < nearby.Count; i++)
+            {
+                var (patron, dist) = nearby[i];
+                nearbyCard.AppendChild(CandyUI.Label($"locator-nearby-{i}",
+                    $"{patron.Name}  ({dist:F1}m)"));
+            }
+        }
+        root.AppendChild(nearbyCard);
+
+        // Patron list — rendered via DrawOverlays()
+        root.AppendChild(CandyUI.Muted("locator-list-label", "Regulars & Tracked List:"));
+        root.AppendChild(CandyUI.InputSpacer("locator-list-spacer", 0, 200));
+
+        return root;
+    }
+
+    public void DrawOverlays()
+    {
+        // Add-patron input row
+        ImGui.SetNextItemWidth(120);
+        ImGui.InputTextWithHint("##fname", "First Name", ref newPatronFirstName, 50);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(120);
+        ImGui.InputTextWithHint("##lname", "Last Name", ref newPatronLastName, 50);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(120);
+        ImGui.InputTextWithHint("##world", "World", ref newPatronWorld, 50);
+        ImGui.SameLine();
+        if (ImGui.Button("Track"))
+        {
+            var fullName = $"{newPatronFirstName} {newPatronLastName}".Trim();
+            if (!string.IsNullOrWhiteSpace(fullName))
+            {
+                var p = _venueService.EnsurePatronExists(fullName);
+                p.Status = PatronStatus.Regular;
+                if (!string.IsNullOrWhiteSpace(newPatronWorld)) p.World = newPatronWorld;
+                _plugin.Configuration.Save();
+                newPatronFirstName = string.Empty;
+                newPatronLastName  = string.Empty;
+                newPatronWorld     = string.Empty;
+            }
+        }
+
+        if (ImGui.Button("Detect Targeted"))
+        {
+            var target = Svc.Targets.Target;
+            if (target != null && target.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Player)
+            {
+                var nameParts = target.Name.ToString().Split(' ', 2);
+                newPatronFirstName = nameParts.Length > 0 ? nameParts[0] : string.Empty;
+                newPatronLastName  = nameParts.Length > 1 ? nameParts[1] : string.Empty;
+                if (target is IPlayerCharacter pc && pc.HomeWorld.IsValid)
+                    newPatronWorld = pc.HomeWorld.Value.Name.ToString();
+                else
+                    newPatronWorld = Svc.PlayerState.HomeWorld.Value.Name.ToString();
+            }
+        }
+
+        ImGui.Separator();
+        ImGui.Spacing();
+        ImGui.Text("Regulars & Tracked List:");
+
+        using var patronList = ImRaii.Child("PatronList", new System.Numerics.Vector2(0, 180), true);
+        foreach (var p in _plugin.Configuration.Patrons)
+        {
+            var ptier    = _plugin.Configuration.GetTier(p);
+            var ptierStr = p.Status == PatronStatus.Regular ? $" [{ptier}]" : string.Empty;
+            if (ImGui.Selectable($"- {p.Name}{ptierStr}##{p.Name}", SelectedPatron == p))
+            {
+                SelectedPatron = p;
+                OnPatronSelected?.Invoke(p);
+            }
+
+            if (p.ActiveVip != null && !p.ActiveVip.IsExpired)
+            {
+                ImGui.SameLine(0, 4f);
+                ImGui.TextColored(new System.Numerics.Vector4(1f, 0.8f, 0.2f, 1f), "💎");
+                if (ImGui.IsItemHovered()) ImGui.SetTooltip($"VIP: {p.ActiveVip.PackageName}");
+            }
+
+            if (ImGui.BeginPopupContextItem($"PatronContext{p.Name}"))
+            {
+                if (ImGui.Selectable("Remove"))
+                {
+                    _venueService.UntrackPatron(p);
+                    if (SelectedPatron == p)
+                    {
+                        SelectedPatron = null;
+                        OnPatronSelected?.Invoke(null);
+                    }
+                }
+                ImGui.EndPopup();
+            }
+        }
+    }
 }

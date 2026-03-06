@@ -2,6 +2,7 @@ using Dalamud.Bindings.ImGui;
 using System.Numerics;
 using Dalamud.Interface.Utility.Raii;
 using ECommons.DalamudServices;
+using CandyCoat.UI;
 using Una.Drawing;
 namespace CandyCoat.Windows.Tabs;
 
@@ -81,5 +82,72 @@ public class SessionTab : ITab
         ImGui.TextWrapped("Note: You can also right-click a player in Chat to start a session if ChatTwo is installed.");
     }
 
-    public Node BuildNode() => new Node { Id = "stub" };
+    public Node BuildNode()
+    {
+        var root = CandyUI.Column("session-root", 8);
+        root.AppendChild(CandyUI.SectionHeader("session-header", "Session Capture"));
+        root.AppendChild(CandyUI.Separator("session-sep1"));
+
+        var manager    = _plugin.SessionManager;
+        var statusCard = CandyUI.Card("session-status-card");
+
+        if (manager.IsCapturing)
+        {
+            statusCard.AppendChild(CandyUI.Label("session-capturing-label",
+                $"Capturing: {manager.TargetName}"));
+            statusCard.AppendChild(CandyUI.Button("session-stop-btn", "Stop Capture",
+                () => manager.StopCapture()));
+        }
+        else
+        {
+            statusCard.AppendChild(CandyUI.Muted("session-idle-label", "No active capture."));
+            // Input + start button rendered via DrawOverlays()
+            statusCard.AppendChild(CandyUI.InputSpacer("session-target-input", 200));
+            var btnRow = CandyUI.Row("session-btn-row", 8);
+            btnRow.AppendChild(CandyUI.InputSpacer("session-start-btn",  120, 28));
+            btnRow.AppendChild(CandyUI.InputSpacer("session-use-target-btn", 160, 28));
+            statusCard.AppendChild(btnRow);
+        }
+        root.AppendChild(statusCard);
+
+        root.AppendChild(CandyUI.Muted("session-hint",
+            "Right-click a player in Chat to start a session (requires ChatTwo)."));
+
+        return root;
+    }
+
+    public void DrawOverlays()
+    {
+        var manager = _plugin.SessionManager;
+        if (manager.IsCapturing) return;
+
+        ImGui.Text("Target Name:");
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(200);
+        ImGui.InputText("##ManualSessionTarget", ref _manualTargetName, 100);
+
+        if (ImGui.Button("Start Capture"))
+        {
+            if (!string.IsNullOrWhiteSpace(_manualTargetName))
+            {
+                manager.StartCapture(_manualTargetName);
+                foreach (var w in _plugin.WindowSystem.Windows)
+                {
+                    if (w.WindowName.StartsWith("Candy Session"))
+                    {
+                        w.IsOpen = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("Use Current Target"))
+        {
+            var target = Svc.Targets.Target;
+            if (target is Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter pc)
+                _manualTargetName = pc.Name.ToString();
+        }
+    }
 }

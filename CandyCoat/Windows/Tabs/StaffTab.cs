@@ -4,6 +4,7 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Services;
+using CandyCoat.UI;
 using Una.Drawing;
 
 namespace CandyCoat.Windows.Tabs;
@@ -77,5 +78,58 @@ public class StaffTab : ITab
         }
     }
 
-    public Node BuildNode() => new Node { Id = "stub" };
+    public Node BuildNode()
+    {
+        var root = CandyUI.Column("staff-root", 8);
+        root.AppendChild(CandyUI.SectionHeader("staff-header", "Staff Shifts"));
+        root.AppendChild(CandyUI.Separator("staff-sep1"));
+
+        var shift      = _manager.CurrentShift;
+        var statusCard = CandyUI.Card("staff-status-card");
+
+        if (shift != null)
+        {
+            var dur = shift.Duration;
+            statusCard.AppendChild(CandyUI.Label("staff-clockin-status", "Currently CLOCKED IN", 13));
+            statusCard.AppendChild(CandyUI.Label("staff-duration",
+                $"Duration: {dur.Hours:D2}:{dur.Minutes:D2}:{dur.Seconds:D2}"));
+            statusCard.AppendChild(CandyUI.Muted("staff-shift-earnings",
+                $"Earnings this shift: {shift.GilEarned:N0} Gil"));
+            statusCard.AppendChild(CandyUI.Button("staff-clockout-btn", "Clock Out",
+                () => _manager.ClockOut()));
+        }
+        else
+        {
+            statusCard.AppendChild(CandyUI.Muted("staff-clocked-out", "Currently CLOCKED OUT."));
+            statusCard.AppendChild(CandyUI.Button("staff-clockin-btn", "Clock In",
+                () => _manager.ClockIn()));
+        }
+        root.AppendChild(statusCard);
+
+        root.AppendChild(CandyUI.Separator("staff-sep2"));
+
+        // Recent shifts card
+        var historyCard = CandyUI.Card("staff-history-card");
+        historyCard.AppendChild(CandyUI.Label("staff-history-title", "Recent Shifts", 13));
+
+        var history = _manager.ShiftHistory.Take(5).ToList();
+        if (history.Count == 0)
+        {
+            historyCard.AppendChild(CandyUI.Muted("staff-no-history", "No completed shifts yet."));
+        }
+        else
+        {
+            for (int i = 0; i < history.Count; i++)
+            {
+                var s      = history[i];
+                var dur    = s.Duration;
+                var durStr = $"{dur.Hours:D2}:{dur.Minutes:D2}";
+                historyCard.AppendChild(CandyUI.Label($"staff-shift-{i}",
+                    $"{s.StartTime:MM/dd}  {durStr}  {s.GilEarned:N0} Gil"));
+            }
+        }
+        root.AppendChild(historyCard);
+
+        return root;
+    }
 }
