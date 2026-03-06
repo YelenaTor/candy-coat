@@ -1,25 +1,30 @@
-name: Release CandyCoat
+name: Release CandyCoat (Testing)
+
+# Trigger by pushing a v*-testing tag, e.g. v0.17.0-testing
+# This builds from the candy-coat-testing branch, uploads the zip,
+# and updates repo.json on GitHub Pages with TestingAssemblyVersion + DownloadLinkTesting.
 
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*-testing'
   workflow_dispatch:
 
 jobs:
-  build_release:
+  build_testing:
     runs-on: windows-2022
     permissions:
-      contents: write # Needed to create GitHub Release
+      contents: write
 
     env:
       Solution_Name: CandyCoat
       Plugin_Name: CandyCoat
 
     steps:
-    - name: Checkout
+    - name: Checkout candy-coat-testing branch
       uses: actions/checkout@v4
       with:
+        ref: candy-coat-testing
         submodules: recursive
 
     - name: Install .NET
@@ -46,21 +51,18 @@ jobs:
         dotnet restore
         dotnet build CandyCoat/CandyCoat.csproj --configuration Release --output ./publish
 
-    - name: Create ZIP and repo.json
+    - name: Create testing ZIP and updated repo.json
       run: |
-        $version = "${{ github.ref_name }}".TrimStart('v')
+        # Parse testing version from tag, e.g. v0.17.0-testing -> 0.17.0
+        $tag = "${{ github.ref_name }}"
+        $version = $tag.TrimStart('v') -replace '-testing$', ''
         $outDir = "./publish"
-        $zipName = "CandyCoat-latest.zip"
+        $zipName = "CandyCoat-testing.zip"
         $manifestPath = "$outDir/CandyCoat.json"
 
-        # Debug: Show what's in publish
-        Write-Host "=== Contents of publish directory ==="
-        Get-ChildItem -Path $outDir -Recurse | Select-Object FullName
-
-        # Remove any zip files in output
         Get-ChildItem -Path $outDir -Filter "*.zip" -Recurse | Remove-Item -Force
 
-        # Extract latest changelog section from CHANGELOG.md
+        # Extract testing changelog section from CHANGELOG.md
         $changelogText = ""
         $lines = Get-Content "CHANGELOG.md"
         $inSection = $false
@@ -70,53 +72,56 @@ jobs:
           elseif ($inSection) { $changelogText += $line + "`n" }
         }
         $changelogText = $changelogText.Trim()
+        if (-not $changelogText) { $changelogText = "Testing build $version." }
 
-        # Modify manifest
-        $manifest = Get-Content $manifestPath | ConvertFrom-Json
-        $manifest.AssemblyVersion = "$version.0"
-        $manifest | Add-Member -Force -NotePropertyName "DownloadLinkInstall" -NotePropertyValue "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
-        $manifest | Add-Member -Force -NotePropertyName "DownloadLinkUpdate" -NotePropertyValue "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
-        if ($changelogText) {
-          $manifest | Add-Member -Force -NotePropertyName "Changelog" -NotePropertyValue $changelogText
-        }
-        $manifest | ConvertTo-Json -Depth 10 | Set-Content $manifestPath
-        
-        # Stage plugin files + Fonts into a clean directory to preserve subfolder structure
+        # Build testing zip (same staging approach as stable)
         $stagingDir = "./staging"
         New-Item -ItemType Directory -Force -Path $stagingDir | Out-Null
         Get-ChildItem -Path $outDir -File | Where-Object { $_.Extension -in @('.dll','.json','.pdb','.xml') } | Copy-Item -Destination $stagingDir
         if (Test-Path "$outDir/Fonts") {
-            Copy-Item -Path "$outDir/Fonts" -Destination "$stagingDir/Fonts" -Recurse
+          Copy-Item -Path "$outDir/Fonts" -Destination "$stagingDir/Fonts" -Recurse
+        }
+        Compress-Archive -Path "$stagingDir/*" -DestinationPath $zipName -Force
+
+        # Build a repo.json that merges testing fields into the current manifest.
+        # We fetch the current stable repo.json from GitHub Pages to preserve stable fields.
+        $stableRepoUrl = "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/repo.json"
+        try {
+          $stableRepo = Invoke-RestMethod -Uri $stableRepoUrl -ErrorAction Stop
+          $entry = $stableRepo[0]
+        } catch {
+          Write-Host "Could not fetch stable repo.json — using local manifest as base."
+          $entry = Get-Content $manifestPath | ConvertFrom-Json
         }
 
-        # List files to zip
-        Write-Host "=== Files to be zipped ==="
-        Get-ChildItem -Path $stagingDir -Recurse | Select-Object FullName, Length
+        $testingDownloadUrl = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
+        $entry | Add-Member -Force -NotePropertyName "TestingAssemblyVersion" -NotePropertyValue "$version.0"
+        $entry | Add-Member -Force -NotePropertyName "DownloadLinkTesting" -NotePropertyValue $testingDownloadUrl
+        $entry | Add-Member -Force -NotePropertyName "TestingChangelog" -NotePropertyValue $changelogText
 
-        # Zip staging directory — preserves Fonts/ subfolder structure in the archive
-        Compress-Archive -Path "$stagingDir/*" -DestinationPath $zipName -Force
-        
-        # Generate repo.json as array
-        $repoArray = @($manifest)
+        $repoArray = @($entry)
         ConvertTo-Json -InputObject $repoArray -Depth 10 | Set-Content "repo.json"
+
+        Write-Host "Testing version: $version"
+        Write-Host "DownloadLinkTesting: $testingDownloadUrl"
 
     - name: Upload repo.json as artifact
       uses: actions/upload-artifact@v4
       with:
-        name: repo-json
+        name: repo-json-testing
         path: repo.json
 
-    - name: Create GitHub Release
+    - name: Create GitHub Pre-release
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          CandyCoat-latest.zip
+          CandyCoat-testing.zip
           repo.json
         draft: false
-        prerelease: false
+        prerelease: true
 
   deploy_pages:
-    needs: build_release
+    needs: build_testing
     runs-on: ubuntu-latest
     permissions:
       pages: write
@@ -129,19 +134,19 @@ jobs:
       - name: Download repo.json artifact
         uses: actions/download-artifact@v4
         with:
-          name: repo-json
+          name: repo-json-testing
           path: public
-          
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
           enablement: true
-        
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: './public'
-          
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
