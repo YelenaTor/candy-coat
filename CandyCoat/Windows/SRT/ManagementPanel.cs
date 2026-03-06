@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
-
+using Una.Drawing;
 using ECommons.DalamudServices;
 
 namespace CandyCoat.Windows.SRT;
@@ -283,4 +283,7 @@ public class ManagementPanel : IToolboxPanel
             ImGui.TextWrapped(n.Content);
         }
     }
+
+    public Node BuildNode() => new Node { Id = "stub" };
+    public Node BuildSettingsNode() => new Node { Id = "stub-settings" };
 }

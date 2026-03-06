@@ -2,6 +2,7 @@ using Dalamud.Bindings.ImGui;
 using System.Numerics;
 using Dalamud.Interface.Utility.Raii;
 using ECommons.DalamudServices;
+using Una.Drawing;
 namespace CandyCoat.Windows.Tabs;
 
 public class SessionTab : ITab
@@ -79,4 +80,6 @@ public class SessionTab : ITab
         ImGui.Separator();
         ImGui.TextWrapped("Note: You can also right-click a player in Chat to start a session if ChatTwo is installed.");
     }
+
+    public Node BuildNode() => new Node { Id = "stub" };
 }

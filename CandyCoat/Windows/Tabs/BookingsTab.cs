@@ -4,6 +4,7 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
 using CandyCoat.Services;
+using Una.Drawing;
 
 namespace CandyCoat.Windows.Tabs;
 
@@ -252,4 +253,6 @@ public class BookingsTab : ITab
             }
         }
     }
+
+    public Node BuildNode() => new Node { Id = "stub" };
 }

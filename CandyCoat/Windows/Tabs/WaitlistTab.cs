@@ -4,6 +4,7 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Services;
 using CandyCoat.Data;
+using Una.Drawing;
 
 namespace CandyCoat.Windows.Tabs;
 
@@ -125,4 +126,6 @@ public class WaitlistTab : ITab
             ImGui.EndPopup();
         }
     }
+
+    public Node BuildNode() => new Node { Id = "stub" };
 }

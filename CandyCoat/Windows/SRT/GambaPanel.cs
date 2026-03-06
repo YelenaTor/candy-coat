@@ -8,7 +8,7 @@ using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
-
+using Una.Drawing;
 using ECommons.DalamudServices;
 
 namespace CandyCoat.Windows.SRT;
@@ -306,4 +306,7 @@ public class GambaPanel : IToolboxPanel, IDisposable
         }
         ImGui.Spacing();
     }
+
+    public Node BuildNode() => new Node { Id = "stub" };
+    public Node BuildSettingsNode() => new Node { Id = "stub-settings" };
 }

@@ -4,6 +4,7 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
+using Una.Drawing;
 
 namespace CandyCoat.Windows.Tabs;
 
@@ -97,4 +98,6 @@ public class OverviewTab : ITab
             ImGui.TextDisabled("Head to Bookings, Waitlist, or Staff Shifts to get started.");
         }
     }
+
+    public Node BuildNode() => new Node { Id = "stub" };
 }

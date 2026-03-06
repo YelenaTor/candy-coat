@@ -8,6 +8,7 @@ using Dalamud.Game.ClientState.Objects.Types;
 using ECommons.DalamudServices;
 using CandyCoat.Data;
 using CandyCoat.Services;
+using Una.Drawing;
 
 namespace CandyCoat.Windows.Tabs;
 
@@ -186,4 +187,6 @@ public class LocatorTab : ITab
             }
         }
     }
+
+    public Node BuildNode() => new Node { Id = "stub" };
 }

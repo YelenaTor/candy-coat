@@ -4,6 +4,7 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Services;
+using Una.Drawing;
 
 namespace CandyCoat.Windows.Tabs;
 
@@ -75,4 +76,6 @@ public class StaffTab : ITab
             }
         }
     }
+
+    public Node BuildNode() => new Node { Id = "stub" };
 }

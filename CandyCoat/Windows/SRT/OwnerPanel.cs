@@ -6,6 +6,7 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
 using CandyCoat.UI;
+using Una.Drawing;
 
 using ECommons.DalamudServices;
 
@@ -650,4 +651,7 @@ public class OwnerPanel : IToolboxPanel
         }
         ImGui.Spacing();
     }
+
+    public Node BuildNode() => new Node { Id = "stub" };
+    public Node BuildSettingsNode() => new Node { Id = "stub-settings" };
 }

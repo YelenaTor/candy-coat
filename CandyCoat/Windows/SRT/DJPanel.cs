@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
-
+using Una.Drawing;
 using ECommons.DalamudServices;
 
 namespace CandyCoat.Windows.SRT;
@@ -244,4 +244,7 @@ public class DJPanel : IToolboxPanel
         foreach (var e in history) ImGui.BulletText($"{e.Timestamp:MM/dd HH:mm} \u2014 {e.Description}: {e.Amount:N0} Gil");
         ImGui.Spacing();
     }
+
+    public Node BuildNode() => new Node { Id = "stub" };
+    public Node BuildSettingsNode() => new Node { Id = "stub-settings" };
 }
