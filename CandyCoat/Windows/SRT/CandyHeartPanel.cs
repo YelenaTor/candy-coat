@@ -4,6 +4,7 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
+using CandyCoat.UI;
 using Una.Drawing;
 using ECommons.DalamudServices;
 
@@ -478,6 +479,318 @@ public class CandyHeartPanel : IToolboxPanel
         ImGui.Spacing();
     }
 
-    public Node BuildNode() => new Node { Id = "stub" };
-    public Node BuildSettingsNode() => new Node { Id = "stub-settings" };
+    // ─── Una.Drawing ─────────────────────────────────────────────────────────
+
+    private int _chActiveTab = 0;
+    private static readonly string[] ChTabs = ["Session", "Patron", "Tools", "Earnings"];
+
+    public Node BuildNode()
+    {
+        Node content = _chActiveTab switch {
+            0 => BuildChTabSession(),
+            1 => BuildChTabPatron(),
+            2 => BuildChTabTools(),
+            _ => BuildChTabEarnings(),
+        };
+        return CandyUI.TabContainer("ch-tabs", ChTabs, _chActiveTab,
+            idx => { _chActiveTab = idx; }, content);
+    }
+
+    private Node BuildChTabSession()
+    {
+        var col = CandyUI.Column("ch-session", 6);
+        col.AppendChild(CandyUI.SectionHeader("ch-session-hdr", "Session Timer"));
+        col.AppendChild(CandyUI.InputSpacer("ch-session-timer", 0, 140));
+        col.AppendChild(CandyUI.Separator("ch-session-sep1"));
+        col.AppendChild(CandyUI.SectionHeader("ch-session-room-hdr", "Room Assignment"));
+        col.AppendChild(CandyUI.InputSpacer("ch-session-room-sp", 0, 28));
+        col.AppendChild(CandyUI.Separator("ch-session-sep2"));
+        col.AppendChild(CandyUI.SectionHeader("ch-session-bookings-hdr", "Upcoming Bookings"));
+
+        var bookings = _plugin.Configuration.Bookings
+            .Where(b => b.State != BookingState.CompletedPaid && b.State != BookingState.CompletedUnpaid)
+            .OrderBy(b => b.Timestamp).ToList();
+        if (bookings.Count == 0)
+        {
+            col.AppendChild(CandyUI.Muted("ch-no-bookings", "No upcoming bookings."));
+        }
+        else
+        {
+            var card = CandyUI.Card("ch-bookings-card");
+            for (int i = 0; i < bookings.Count; i++)
+            {
+                var b = bookings[i];
+                card.AppendChild(CandyUI.Label($"ch-booking-{i}", $"{b.PatronName} | {b.Service} | {b.Room} | {b.Gil:N0} Gil", 12));
+            }
+            col.AppendChild(card);
+        }
+        return col;
+    }
+
+    private Node BuildChTabPatron()
+    {
+        var col = CandyUI.Column("ch-patron", 6);
+        col.AppendChild(CandyUI.SectionHeader("ch-patron-hdr", "Patron Lookup"));
+        col.AppendChild(CandyUI.InputSpacer("ch-patron-lookup-sp", 0, 28));
+
+        var patron = string.IsNullOrWhiteSpace(_chLookupPatronName) ? null :
+            _plugin.Configuration.Patrons.FirstOrDefault(p =>
+                p.Name.Equals(_chLookupPatronName, StringComparison.OrdinalIgnoreCase));
+
+        if (patron != null)
+        {
+            var cfg = _plugin.Configuration;
+            var tier = cfg.GetTier(patron);
+            var card = CandyUI.Card("ch-patron-card");
+            card.AppendChild(CandyUI.Label("ch-patron-tier", $"[{tier}] {patron.Name}", 13));
+            if (patron.Status is PatronStatus.Warning or PatronStatus.Blacklisted)
+                card.AppendChild(CandyUI.Label("ch-patron-status", $"Status: {patron.Status}", 12));
+            if (!string.IsNullOrWhiteSpace(patron.RpHooks))
+                card.AppendChild(CandyUI.Muted("ch-patron-hooks", $"RP Hooks: {patron.RpHooks}", 11));
+            if (!string.IsNullOrWhiteSpace(patron.FavoriteDrink))
+                card.AppendChild(CandyUI.Muted("ch-patron-drink", $"Drink: {patron.FavoriteDrink}", 11));
+            if (!string.IsNullOrWhiteSpace(patron.Allergies))
+                card.AppendChild(CandyUI.Muted("ch-patron-allergies", $"Limits: {patron.Allergies}", 11));
+            col.AppendChild(card);
+        }
+        else if (!string.IsNullOrWhiteSpace(_chLookupPatronName))
+        {
+            col.AppendChild(CandyUI.Muted("ch-patron-notfound", "Not in patron database."));
+        }
+
+        col.AppendChild(CandyUI.Separator("ch-patron-sep1"));
+        col.AppendChild(CandyUI.SectionHeader("ch-patron-notes-hdr", "Patron Notes"));
+        col.AppendChild(CandyUI.InputSpacer("ch-patron-notes-sp", 0, 56));
+        return col;
+    }
+
+    private Node BuildChTabTools()
+    {
+        var col = CandyUI.Column("ch-tools", 6);
+        var macros = _plugin.Configuration.CandyHeartMacros;
+
+        if (macros.Count == 0)
+        {
+            col.AppendChild(CandyUI.Muted("ch-tools-nomacros", "No macros. Add in Settings."));
+        }
+        else
+        {
+            col.AppendChild(CandyUI.SectionHeader("ch-tools-macros-hdr", "Welcome Macros"));
+            var macroCard = CandyUI.Card("ch-tools-macros-card");
+            for (int i = 0; i < macros.Count; i++)
+            {
+                var m = macros[i];
+                int ci = i;
+                macroCard.AppendChild(CandyUI.Row($"ch-macro-row-{ci}", 6,
+                    CandyUI.Button($"ch-macro-btn-{ci}", m.Title, () =>
+                    {
+                        var target = !string.IsNullOrEmpty(_chSessionPatron) ? _chSessionPatron
+                            : Svc.Targets.Target?.Name.ToString() ?? "";
+                        if (!string.IsNullOrEmpty(target))
+                        {
+                            var msg = m.Text.Replace("{name}", target.Split(' ')[0]);
+                            Svc.Commands.ProcessCommand($"/t {target} {msg}");
+                        }
+                    }),
+                    CandyUI.Muted($"ch-macro-preview-{ci}",
+                        m.Text.Length > 35 ? m.Text[..35] + "..." : m.Text, 11)
+                ));
+            }
+            col.AppendChild(macroCard);
+        }
+
+        col.AppendChild(CandyUI.Separator("ch-tools-sep1"));
+        col.AppendChild(CandyUI.SectionHeader("ch-tools-emotes-hdr", "Emote Shortcuts"));
+        var emoteCard = CandyUI.Card("ch-emotes-card");
+        var emoteRow1 = CandyUI.Row("ch-emotes-row1", 4,
+            CandyUI.SmallButton("ch-em-wink",     "Wink",     () => Svc.Commands.ProcessCommand("/wink motion")),
+            CandyUI.SmallButton("ch-em-blowkiss", "Blow Kiss",() => Svc.Commands.ProcessCommand("/blowkiss motion")),
+            CandyUI.SmallButton("ch-em-dote",     "Dote",     () => Svc.Commands.ProcessCommand("/dote motion")),
+            CandyUI.SmallButton("ch-em-beckon",   "Beckon",   () => Svc.Commands.ProcessCommand("/beckon motion"))
+        );
+        var emoteRow2 = CandyUI.Row("ch-emotes-row2", 4,
+            CandyUI.SmallButton("ch-em-smile",   "Smile",   () => Svc.Commands.ProcessCommand("/smile motion")),
+            CandyUI.SmallButton("ch-em-kneel",   "Kneel",   () => Svc.Commands.ProcessCommand("/kneel motion")),
+            CandyUI.SmallButton("ch-em-curtsey", "Curtsey", () => Svc.Commands.ProcessCommand("/curtsey motion")),
+            CandyUI.SmallButton("ch-em-cheer",   "Cheer",   () => Svc.Commands.ProcessCommand("/cheer motion"))
+        );
+        var emoteRow3 = CandyUI.Row("ch-emotes-row3", 4,
+            CandyUI.SmallButton("ch-em-laugh", "Laugh", () => Svc.Commands.ProcessCommand("/laugh motion")),
+            CandyUI.SmallButton("ch-em-bow",   "Bow",   () => Svc.Commands.ProcessCommand("/bow motion")),
+            CandyUI.SmallButton("ch-em-nod",   "Nod",   () => Svc.Commands.ProcessCommand("/nod motion")),
+            CandyUI.SmallButton("ch-em-clap",  "Clap",  () => Svc.Commands.ProcessCommand("/clap motion"))
+        );
+        emoteCard.AppendChild(emoteRow1);
+        emoteCard.AppendChild(emoteRow2);
+        emoteCard.AppendChild(emoteRow3);
+        col.AppendChild(emoteCard);
+        return col;
+    }
+
+    private Node BuildChTabEarnings()
+    {
+        var col = CandyUI.Column("ch-earnings", 6);
+        col.AppendChild(CandyUI.SectionHeader("ch-earnings-hdr", "Log Earnings"));
+        col.AppendChild(CandyUI.InputSpacer("ch-earnings-log-sp", 0, 28));
+        col.AppendChild(CandyUI.Separator("ch-earnings-sep1"));
+        col.AppendChild(CandyUI.SectionHeader("ch-earnings-history-hdr", "Patron History"));
+
+        if (!string.IsNullOrEmpty(_chSessionPatron))
+        {
+            var history = _plugin.Configuration.Earnings
+                .Where(e => e.PatronName == _chSessionPatron && e.Role == StaffRole.CandyHeart)
+                .OrderByDescending(e => e.Timestamp).Take(10).ToList();
+            if (history.Count == 0)
+            {
+                col.AppendChild(CandyUI.Muted("ch-earnings-nohist", "No history with this patron."));
+            }
+            else
+            {
+                var card = CandyUI.Card("ch-earnings-hist-card");
+                for (int i = 0; i < history.Count; i++)
+                {
+                    var e = history[i];
+                    card.AppendChild(CandyUI.Label($"ch-hist-{i}",
+                        $"{e.Timestamp:MM/dd} — {e.Description}: {e.Amount:N0} Gil", 12));
+                }
+                col.AppendChild(card);
+            }
+        }
+        else
+        {
+            col.AppendChild(CandyUI.Muted("ch-earnings-nosession", "Start a session to see patron history."));
+        }
+        return col;
+    }
+
+    public Node BuildSettingsNode()
+    {
+        var col = CandyUI.Column("ch-settings", 8);
+        col.AppendChild(CandyUI.SectionHeader("ch-settings-hdr", "Candy Heart Settings"));
+        col.AppendChild(CandyUI.Muted("ch-settings-desc", "Configure your welcome macro bank."));
+        col.AppendChild(CandyUI.Separator("ch-settings-sep1"));
+
+        var macros = _plugin.Configuration.CandyHeartMacros;
+        var macroCard = CandyUI.Card("ch-settings-macros-card");
+        macroCard.AppendChild(CandyUI.SectionHeader("ch-settings-macros-hdr", "Welcome Macro Bank"));
+        if (macros.Count == 0)
+        {
+            macroCard.AppendChild(CandyUI.Muted("ch-settings-nomacros", "No macros yet."));
+        }
+        else
+        {
+            for (int i = 0; i < macros.Count; i++)
+            {
+                var m = macros[i];
+                int ci = i;
+                macroCard.AppendChild(CandyUI.Row($"ch-smacro-row-{ci}", 6,
+                    CandyUI.Label($"ch-smacro-title-{ci}", m.Title, 12),
+                    CandyUI.Muted($"ch-smacro-preview-{ci}",
+                        m.Text.Length > 40 ? m.Text[..40] + "..." : m.Text, 11),
+                    CandyUI.SmallButton($"ch-smacro-del-{ci}", "Del", () =>
+                    {
+                        macros.RemoveAt(ci);
+                        _plugin.Configuration.Save();
+                    })
+                ));
+            }
+        }
+        macroCard.AppendChild(CandyUI.InputSpacer("ch-settings-add-sp", 0, 28));
+        col.AppendChild(macroCard);
+        return col;
+    }
+
+    public void DrawOverlays()
+    {
+        DrawSessionTimer();
+        DrawRoomAssignment();
+
+        // patron lookup input
+        ImGui.SetNextItemWidth(200);
+        ImGui.InputTextWithHint("##CHProfileName", "Patron Name", ref _chLookupPatronName, 100);
+
+        // patron notes overlay
+        var patronName = !string.IsNullOrEmpty(_chSessionPatron) ? _chSessionPatron : "(no active session)";
+        ImGui.TextDisabled($"For: {patronName}");
+        if (!string.IsNullOrEmpty(_chSessionPatron))
+        {
+            ImGui.SetNextItemWidth(-60);
+            ImGui.InputTextWithHint("##CHNoteIn", "Add note...", ref _newNoteText, 500);
+            ImGui.SameLine();
+            if (ImGui.Button("Save##CHNote"))
+            {
+                if (!string.IsNullOrWhiteSpace(_newNoteText))
+                {
+                    _plugin.Configuration.PatronNotes.Add(new PatronNote
+                    {
+                        PatronName  = _chSessionPatron,
+                        AuthorRole  = StaffRole.CandyHeart,
+                        AuthorName  = _plugin.Configuration.CharacterName,
+                        Content     = _newNoteText
+                    });
+                    _plugin.Configuration.Save();
+                    _newNoteText = string.Empty;
+                }
+            }
+        }
+
+        // earnings log overlay
+        ImGui.SetNextItemWidth(120);
+        ImGui.InputInt("Gil##CHEarn", ref _chEarningsAmount, 10000);
+        ImGui.SameLine();
+        if (ImGui.Button("Log Session##CH"))
+        {
+            if (_chEarningsAmount > 0)
+            {
+                _plugin.Configuration.Earnings.Add(new EarningsEntry
+                {
+                    Role        = StaffRole.CandyHeart,
+                    Type        = EarningsType.Session,
+                    PatronName  = !string.IsNullOrEmpty(_chSessionPatron) ? _chSessionPatron : "Unknown",
+                    Description = "Session",
+                    Amount      = _chEarningsAmount
+                });
+                _plugin.Configuration.Save();
+                _chEarningsAmount = 0;
+            }
+        }
+        ImGui.SameLine();
+        if (ImGui.Button("Log Tip##CH"))
+        {
+            if (_chEarningsAmount > 0)
+            {
+                _plugin.Configuration.Earnings.Add(new EarningsEntry
+                {
+                    Role        = StaffRole.CandyHeart,
+                    Type        = EarningsType.Tip,
+                    PatronName  = !string.IsNullOrEmpty(_chSessionPatron) ? _chSessionPatron : "Unknown",
+                    Description = "Tip",
+                    Amount      = _chEarningsAmount
+                });
+                _plugin.Configuration.Save();
+                _chEarningsAmount = 0;
+            }
+        }
+    }
+
+    public void DrawSettingsOverlays()
+    {
+        ImGui.SetNextItemWidth(80);
+        ImGui.InputTextWithHint("##CHMacroT", "Title", ref _newMacroTitle, 50);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(220);
+        ImGui.InputTextWithHint("##CHMacroM", "{name} supported", ref _newMacroText, 200);
+        ImGui.SameLine();
+        if (ImGui.Button("+##CHAddMacro"))
+        {
+            if (!string.IsNullOrWhiteSpace(_newMacroTitle))
+            {
+                _plugin.Configuration.CandyHeartMacros.Add(
+                    new MacroTemplate { Title = _newMacroTitle, Text = _newMacroText });
+                _plugin.Configuration.Save();
+                _newMacroTitle = string.Empty;
+                _newMacroText  = string.Empty;
+            }
+        }
+    }
 }

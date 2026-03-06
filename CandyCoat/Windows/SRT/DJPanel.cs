@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
+using CandyCoat.UI;
 using Una.Drawing;
 using ECommons.DalamudServices;
 
@@ -245,6 +246,202 @@ public class DJPanel : IToolboxPanel
         ImGui.Spacing();
     }
 
-    public Node BuildNode() => new Node { Id = "stub" };
-    public Node BuildSettingsNode() => new Node { Id = "stub-settings" };
+    // ─── Una.Drawing ─────────────────────────────────────────────────────────
+
+    private int _djActiveTab = 0;
+    private static readonly string[] DjTabs = ["Set", "Engage", "Tips", "Ping"];
+
+    public Node BuildNode()
+    {
+        Node content = _djActiveTab switch {
+            0 => BuildDjTabSet(),
+            1 => BuildDjTabEngage(),
+            2 => BuildDjTabTips(),
+            _ => BuildDjTabPing(),
+        };
+        var col = CandyUI.Column("dj-root", 6);
+        col.AppendChild(CandyUI.SectionHeader("dj-timer-hdr", "Performance Timer"));
+        col.AppendChild(CandyUI.InputSpacer("dj-timer-sp", 0, 120));
+        col.AppendChild(CandyUI.Separator("dj-timer-sep"));
+        col.AppendChild(CandyUI.TabContainer("dj-tabs", DjTabs, _djActiveTab,
+            idx => { _djActiveTab = idx; }, content));
+        return col;
+    }
+
+    private Node BuildDjTabSet()
+    {
+        var col = CandyUI.Column("dj-set", 6);
+        col.AppendChild(CandyUI.SectionHeader("dj-setlist-hdr", "Setlist"));
+        col.AppendChild(CandyUI.InputSpacer("dj-setlist-sp", 0, 28));
+
+        if (_setlist.Count > 0)
+        {
+            var card = CandyUI.Card("dj-setlist-card");
+            for (int i = 0; i < _setlist.Count; i++)
+            {
+                var (song, played) = _setlist[i];
+                card.AppendChild(CandyUI.Label($"dj-song-{i}",
+                    (played ? "[x] " : "[ ] ") + song, 12));
+            }
+            col.AppendChild(card);
+        }
+
+        col.AppendChild(CandyUI.Separator("dj-set-sep1"));
+        col.AppendChild(CandyUI.SectionHeader("dj-requests-hdr", "Request Queue"));
+        col.AppendChild(CandyUI.InputSpacer("dj-req-sp", 0, 28));
+
+        if (_requests.Count > 0)
+        {
+            var card = CandyUI.Card("dj-req-card");
+            for (int i = 0; i < _requests.Count; i++)
+            {
+                var (patron, song, status) = _requests[i];
+                var label = status switch { 0 => "\u23f3", 1 => "\u2713", 2 => "\u25b6", 3 => "\u2717", _ => "?" };
+                card.AppendChild(CandyUI.Label($"dj-req-{i}", $"{label} {patron}: {song}", 12));
+            }
+            col.AppendChild(card);
+        }
+        return col;
+    }
+
+    private Node BuildDjTabEngage()
+    {
+        var col = CandyUI.Column("dj-engage", 6);
+        col.AppendChild(CandyUI.SectionHeader("dj-stream-hdr", "Stream Link"));
+        col.AppendChild(CandyUI.InputSpacer("dj-stream-sp", 0, 28));
+        col.AppendChild(CandyUI.Separator("dj-engage-sep1"));
+        col.AppendChild(CandyUI.SectionHeader("dj-crowd-hdr", "Crowd Macros"));
+        var row = CandyUI.Row("dj-crowd-row", 4,
+            CandyUI.Button("dj-hype-btn",     "Hype!",           () => Svc.Commands.ProcessCommand("/say Make some noise! \ud83c\udfb5")),
+            CandyUI.Button("dj-requests-btn", "Requests Open",   () => Svc.Commands.ProcessCommand("/say Requests are OPEN! /tell me your song! \ud83c\udfb6")),
+            CandyUI.Button("dj-last-btn",     "Last Song!",      () => Svc.Commands.ProcessCommand("/say Last song coming up! \ud83c\udfb5")),
+            CandyUI.SmallButton("dj-emote-btn","Emote",          () => Svc.Commands.ProcessCommand("/cheer motion"))
+        );
+        col.AppendChild(row);
+        return col;
+    }
+
+    private Node BuildDjTabTips()
+    {
+        var col = CandyUI.Column("dj-tips", 6);
+        col.AppendChild(CandyUI.SectionHeader("dj-tips-hdr", "Log Tips"));
+        col.AppendChild(CandyUI.InputSpacer("dj-tips-sp", 0, 28));
+        col.AppendChild(CandyUI.Separator("dj-tips-sep1"));
+        col.AppendChild(CandyUI.SectionHeader("dj-hist-hdr", "Performance History"));
+
+        var history = _plugin.Configuration.Earnings
+            .Where(e => e.Role == StaffRole.DJ)
+            .OrderByDescending(e => e.Timestamp).Take(10).ToList();
+        if (history.Count == 0)
+        {
+            col.AppendChild(CandyUI.Muted("dj-hist-empty", "No history."));
+        }
+        else
+        {
+            var card = CandyUI.Card("dj-hist-card");
+            for (int i = 0; i < history.Count; i++)
+            {
+                var e = history[i];
+                card.AppendChild(CandyUI.Label($"dj-hist-{i}",
+                    $"{e.Timestamp:MM/dd HH:mm} — {e.Description}: {e.Amount:N0} Gil", 12));
+            }
+            col.AppendChild(card);
+        }
+        return col;
+    }
+
+    private Node BuildDjTabPing()
+    {
+        var col = CandyUI.Column("dj-ping-tab", 6);
+        col.AppendChild(CandyUI.Muted("dj-ping-note", "Staff ping widget below."));
+        return col;
+    }
+
+    public Node BuildSettingsNode()
+    {
+        var col = CandyUI.Column("dj-settings", 8);
+        col.AppendChild(CandyUI.SectionHeader("dj-settings-hdr", "DJ Settings"));
+        col.AppendChild(CandyUI.Muted("dj-settings-desc", "Configure stream URL and set preferences."));
+        col.AppendChild(CandyUI.Separator("dj-settings-sep1"));
+
+        var streamCard = CandyUI.Card("dj-settings-stream-card");
+        streamCard.AppendChild(CandyUI.SectionHeader("dj-settings-stream-hdr", "Default Stream URL"));
+        streamCard.AppendChild(CandyUI.InputSpacer("dj-settings-stream-sp", 0, 28));
+        streamCard.AppendChild(CandyUI.Muted("dj-settings-stream-hint",
+            "Paste URL here to pre-fill the stream link field.", 11));
+        col.AppendChild(streamCard);
+        return col;
+    }
+
+    public void DrawOverlays()
+    {
+        DrawSetTimer();
+        // setlist add input
+        ImGui.SetNextItemWidth(-50);
+        ImGui.InputTextWithHint("##DJNewSong", "Add song...", ref _newSong, 200);
+        ImGui.SameLine();
+        if (ImGui.Button("+##DJAddSong"))
+        {
+            if (!string.IsNullOrWhiteSpace(_newSong))
+            {
+                _setlist.Add((_newSong, false));
+                _newSong = string.Empty;
+            }
+        }
+        // request add inputs
+        ImGui.SetNextItemWidth(100);
+        ImGui.InputTextWithHint("##DJReqP", "From", ref _reqPatron, 100);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(150);
+        ImGui.InputTextWithHint("##DJReqS", "Song", ref _reqSong, 200);
+        ImGui.SameLine();
+        if (ImGui.Button("Add##DJReq"))
+        {
+            if (!string.IsNullOrWhiteSpace(_reqSong))
+            {
+                _requests.Add((_reqPatron, _reqSong, 0));
+                _reqPatron = string.Empty;
+                _reqSong   = string.Empty;
+            }
+        }
+        // stream link input
+        ImGui.SetNextItemWidth(-100);
+        ImGui.InputTextWithHint("##DJStreamURL", "Twitch/YouTube URL", ref _streamUrl, 300);
+        ImGui.SameLine();
+        if (ImGui.Button("Share##DJ"))
+        {
+            if (!string.IsNullOrEmpty(_streamUrl))
+                Svc.Commands.ProcessCommand($"/party \ud83c\udfb5 Tune in: {_streamUrl}");
+        }
+        // tips log inputs
+        ImGui.SetNextItemWidth(100);
+        ImGui.InputInt("##DJTipAmt", ref _tipAmount, 5000);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(100);
+        ImGui.InputTextWithHint("##DJTipP", "From", ref _tipPatron, 100);
+        ImGui.SameLine();
+        if (ImGui.Button("Log Tip##DJ"))
+        {
+            if (_tipAmount > 0)
+            {
+                _plugin.Configuration.Earnings.Add(new EarningsEntry
+                {
+                    Role        = StaffRole.DJ,
+                    Type        = EarningsType.Tip,
+                    PatronName  = string.IsNullOrWhiteSpace(_tipPatron) ? "Unknown" : _tipPatron,
+                    Description = "DJ Tip",
+                    Amount      = _tipAmount
+                });
+                _plugin.Configuration.Save();
+                _tipAmount  = 0;
+                _tipPatron  = string.Empty;
+            }
+        }
+    }
+
+    public void DrawSettingsOverlays()
+    {
+        ImGui.SetNextItemWidth(-1);
+        ImGui.InputTextWithHint("##DJStreamSett", "Twitch/YouTube URL", ref _streamUrl, 300);
+    }
 }

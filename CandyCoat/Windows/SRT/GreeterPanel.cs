@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
+using CandyCoat.UI;
 using Una.Drawing;
 using ECommons.DalamudServices;
 
@@ -469,6 +470,347 @@ public class GreeterPanel : IToolboxPanel
         }
     }
 
-    public Node BuildNode() => new Node { Id = "stub" };
-    public Node BuildSettingsNode() => new Node { Id = "stub-settings" };
+    // ─── Una.Drawing ─────────────────────────────────────────────────────────
+
+    private int _grActiveTab = 0;
+    private static readonly string[] GrTabs = ["Queue", "Tells", "Tools", "Ping"];
+
+    public Node BuildNode()
+    {
+        Node content = _grActiveTab switch {
+            0 => BuildGrTabQueue(),
+            1 => BuildGrTabTells(),
+            2 => BuildGrTabTools(),
+            _ => BuildGrTabPing(),
+        };
+        var col = CandyUI.Column("gr-root", 6);
+        col.AppendChild(CandyUI.SectionHeader("gr-door-hdr", "Door Status"));
+        col.AppendChild(CandyUI.InputSpacer("gr-door-sp", 0, 100));
+        col.AppendChild(CandyUI.Separator("gr-door-sep"));
+        col.AppendChild(CandyUI.TabContainer("gr-tabs", GrTabs, _grActiveTab,
+            idx => { _grActiveTab = idx; }, content));
+        return col;
+    }
+
+    private Node BuildGrTabQueue()
+    {
+        var col = CandyUI.Column("gr-queue", 6);
+        col.AppendChild(CandyUI.InputSpacer("gr-queue-add-sp", 0, 28));
+
+        if (_doorQueue.Count == 0)
+        {
+            col.AppendChild(CandyUI.Muted("gr-queue-empty", "Door queue is empty."));
+        }
+        else
+        {
+            var cfg = _plugin.Configuration;
+            var card = CandyUI.Card("gr-queue-card");
+            for (int i = 0; i < _doorQueue.Count; i++)
+            {
+                var (name, addedAt) = _doorQueue[i];
+                var wait = DateTime.Now - addedAt;
+                var patron = cfg.Patrons.FirstOrDefault(p => p.Name == name);
+                var tierSuffix = (cfg.GreeterShowTierBadge && patron != null)
+                    ? $"[{cfg.GetTier(patron)}] " : "";
+                int ci = i;
+                card.AppendChild(CandyUI.Row($"gr-queue-row-{ci}", 6,
+                    CandyUI.Label($"gr-queue-name-{ci}",
+                        $"[{ci + 1}] {tierSuffix}{name} ({wait.Minutes}m {wait.Seconds}s)", 12),
+                    CandyUI.SmallButton($"gr-queue-handoff-{ci}", "Handoff", () =>
+                    {
+                        Svc.Chat.Print(new Dalamud.Game.Text.XivChatEntry
+                        {
+                            Type    = Dalamud.Game.Text.XivChatType.Echo,
+                            Message = $"[Candy Coat] Guest Ready: {name}"
+                        });
+                    }),
+                    CandyUI.SmallButton($"gr-queue-seated-{ci}", "Seated", () =>
+                    {
+                        if (ci < _doorQueue.Count) _doorQueue.RemoveAt(ci);
+                    })
+                ));
+            }
+            col.AppendChild(card);
+        }
+        return col;
+    }
+
+    private Node BuildGrTabTells()
+    {
+        var col = CandyUI.Column("gr-tells", 6);
+        var cfg = _plugin.Configuration;
+
+        var target = _doorQueue.Count > 0 ? _doorQueue[0].Name
+            : Svc.Targets.Target?.Name.ToString() ?? "";
+
+        if (!string.IsNullOrEmpty(target))
+            col.AppendChild(CandyUI.Muted("gr-tells-target", $"Target: {target}", 11));
+
+        if (cfg.GreeterWelcomeMacros.Count == 0)
+        {
+            col.AppendChild(CandyUI.Muted("gr-tells-nomacros", "No welcome macros. Add in Settings."));
+        }
+        else
+        {
+            col.AppendChild(CandyUI.SectionHeader("gr-tells-hdr", "Welcome Tells"));
+            var card = CandyUI.Card("gr-tells-card");
+            for (int i = 0; i < cfg.GreeterWelcomeMacros.Count; i++)
+            {
+                var m = cfg.GreeterWelcomeMacros[i];
+                int ci = i;
+                card.AppendChild(CandyUI.Row($"gr-tell-row-{ci}", 6,
+                    CandyUI.Button($"gr-tell-btn-{ci}", m.Title, () =>
+                    {
+                        var t = _doorQueue.Count > 0 ? _doorQueue[0].Name
+                            : Svc.Targets.Target?.Name.ToString() ?? "";
+                        if (!string.IsNullOrEmpty(t))
+                        {
+                            var firstName = t.Split(' ')[0];
+                            var msg = m.Text.Replace("{name}", firstName).Replace("{venue}", cfg.VenueName);
+                            Svc.Commands.ProcessCommand($"/t {t} {msg}");
+                        }
+                    }),
+                    CandyUI.Muted($"gr-tell-preview-{ci}",
+                        m.Text.Length > 35 ? m.Text[..35] + "..." : m.Text, 11)
+                ));
+            }
+            col.AppendChild(card);
+        }
+
+        col.AppendChild(CandyUI.Separator("gr-tells-sep1"));
+        col.AppendChild(CandyUI.SectionHeader("gr-bcast-hdr", "Venue Info Broadcasts"));
+
+        if (cfg.GreeterBroadcasts.Count == 0)
+        {
+            col.AppendChild(CandyUI.Muted("gr-bcast-empty", "No broadcasts configured. Add in Settings."));
+        }
+        else
+        {
+            var bcastCard = CandyUI.Card("gr-bcast-card");
+            for (int i = 0; i < cfg.GreeterBroadcasts.Count; i++)
+            {
+                var b = cfg.GreeterBroadcasts[i];
+                int ci = i;
+                bcastCard.AppendChild(CandyUI.Row($"gr-bcast-row-{ci}", 6,
+                    CandyUI.Button($"gr-bcast-btn-{ci}", b.Label, () =>
+                        Svc.Commands.ProcessCommand($"/{b.Channel} {b.Text}")),
+                    CandyUI.Muted($"gr-bcast-ch-{ci}", $"[{b.Channel}]", 11)
+                ));
+            }
+            col.AppendChild(bcastCard);
+        }
+        return col;
+    }
+
+    private Node BuildGrTabTools()
+    {
+        var col = CandyUI.Column("gr-tools", 6);
+        col.AppendChild(CandyUI.SectionHeader("gr-tools-emotes-hdr", "Welcoming Emotes"));
+        var emoteCard = CandyUI.Card("gr-tools-emotes-card");
+        emoteCard.AppendChild(CandyUI.Row("gr-emotes-row", 4,
+            CandyUI.SmallButton("gr-em-wave",    "Wave",    () => Svc.Commands.ProcessCommand("/wave motion")),
+            CandyUI.SmallButton("gr-em-bow",     "Bow",     () => Svc.Commands.ProcessCommand("/bow motion")),
+            CandyUI.SmallButton("gr-em-beckon",  "Beckon",  () => Svc.Commands.ProcessCommand("/beckon motion")),
+            CandyUI.SmallButton("gr-em-curtsey", "Curtsey", () => Svc.Commands.ProcessCommand("/curtsey motion")),
+            CandyUI.SmallButton("gr-em-smile",   "Smile",   () => Svc.Commands.ProcessCommand("/smile motion"))
+        ));
+        col.AppendChild(emoteCard);
+
+        col.AppendChild(CandyUI.Separator("gr-tools-sep1"));
+        col.AppendChild(CandyUI.SectionHeader("gr-rooms-hdr", "Room Availability"));
+
+        var rooms = _plugin.Configuration.Rooms;
+        if (rooms.Count == 0)
+        {
+            col.AppendChild(CandyUI.Muted("gr-rooms-empty", "No rooms configured."));
+        }
+        else
+        {
+            var roomCard = CandyUI.Card("gr-rooms-card");
+            for (int i = 0; i < rooms.Count; i++)
+            {
+                var room = rooms[i];
+                roomCard.AppendChild(CandyUI.Label($"gr-room-{i}",
+                    $"• {room.Name}: {room.Status}", 12));
+            }
+            col.AppendChild(roomCard);
+        }
+        return col;
+    }
+
+    private Node BuildGrTabPing()
+    {
+        var col = CandyUI.Column("gr-ping-tab", 6);
+        col.AppendChild(CandyUI.Muted("gr-ping-note", "Staff ping widget below."));
+        return col;
+    }
+
+    public Node BuildSettingsNode()
+    {
+        var col = CandyUI.Column("gr-settings", 8);
+        col.AppendChild(CandyUI.SectionHeader("gr-settings-hdr", "Greeter Settings"));
+        col.AppendChild(CandyUI.Muted("gr-settings-desc", "Configure welcome macros, broadcasts, and preferences."));
+        col.AppendChild(CandyUI.Separator("gr-settings-sep1"));
+
+        var cfg = _plugin.Configuration;
+
+        // Welcome Macro Bank card
+        var macroCard = CandyUI.Card("gr-settings-macros-card");
+        macroCard.AppendChild(CandyUI.SectionHeader("gr-settings-macros-hdr", "Welcome Macro Bank"));
+        macroCard.AppendChild(CandyUI.Muted("gr-settings-macros-hint", "Use {name} and {venue} tokens.", 11));
+        if (cfg.GreeterWelcomeMacros.Count == 0)
+        {
+            macroCard.AppendChild(CandyUI.Muted("gr-settings-nomacros", "No welcome macros yet."));
+        }
+        else
+        {
+            for (int i = 0; i < cfg.GreeterWelcomeMacros.Count; i++)
+            {
+                var m = cfg.GreeterWelcomeMacros[i];
+                int ci = i;
+                macroCard.AppendChild(CandyUI.Row($"gr-smacro-row-{ci}", 6,
+                    CandyUI.Label($"gr-smacro-title-{ci}", m.Title, 12),
+                    CandyUI.Muted($"gr-smacro-preview-{ci}",
+                        m.Text.Length > 40 ? m.Text[..40] + "..." : m.Text, 11),
+                    CandyUI.SmallButton($"gr-smacro-del-{ci}", "Del", () =>
+                    {
+                        cfg.GreeterWelcomeMacros.RemoveAt(ci);
+                        cfg.Save();
+                    })
+                ));
+            }
+        }
+        macroCard.AppendChild(CandyUI.InputSpacer("gr-settings-addmacro-sp", 0, 28));
+        col.AppendChild(macroCard);
+
+        col.AppendChild(CandyUI.Separator("gr-settings-sep2"));
+
+        // Broadcasts card
+        var bcastCard = CandyUI.Card("gr-settings-bcast-card");
+        bcastCard.AppendChild(CandyUI.SectionHeader("gr-settings-bcast-hdr", "Venue Info Broadcasts"));
+        bcastCard.AppendChild(CandyUI.Muted("gr-settings-bcast-hint", "Quick-fire venue info to chat channels.", 11));
+        if (cfg.GreeterBroadcasts.Count == 0)
+        {
+            bcastCard.AppendChild(CandyUI.Muted("gr-settings-nobcast", "No broadcasts yet."));
+        }
+        else
+        {
+            for (int i = 0; i < cfg.GreeterBroadcasts.Count; i++)
+            {
+                var b = cfg.GreeterBroadcasts[i];
+                int ci = i;
+                bcastCard.AppendChild(CandyUI.Row($"gr-sbcast-row-{ci}", 6,
+                    CandyUI.Label($"gr-sbcast-ch-{ci}", $"[{b.Channel}]", 11),
+                    CandyUI.Label($"gr-sbcast-label-{ci}", b.Label, 12),
+                    CandyUI.Muted($"gr-sbcast-preview-{ci}",
+                        b.Text.Length > 30 ? b.Text[..30] + "..." : b.Text, 11),
+                    CandyUI.SmallButton($"gr-sbcast-del-{ci}", "Del", () =>
+                    {
+                        cfg.GreeterBroadcasts.RemoveAt(ci);
+                        cfg.Save();
+                    })
+                ));
+            }
+        }
+        bcastCard.AppendChild(CandyUI.InputSpacer("gr-settings-addbcast-sp", 0, 28));
+        col.AppendChild(bcastCard);
+
+        col.AppendChild(CandyUI.Separator("gr-settings-sep3"));
+
+        // Preferences card
+        var prefCard = CandyUI.Card("gr-settings-pref-card");
+        prefCard.AppendChild(CandyUI.SectionHeader("gr-settings-pref-hdr", "Greeter Preferences"));
+        prefCard.AppendChild(CandyUI.InputSpacer("gr-settings-pref-sp", 0, 50));
+        col.AppendChild(prefCard);
+
+        return col;
+    }
+
+    public void DrawOverlays()
+    {
+        DrawDoorStatus();
+        // Door queue add inputs
+        if (ImGui.Button("Add Target##GRQ"))
+        {
+            var t = Svc.Targets.Target;
+            if (t != null && !_doorQueue.Any(q => q.Name == t.Name.ToString()))
+                _doorQueue.Add((t.Name.ToString(), DateTime.Now));
+        }
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(150);
+        ImGui.InputTextWithHint("##GRQName", "Name", ref _queueNameInput, 100);
+        ImGui.SameLine();
+        if (ImGui.Button("+##GRQAdd"))
+        {
+            if (!string.IsNullOrWhiteSpace(_queueNameInput)
+                && !_doorQueue.Any(q => q.Name == _queueNameInput))
+            {
+                _doorQueue.Add((_queueNameInput, DateTime.Now));
+                _queueNameInput = string.Empty;
+            }
+        }
+    }
+
+    public void DrawSettingsOverlays()
+    {
+        // Add welcome macro form
+        ImGui.SetNextItemWidth(90);
+        ImGui.InputTextWithHint("##GRWMacT", "Title", ref _newWelcomeMacroTitle, 50);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(200);
+        ImGui.InputTextWithHint("##GRWMacM", "{name}, {venue} supported", ref _newWelcomeMacroText, 200);
+        ImGui.SameLine();
+        if (ImGui.Button("+##GRAddWM"))
+        {
+            if (!string.IsNullOrWhiteSpace(_newWelcomeMacroTitle))
+            {
+                _plugin.Configuration.GreeterWelcomeMacros.Add(
+                    new MacroTemplate { Title = _newWelcomeMacroTitle, Text = _newWelcomeMacroText });
+                _plugin.Configuration.Save();
+                _newWelcomeMacroTitle = string.Empty;
+                _newWelcomeMacroText  = string.Empty;
+            }
+        }
+
+        // Add broadcast form
+        ImGui.SetNextItemWidth(70);
+        ImGui.InputTextWithHint("##GRBcastL", "Label", ref _newBcastLabel, 30);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(175);
+        ImGui.InputTextWithHint("##GRBcastT", "Message text", ref _newBcastText, 300);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(70);
+        ImGui.Combo("##GRBcastC", ref _newBcastChannel, ChannelLabels, ChannelLabels.Length);
+        ImGui.SameLine();
+        if (ImGui.Button("+##GRAddBcast"))
+        {
+            if (!string.IsNullOrWhiteSpace(_newBcastLabel) && !string.IsNullOrWhiteSpace(_newBcastText))
+            {
+                _plugin.Configuration.GreeterBroadcasts.Add(new GreeterBroadcast
+                {
+                    Label   = _newBcastLabel,
+                    Text    = _newBcastText,
+                    Channel = ChannelLabels[_newBcastChannel]
+                });
+                _plugin.Configuration.Save();
+                _newBcastLabel = string.Empty;
+                _newBcastText  = string.Empty;
+            }
+        }
+
+        // Preferences checkboxes
+        var cfg         = _plugin.Configuration;
+        var autoAdd     = cfg.GreeterAutoAddTargetOnOpen;
+        if (ImGui.Checkbox("Auto-add targeted player to door queue##GR", ref autoAdd))
+        {
+            cfg.GreeterAutoAddTargetOnOpen = autoAdd;
+            cfg.Save();
+        }
+        var showTier = cfg.GreeterShowTierBadge;
+        if (ImGui.Checkbox("Show patron tier badge on queue entries##GR", ref showTier))
+        {
+            cfg.GreeterShowTierBadge = showTier;
+            cfg.Save();
+        }
+    }
 }

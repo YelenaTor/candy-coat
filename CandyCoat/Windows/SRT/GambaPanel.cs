@@ -8,6 +8,7 @@ using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
+using CandyCoat.UI;
 using Una.Drawing;
 using ECommons.DalamudServices;
 
@@ -307,6 +308,229 @@ public class GambaPanel : IToolboxPanel, IDisposable
         ImGui.Spacing();
     }
 
-    public Node BuildNode() => new Node { Id = "stub" };
-    public Node BuildSettingsNode() => new Node { Id = "stub-settings" };
+    // ─── Una.Drawing ─────────────────────────────────────────────────────────
+
+    private int _gbActiveTab = 0;
+    private static readonly string[] GbTabs = ["Rolls", "Payout", "Bank", "Announce"];
+
+    public Node BuildNode()
+    {
+        Node content = _gbActiveTab switch {
+            0 => BuildGbTabRolls(),
+            1 => BuildGbTabPayout(),
+            2 => BuildGbTabBank(),
+            _ => BuildGbTabAnnounce(),
+        };
+        var col = CandyUI.Column("gb-root", 6);
+        col.AppendChild(CandyUI.SectionHeader("gb-round-hdr", "Active Game Round"));
+        col.AppendChild(CandyUI.InputSpacer("gb-round-sp", 0, 160));
+        col.AppendChild(CandyUI.Separator("gb-round-sep"));
+        col.AppendChild(CandyUI.TabContainer("gb-tabs", GbTabs, _gbActiveTab,
+            idx => { _gbActiveTab = idx; }, content));
+        return col;
+    }
+
+    private Node BuildGbTabRolls()
+    {
+        var col = CandyUI.Column("gb-rolls", 6);
+        col.AppendChild(CandyUI.StatusBadge("gb-capture-status", "Auto-capture active", CandyTheme.StatusOnline));
+        col.AppendChild(CandyUI.Row("gb-rolls-btns", 4,
+            CandyUI.Button("gb-random-btn", "/random", () => Svc.Commands.ProcessCommand("/random")),
+            CandyUI.Button("gb-dice-btn",   "/dice",   () => Svc.Commands.ProcessCommand("/dice"))
+        ));
+        col.AppendChild(CandyUI.InputSpacer("gb-manual-roll-sp", 0, 28));
+
+        if (_rollHistory.Count > 0)
+        {
+            var card = CandyUI.Card("gb-roll-hist-card");
+            foreach (var r in _rollHistory.AsEnumerable().Reverse().Take(10))
+            {
+                card.AppendChild(CandyUI.Label($"gb-roll-{r.PlayerName}-{r.Timestamp.Ticks}",
+                    $"{r.PlayerName}: {r.Roll} ({r.Timestamp:HH:mm:ss})", 12));
+            }
+            col.AppendChild(card);
+        }
+        return col;
+    }
+
+    private Node BuildGbTabPayout()
+    {
+        var col = CandyUI.Column("gb-payout", 6);
+        col.AppendChild(CandyUI.InputSpacer("gb-mult-sp", 0, 28));
+
+        var presets = _plugin.Configuration.GambaPresets;
+        bool hasPreset = _selectedPresetIndex >= 0 && _selectedPresetIndex < presets.Count;
+        float mult = hasPreset ? presets[_selectedPresetIndex].DefaultMultiplier : 2.0f;
+
+        if (_players.Count > 0)
+        {
+            var card = CandyUI.Card("gb-payout-card");
+            foreach (var p in _players)
+            {
+                card.AppendChild(CandyUI.Label($"gb-payout-{p.Name}",
+                    $"{p.Name}: {p.Bet:N0} x {mult:F1} = {(int)(p.Bet * mult):N0} Gil", 12));
+            }
+            col.AppendChild(card);
+            col.AppendChild(CandyUI.Button("gb-pay-winner", "Pay Winner (Log)", () =>
+            {
+                var winner = _players[0];
+                var payout = (int)(winner.Bet * mult);
+                _bankOut += payout;
+                _plugin.Configuration.Earnings.Add(new EarningsEntry
+                {
+                    Role        = StaffRole.Gamba,
+                    Type        = EarningsType.GamePayout,
+                    PatronName  = winner.Name,
+                    Description = $"Payout ({mult:F1}x)",
+                    Amount      = -payout
+                });
+                _plugin.Configuration.Save();
+            }));
+        }
+        else
+        {
+            col.AppendChild(CandyUI.Muted("gb-payout-empty", "No players registered."));
+        }
+        return col;
+    }
+
+    private Node BuildGbTabBank()
+    {
+        var net = _bankIn - _bankOut;
+        var col = CandyUI.Column("gb-bank", 6);
+        var card = CandyUI.Card("gb-bank-card");
+        card.AppendChild(CandyUI.Label("gb-bank-in",  $"Bets In:     {_bankIn:N0} Gil",  12));
+        card.AppendChild(CandyUI.Label("gb-bank-out", $"Payouts Out: {_bankOut:N0} Gil", 12));
+        card.AppendChild(CandyUI.Label("gb-bank-net", $"Net P/L:     {net:N0} Gil",      12));
+        col.AppendChild(card);
+        col.AppendChild(CandyUI.Button("gb-bank-reset", "Reset Bank",
+            () => { _bankIn = 0; _bankOut = 0; }));
+        return col;
+    }
+
+    private Node BuildGbTabAnnounce()
+    {
+        var col = CandyUI.Column("gb-announce", 6);
+        var presets = _plugin.Configuration.GambaPresets;
+        if (_selectedPresetIndex >= 0 && _selectedPresetIndex < presets.Count)
+        {
+            var p = presets[_selectedPresetIndex];
+            col.AppendChild(CandyUI.Button("gb-shout-btn", "Shout Announce",
+                () => Svc.Commands.ProcessCommand($"/shout {p.AnnounceMacro}")));
+            col.AppendChild(CandyUI.Separator("gb-announce-sep1"));
+            col.AppendChild(CandyUI.SectionHeader("gb-rules-hdr", "Rules Preview"));
+            var card = CandyUI.Card("gb-rules-card");
+            card.AppendChild(CandyUI.Muted("gb-rules-text", p.Rules, 11));
+            col.AppendChild(card);
+        }
+        else
+        {
+            col.AppendChild(CandyUI.Muted("gb-announce-empty", "No preset selected."));
+        }
+        return col;
+    }
+
+    public Node BuildSettingsNode()
+    {
+        var col = CandyUI.Column("gb-settings", 8);
+        col.AppendChild(CandyUI.SectionHeader("gb-settings-hdr", "Gamba Settings"));
+        col.AppendChild(CandyUI.Muted("gb-settings-desc", "Manage your game presets."));
+        col.AppendChild(CandyUI.Separator("gb-settings-sep1"));
+
+        var presets = _plugin.Configuration.GambaPresets;
+        var presetCard = CandyUI.Card("gb-settings-presets-card");
+        presetCard.AppendChild(CandyUI.SectionHeader("gb-settings-presets-hdr", "Game Preset Manager"));
+        if (presets.Count == 0)
+        {
+            presetCard.AppendChild(CandyUI.Muted("gb-settings-nopre", "No presets yet."));
+        }
+        else
+        {
+            for (int i = 0; i < presets.Count; i++)
+            {
+                var p = presets[i];
+                int ci = i;
+                presetCard.AppendChild(CandyUI.Row($"gb-pre-row-{ci}", 6,
+                    CandyUI.Label($"gb-pre-name-{ci}", p.Name, 12),
+                    CandyUI.Muted($"gb-pre-mult-{ci}", $"x{p.DefaultMultiplier:F1}", 11),
+                    CandyUI.SmallButton($"gb-pre-del-{ci}", "Del", () =>
+                    {
+                        presets.RemoveAt(ci);
+                        _plugin.Configuration.Save();
+                        if (_selectedPresetIndex >= presets.Count)
+                            _selectedPresetIndex = System.Math.Max(0, presets.Count - 1);
+                    })
+                ));
+            }
+        }
+        presetCard.AppendChild(CandyUI.InputSpacer("gb-settings-add-sp", 0, 56));
+        col.AppendChild(presetCard);
+        return col;
+    }
+
+    public void DrawOverlays()
+    {
+        DrawGameRound();
+        // manual roll input
+        ImGui.SetNextItemWidth(70);
+        ImGui.InputInt("##GBManRoll", ref _manualRoll);
+        ImGui.SameLine();
+        if (ImGui.Button("Log##GBManLog"))
+        {
+            _rollHistory.Add(new GambaRollEntry
+            {
+                PlayerName = _players.Count > 0 ? _players[0].Name : "?",
+                Roll       = _manualRoll
+            });
+        }
+        // payout multiplier slider
+        var presets = _plugin.Configuration.GambaPresets;
+        bool hasPreset = _selectedPresetIndex >= 0 && _selectedPresetIndex < presets.Count;
+        float mult = hasPreset ? presets[_selectedPresetIndex].DefaultMultiplier : 2.0f;
+        if (ImGui.SliderFloat("Multiplier##GBCalc", ref mult, 1.0f, 10.0f, "%.1fx") && hasPreset)
+        {
+            presets[_selectedPresetIndex].DefaultMultiplier = mult;
+            _plugin.Configuration.Save();
+        }
+    }
+
+    public void DrawSettingsOverlays()
+    {
+        ImGui.SetNextItemWidth(120);
+        ImGui.InputTextWithHint("##GBPresetN", "Preset Name", ref _newPresetName, 50);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(150);
+        ImGui.InputTextWithHint("##GBPresetA", "Announce macro...", ref _newPresetAnnounce, 200);
+        ImGui.SameLine();
+        if (ImGui.Button("+##GBAddPreset"))
+        {
+            if (!string.IsNullOrWhiteSpace(_newPresetName))
+            {
+                _plugin.Configuration.GambaPresets.Add(new GambaGamePreset
+                {
+                    Name           = _newPresetName,
+                    Rules          = "Set rules here...",
+                    AnnounceMacro  = string.IsNullOrWhiteSpace(_newPresetAnnounce)
+                        ? $"\ud83c\udfb2 {_newPresetName} starting! /tell me to join!"
+                        : _newPresetAnnounce,
+                    DefaultMultiplier = 2.0f
+                });
+                _plugin.Configuration.Save();
+                _newPresetName    = string.Empty;
+                _newPresetAnnounce = string.Empty;
+            }
+        }
+        // rules edit for selected preset
+        var presets = _plugin.Configuration.GambaPresets;
+        if (presets.Count > 0 && _selectedPresetIndex >= 0 && _selectedPresetIndex < presets.Count)
+        {
+            ImGui.TextDisabled("Edit Rules for selected preset:");
+            var rules = presets[_selectedPresetIndex].Rules;
+            if (ImGui.InputTextMultiline("##GBRules", ref rules, 500, new System.Numerics.Vector2(-1, 50)))
+            {
+                presets[_selectedPresetIndex].Rules = rules;
+                _plugin.Configuration.Save();
+            }
+        }
+    }
 }

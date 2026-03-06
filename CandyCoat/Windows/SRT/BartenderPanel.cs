@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
+using CandyCoat.UI;
 using Una.Drawing;
 using ECommons.DalamudServices;
 
@@ -294,6 +295,182 @@ public class BartenderPanel : IToolboxPanel
         ImGui.Spacing();
     }
 
-    public Node BuildNode() => new Node { Id = "stub" };
-    public Node BuildSettingsNode() => new Node { Id = "stub-settings" };
+    // ─── Una.Drawing ─────────────────────────────────────────────────────────
+
+    private int _btActiveTab = 0;
+    private static readonly string[] BtTabs = ["Menu", "Tabs", "Macros", "Ping"];
+
+    public Node BuildNode()
+    {
+        Node content = _btActiveTab switch {
+            0 => BuildBtTabMenu(),
+            1 => BuildBtTabTabs(),
+            2 => BuildBtTabMacros(),
+            _ => BuildBtTabPing(),
+        };
+        var col = CandyUI.Column("bt-root", 6);
+        col.AppendChild(CandyUI.SectionHeader("bt-queue-hdr", "Order Queue"));
+        col.AppendChild(CandyUI.InputSpacer("bt-queue-sp", 0, 160));
+        col.AppendChild(CandyUI.Separator("bt-queue-sep"));
+        col.AppendChild(CandyUI.TabContainer("bt-tabs", BtTabs, _btActiveTab,
+            idx => { _btActiveTab = idx; }, content));
+        return col;
+    }
+
+    private Node BuildBtTabMenu()
+    {
+        var col = CandyUI.Column("bt-menu", 6);
+        var drinks = _plugin.Configuration.ServiceMenu
+            .Where(s => s.Category == ServiceCategory.Drink).ToList();
+        if (drinks.Count == 0)
+        {
+            col.AppendChild(CandyUI.Muted("bt-menu-empty", "No drinks defined. Add in Owner > Menu Editor."));
+        }
+        else
+        {
+            var card = CandyUI.Card("bt-menu-card");
+            for (int i = 0; i < drinks.Count; i++)
+            {
+                var d = drinks[i];
+                card.AppendChild(CandyUI.Label($"bt-drink-{i}",
+                    $"{d.Name} — {d.Price:N0} Gil", 12));
+            }
+            col.AppendChild(card);
+            if (_selectedDrinkIndex >= 0 && _selectedDrinkIndex < drinks.Count)
+            {
+                int ci = _selectedDrinkIndex;
+                col.AppendChild(CandyUI.Button("bt-paste-chat", "Paste to Chat",
+                    () => Svc.Commands.ProcessCommand($"/say {drinks[ci].Name} — {drinks[ci].Description}")));
+            }
+        }
+        return col;
+    }
+
+    private Node BuildBtTabTabs()
+    {
+        var col = CandyUI.Column("bt-tabs-tab", 6);
+        if (_tabs.Count == 0)
+        {
+            col.AppendChild(CandyUI.Muted("bt-tabs-empty", "No open tabs."));
+        }
+        else
+        {
+            var card = CandyUI.Card("bt-tabs-card");
+            foreach (var (patron, total) in _tabs.ToList())
+            {
+                card.AppendChild(CandyUI.Row($"bt-tab-row-{patron}", 6,
+                    CandyUI.Label($"bt-tab-label-{patron}", $"{patron}: {total:N0} Gil", 12),
+                    CandyUI.SmallButton($"bt-tab-close-{patron}", "Close Tab", () =>
+                    {
+                        _pendingCloseTab = patron;
+                    })
+                ));
+            }
+            col.AppendChild(card);
+        }
+        return col;
+    }
+
+    private Node BuildBtTabMacros()
+    {
+        var col = CandyUI.Column("bt-macros-tab", 6);
+        var macros = _plugin.Configuration.BartenderMacros;
+        if (macros.Count == 0)
+        {
+            col.AppendChild(CandyUI.Muted("bt-macros-empty", "No macros. Add them in Settings."));
+        }
+        else
+        {
+            var card = CandyUI.Card("bt-macros-card");
+            for (int i = 0; i < macros.Count; i++)
+            {
+                var m = macros[i];
+                int ci = i;
+                card.AppendChild(CandyUI.Row($"bt-macro-row-{ci}", 6,
+                    CandyUI.Button($"bt-macro-btn-{ci}", m.Title, () =>
+                    {
+                        var patron = _orders.Count > 0 ? _orders[0].Patron
+                            : Svc.Targets.Target?.Name.ToString() ?? "";
+                        var drink = _orders.Count > 0 ? _orders[0].Drink : "a drink";
+                        Svc.Commands.ProcessCommand($"/em {m.Text.Replace("{patron}", patron).Replace("{drink}", drink)}");
+                    }),
+                    CandyUI.Muted($"bt-macro-preview-{ci}",
+                        m.Text.Length > 35 ? m.Text[..35] + "..." : m.Text, 11)
+                ));
+            }
+            col.AppendChild(card);
+        }
+        return col;
+    }
+
+    private Node BuildBtTabPing()
+    {
+        var col = CandyUI.Column("bt-ping-tab", 6);
+        col.AppendChild(CandyUI.Muted("bt-ping-note", "Staff ping widget below."));
+        return col;
+    }
+
+    public Node BuildSettingsNode()
+    {
+        var col = CandyUI.Column("bt-settings", 8);
+        col.AppendChild(CandyUI.SectionHeader("bt-settings-hdr", "Bartender Settings"));
+        col.AppendChild(CandyUI.Muted("bt-settings-desc", "Configure your RP emote macro bank."));
+        col.AppendChild(CandyUI.Separator("bt-settings-sep1"));
+
+        var macros = _plugin.Configuration.BartenderMacros;
+        var macroCard = CandyUI.Card("bt-settings-macros-card");
+        macroCard.AppendChild(CandyUI.SectionHeader("bt-settings-macros-hdr", "RP Emote Macro Bank"));
+        macroCard.AppendChild(CandyUI.Muted("bt-settings-tokens-hint", "Use {patron} and {drink} tokens.", 11));
+        if (macros.Count == 0)
+        {
+            macroCard.AppendChild(CandyUI.Muted("bt-settings-nomacros", "No macros yet."));
+        }
+        else
+        {
+            for (int i = 0; i < macros.Count; i++)
+            {
+                var m = macros[i];
+                int ci = i;
+                macroCard.AppendChild(CandyUI.Row($"bt-smacro-row-{ci}", 6,
+                    CandyUI.Label($"bt-smacro-title-{ci}", m.Title, 12),
+                    CandyUI.Muted($"bt-smacro-preview-{ci}",
+                        m.Text.Length > 40 ? m.Text[..40] + "..." : m.Text, 11),
+                    CandyUI.SmallButton($"bt-smacro-del-{ci}", "Del", () =>
+                    {
+                        macros.RemoveAt(ci);
+                        _plugin.Configuration.Save();
+                    })
+                ));
+            }
+        }
+        macroCard.AppendChild(CandyUI.InputSpacer("bt-settings-add-sp", 0, 28));
+        col.AppendChild(macroCard);
+        return col;
+    }
+
+    public void DrawOverlays()
+    {
+        DrawOrderQueue();
+    }
+
+    public void DrawSettingsOverlays()
+    {
+        ImGui.SetNextItemWidth(80);
+        ImGui.InputTextWithHint("##BTMacroT", "Title", ref _newMacroTitle, 50);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(220);
+        ImGui.InputTextWithHint("##BTMacroM", "{patron} {drink}", ref _newMacroText, 200);
+        ImGui.SameLine();
+        if (ImGui.Button("+##BTAddMacro"))
+        {
+            if (!string.IsNullOrWhiteSpace(_newMacroTitle))
+            {
+                _plugin.Configuration.BartenderMacros.Add(
+                    new MacroTemplate { Title = _newMacroTitle, Text = _newMacroText });
+                _plugin.Configuration.Save();
+                _newMacroTitle = string.Empty;
+                _newMacroText  = string.Empty;
+            }
+        }
+    }
 }

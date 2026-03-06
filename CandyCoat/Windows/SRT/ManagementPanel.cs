@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
+using CandyCoat.UI;
 using Una.Drawing;
 using ECommons.DalamudServices;
 
@@ -284,6 +285,229 @@ public class ManagementPanel : IToolboxPanel
         }
     }
 
-    public Node BuildNode() => new Node { Id = "stub" };
-    public Node BuildSettingsNode() => new Node { Id = "stub-settings" };
+    // ─── Una.Drawing ─────────────────────────────────────────────────────────
+
+    private int _mgActiveTab = 0;
+    private static readonly string[] MgTabs = ["Floor", "Incidents", "Patrons", "Shift"];
+
+    public Node BuildNode()
+    {
+        Node content = _mgActiveTab switch {
+            0 => BuildMgTabFloor(),
+            1 => BuildMgTabIncidents(),
+            2 => BuildMgTabPatrons(),
+            _ => BuildMgTabShift(),
+        };
+        return CandyUI.TabContainer("mg-tabs", MgTabs, _mgActiveTab,
+            idx => { _mgActiveTab = idx; }, content);
+    }
+
+    private Node BuildMgTabFloor()
+    {
+        var col = CandyUI.Column("mg-floor", 6);
+        var nearbyCount = _plugin.LocatorService.GetNearbyCount();
+        col.AppendChild(CandyUI.Row("mg-floor-nearby-row", 6,
+            CandyUI.Label("mg-floor-nearby-label", "Nearby Players:", 12),
+            CandyUI.Label("mg-floor-nearby-count", nearbyCount.ToString(), 12),
+            nearbyCount > _capacityWarning
+                ? CandyUI.Label("mg-floor-cap-warn", "\u26a0 Near capacity", 12)
+                : CandyUI.Muted("mg-floor-ok", "OK", 11)
+        ));
+
+        var rooms = _plugin.Configuration.Rooms;
+        if (rooms.Count == 0)
+        {
+            col.AppendChild(CandyUI.Muted("mg-floor-norooms", "No rooms configured. Add rooms in Owner > Room Editor."));
+        }
+        else
+        {
+            var card = CandyUI.Card("mg-floor-rooms-card");
+            card.AppendChild(CandyUI.Row("mg-floor-tbl-hdr", 4,
+                CandyUI.Label("mg-floor-h-room",   "Room",   11),
+                CandyUI.Label("mg-floor-h-status", "Status", 11),
+                CandyUI.Label("mg-floor-h-staff",  "Staff",  11),
+                CandyUI.Label("mg-floor-h-patron", "Patron", 11),
+                CandyUI.Label("mg-floor-h-time",   "Time",   11)
+            ));
+            card.AppendChild(CandyUI.Separator("mg-floor-tbl-sep"));
+            var onlineStaff = _plugin.SyncService.OnlineStaff;
+            for (int i = 0; i < rooms.Count; i++)
+            {
+                var room = rooms[i];
+                var staffRecord = onlineStaff.Find(s => s.CharacterName == room.OccupiedBy);
+                var roleStr = staffRecord != null ? $" [{staffRecord.Role}]" : string.Empty;
+                var timeStr = room.Status == RoomStatus.Occupied && room.OccupiedSince.HasValue
+                    ? $"{(int)(DateTime.Now - room.OccupiedSince.Value).TotalMinutes:D2}m"
+                    : "—";
+                card.AppendChild(CandyUI.Row($"mg-floor-row-{i}", 4,
+                    CandyUI.Label($"mg-floor-room-{i}",   room.Name, 12),
+                    CandyUI.Label($"mg-floor-status-{i}", room.Status.ToString(), 12),
+                    CandyUI.Label($"mg-floor-staff-{i}",  string.IsNullOrEmpty(room.OccupiedBy) ? "—" : $"{room.OccupiedBy}{roleStr}", 12),
+                    CandyUI.Label($"mg-floor-patron-{i}", string.IsNullOrEmpty(room.PatronName) ? "—" : room.PatronName, 12),
+                    CandyUI.Label($"mg-floor-time-{i}",   timeStr, 12)
+                ));
+            }
+            col.AppendChild(card);
+        }
+        return col;
+    }
+
+    private Node BuildMgTabIncidents()
+    {
+        var col = CandyUI.Column("mg-incidents", 6);
+        col.AppendChild(CandyUI.SectionHeader("mg-inc-hdr", "Log Incident"));
+        col.AppendChild(CandyUI.InputSpacer("mg-inc-sp", 0, 28));
+
+        if (_incidents.Count == 0)
+        {
+            col.AppendChild(CandyUI.Muted("mg-inc-empty", "No incidents logged this session."));
+        }
+        else
+        {
+            var card = CandyUI.Card("mg-inc-card");
+            int start = System.Math.Max(0, _incidents.Count - 15);
+            for (int i = _incidents.Count - 1; i >= start; i--)
+            {
+                var (time, sev, patron, note) = _incidents[i];
+                card.AppendChild(CandyUI.Label($"mg-inc-entry-{i}",
+                    $"[{time:HH:mm}] [{sev}] {patron}: {note}", 11));
+            }
+            col.AppendChild(card);
+        }
+        return col;
+    }
+
+    private Node BuildMgTabPatrons()
+    {
+        var col = CandyUI.Column("mg-patrons", 6);
+        col.AppendChild(CandyUI.SectionHeader("mg-flag-hdr", "Flag Patron"));
+        col.AppendChild(CandyUI.InputSpacer("mg-flag-sp", 0, 28));
+        col.AppendChild(CandyUI.Separator("mg-pat-sep1"));
+        col.AppendChild(CandyUI.SectionHeader("mg-notes-hdr", "All Patron Notes"));
+        col.AppendChild(CandyUI.Muted("mg-notes-hint", "Management sees notes from all roles.", 11));
+
+        var notes = _plugin.Configuration.PatronNotes
+            .OrderByDescending(n => n.Timestamp).Take(15).ToList();
+        if (notes.Count == 0)
+        {
+            col.AppendChild(CandyUI.Muted("mg-notes-empty", "No patron notes yet."));
+        }
+        else
+        {
+            var card = CandyUI.Card("mg-notes-card");
+            for (int i = 0; i < notes.Count; i++)
+            {
+                var n = notes[i];
+                card.AppendChild(CandyUI.Label($"mg-note-{i}",
+                    $"[{n.Timestamp:MM/dd HH:mm}] [{n.AuthorRole}] {n.PatronName}: {n.Content}", 11));
+            }
+            col.AppendChild(card);
+        }
+        return col;
+    }
+
+    private Node BuildMgTabShift()
+    {
+        var col = CandyUI.Column("mg-shift", 6);
+        var shiftManager = _plugin.ShiftManager;
+        if (shiftManager.CurrentShift != null)
+        {
+            var d = shiftManager.CurrentShift.Duration;
+            var card = CandyUI.Card("mg-shift-card");
+            card.AppendChild(CandyUI.Label("mg-shift-status",
+                $"Clocked In — {d.Hours:D2}:{d.Minutes:D2}:{d.Seconds:D2}", 13));
+            card.AppendChild(CandyUI.Muted("mg-shift-earnings",
+                $"Earnings this shift: {shiftManager.CurrentShift.GilEarned:N0} Gil", 12));
+            col.AppendChild(card);
+        }
+        else
+        {
+            col.AppendChild(CandyUI.Muted("mg-shift-clocked-out", "You: Clocked Out"));
+        }
+
+        col.AppendChild(CandyUI.Separator("mg-shift-sep1"));
+        if (_plugin.SyncService.IsConnected)
+            col.AppendChild(CandyUI.StatusBadge("mg-shift-sync", "Staff roster synced.", CandyTheme.StatusOnline));
+        else
+            col.AppendChild(CandyUI.Muted("mg-shift-nosync", "\u26a0 Staff roster is local-only.", 12));
+        return col;
+    }
+
+    public Node BuildSettingsNode()
+    {
+        var col = CandyUI.Column("mg-settings", 8);
+        col.AppendChild(CandyUI.SectionHeader("mg-settings-hdr", "Management Settings"));
+        col.AppendChild(CandyUI.Muted("mg-settings-desc", "Configure capacity thresholds and roster defaults."));
+        col.AppendChild(CandyUI.Separator("mg-settings-sep1"));
+
+        var capCard = CandyUI.Card("mg-settings-cap-card");
+        capCard.AppendChild(CandyUI.SectionHeader("mg-settings-cap-hdr", "Capacity Thresholds"));
+        capCard.AppendChild(CandyUI.InputSpacer("mg-settings-cap-sp", 0, 28));
+        capCard.AppendChild(CandyUI.Muted("mg-settings-cap-hint",
+            "Players nearby before showing capacity alert.", 11));
+        col.AppendChild(capCard);
+        return col;
+    }
+
+    public void DrawOverlays()
+    {
+        // incident log inputs
+        ImGui.SetNextItemWidth(80);
+        ImGui.Combo("##MgmtSev", ref _incidentSeverity, SeverityLabels, SeverityLabels.Length);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(100);
+        ImGui.InputTextWithHint("##MgmtIncPatron", "Patron", ref _incidentPatron, 100);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(-50);
+        ImGui.InputTextWithHint("##MgmtIncNote", "What happened...", ref _incidentNote, 500);
+        ImGui.SameLine();
+        if (ImGui.Button("Log##Mgmt"))
+        {
+            if (!string.IsNullOrWhiteSpace(_incidentNote))
+            {
+                _incidents.Add((DateTime.Now, (Severity)_incidentSeverity, _incidentPatron, _incidentNote));
+                _incidentNote   = string.Empty;
+                _incidentPatron = string.Empty;
+            }
+        }
+        // patron flagging inputs
+        ImGui.SetNextItemWidth(120);
+        ImGui.InputTextWithHint("##MgmtFlagPat", "Patron Name", ref _flagPatron, 100);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(-80);
+        ImGui.InputTextWithHint("##MgmtFlagNote", "Reason", ref _flagNote, 200);
+        ImGui.SameLine();
+        if (ImGui.Button("Flag##Mgmt"))
+        {
+            if (!string.IsNullOrWhiteSpace(_flagPatron))
+            {
+                var patron = _plugin.Configuration.Patrons.FirstOrDefault(p => p.Name == _flagPatron);
+                if (patron != null)
+                {
+                    patron.Status = PatronStatus.Warning;
+                    patron.Notes += $"\n[{DateTime.Now:MM/dd HH:mm} FLAGGED] {_flagNote}";
+                }
+                else
+                {
+                    _plugin.Configuration.Patrons.Add(new Patron
+                    {
+                        Name   = _flagPatron,
+                        Status = PatronStatus.Warning,
+                        Notes  = $"[{DateTime.Now:MM/dd HH:mm} FLAGGED] {_flagNote}"
+                    });
+                }
+                _plugin.Configuration.Save();
+                _flagPatron = string.Empty;
+                _flagNote   = string.Empty;
+            }
+        }
+    }
+
+    public void DrawSettingsOverlays()
+    {
+        if (!_capacityInit) { _capacityWarning = 48; _capacityInit = true; }
+        ImGui.SetNextItemWidth(80);
+        ImGui.InputInt("Near-capacity warning at##Mgmt", ref _capacityWarning, 1);
+        if (_capacityWarning < 1) _capacityWarning = 1;
+    }
 }

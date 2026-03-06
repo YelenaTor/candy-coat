@@ -4,6 +4,7 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
+using CandyCoat.UI;
 using Una.Drawing;
 using ECommons.DalamudServices;
 
@@ -475,6 +476,344 @@ public class SweetheartPanel : IToolboxPanel
         ImGui.Spacing();
     }
 
-    public Node BuildNode() => new Node { Id = "stub" };
-    public Node BuildSettingsNode() => new Node { Id = "stub-settings" };
+    // ─── Una.Drawing ─────────────────────────────────────────────────────────
+
+    private int _activeTab = 0;
+    private static readonly string[] Tabs = ["Session", "Patron", "Tools", "Earnings"];
+
+    public Node BuildNode()
+    {
+        Node content = _activeTab switch {
+            0 => BuildTabSession(),
+            1 => BuildTabPatron(),
+            2 => BuildTabTools(),
+            _ => BuildTabEarnings(),
+        };
+        return CandyUI.TabContainer("sh-tabs", Tabs, _activeTab,
+            idx => { _activeTab = idx; }, content);
+    }
+
+    private Node BuildTabSession()
+    {
+        var col = CandyUI.Column("sh-session", 6);
+        col.AppendChild(CandyUI.SectionHeader("sh-session-hdr", "Session Timer"));
+        col.AppendChild(CandyUI.InputSpacer("sh-session-timer", 0, 140));
+        col.AppendChild(CandyUI.Separator("sh-session-sep1"));
+        col.AppendChild(CandyUI.SectionHeader("sh-session-room-hdr", "Room Assignment"));
+        col.AppendChild(CandyUI.InputSpacer("sh-session-room-sp", 0, 28));
+        col.AppendChild(CandyUI.Separator("sh-session-sep2"));
+        col.AppendChild(CandyUI.SectionHeader("sh-session-bookings-hdr", "Upcoming Bookings"));
+
+        var cfg = _plugin.Configuration;
+        var bookings = cfg.Bookings
+            .Where(b => b.State != BookingState.CompletedPaid && b.State != BookingState.CompletedUnpaid)
+            .OrderBy(b => b.Timestamp).ToList();
+        if (bookings.Count == 0)
+        {
+            col.AppendChild(CandyUI.Muted("sh-no-bookings", "No upcoming bookings."));
+        }
+        else
+        {
+            var card = CandyUI.Card("sh-bookings-card");
+            for (int i = 0; i < bookings.Count; i++)
+            {
+                var b = bookings[i];
+                card.AppendChild(CandyUI.Label($"sh-booking-{i}", $"{b.PatronName} | {b.Service} | {b.Room} | {b.Gil:N0} Gil", 12));
+            }
+            col.AppendChild(card);
+        }
+        return col;
+    }
+
+    private Node BuildTabPatron()
+    {
+        var col = CandyUI.Column("sh-patron", 6);
+        col.AppendChild(CandyUI.SectionHeader("sh-patron-hdr", "Patron Lookup"));
+        col.AppendChild(CandyUI.InputSpacer("sh-patron-lookup-sp", 0, 28));
+
+        var patron = string.IsNullOrWhiteSpace(_shLookupPatronName) ? null :
+            _plugin.Configuration.Patrons.FirstOrDefault(p =>
+                p.Name.Equals(_shLookupPatronName, StringComparison.OrdinalIgnoreCase));
+
+        if (patron != null)
+        {
+            var cfg = _plugin.Configuration;
+            var tier = cfg.GetTier(patron);
+            var card = CandyUI.Card("sh-patron-card");
+            card.AppendChild(CandyUI.Label("sh-patron-tier", $"[{tier}] {patron.Name}", 13));
+            if (patron.Status is PatronStatus.Warning or PatronStatus.Blacklisted)
+                card.AppendChild(CandyUI.Label("sh-patron-status", $"Status: {patron.Status}", 12));
+            if (!string.IsNullOrWhiteSpace(patron.RpHooks))
+                card.AppendChild(CandyUI.Muted("sh-patron-hooks", $"RP Hooks: {patron.RpHooks}", 11));
+            if (!string.IsNullOrWhiteSpace(patron.FavoriteDrink))
+                card.AppendChild(CandyUI.Muted("sh-patron-drink", $"Drink: {patron.FavoriteDrink}", 11));
+            if (!string.IsNullOrWhiteSpace(patron.Allergies))
+                card.AppendChild(CandyUI.Muted("sh-patron-allergies", $"Limits: {patron.Allergies}", 11));
+            col.AppendChild(card);
+        }
+        else if (!string.IsNullOrWhiteSpace(_shLookupPatronName))
+        {
+            col.AppendChild(CandyUI.Muted("sh-patron-notfound", "Not in patron database."));
+        }
+
+        col.AppendChild(CandyUI.Separator("sh-patron-sep1"));
+        col.AppendChild(CandyUI.SectionHeader("sh-patron-notes-hdr", "Patron Notes"));
+        col.AppendChild(CandyUI.InputSpacer("sh-patron-notes-sp", 0, 56));
+        return col;
+    }
+
+    private Node BuildTabTools()
+    {
+        var col = CandyUI.Column("sh-tools", 6);
+
+        var macros = _plugin.Configuration.SweetheartMacros;
+        if (macros.Count == 0)
+        {
+            col.AppendChild(CandyUI.Muted("sh-tools-nomacros", "No macros. Add them in Settings."));
+        }
+        else
+        {
+            col.AppendChild(CandyUI.SectionHeader("sh-tools-tells-hdr", "Quick Tells"));
+            var tellCard = CandyUI.Card("sh-tools-tells-card");
+            for (int i = 0; i < macros.Count; i++)
+            {
+                var m = macros[i];
+                int ci = i;
+                tellCard.AppendChild(CandyUI.Row($"sh-macro-row-{ci}", 6,
+                    CandyUI.Button($"sh-macro-btn-{ci}", m.Title, () =>
+                    {
+                        var target = !string.IsNullOrEmpty(_sessionPatron) ? _sessionPatron
+                            : Svc.Targets.Target?.Name.ToString() ?? "";
+                        if (!string.IsNullOrEmpty(target))
+                        {
+                            var msg = m.Text.Replace("{name}", target.Split(' ')[0]);
+                            Svc.Commands.ProcessCommand($"/t {target} {msg}");
+                        }
+                    }),
+                    CandyUI.Muted($"sh-macro-preview-{ci}",
+                        m.Text.Length > 40 ? m.Text[..40] + "..." : m.Text, 11)
+                ));
+            }
+            col.AppendChild(tellCard);
+        }
+
+        col.AppendChild(CandyUI.Separator("sh-tools-sep1"));
+        col.AppendChild(CandyUI.SectionHeader("sh-tools-emotes-hdr", "Emote Shortcuts"));
+        var emoteCard = CandyUI.Card("sh-emotes-card");
+        var emoteRow1 = CandyUI.Row("sh-emotes-row1", 4,
+            CandyUI.SmallButton("sh-em-comfort",  "Comfort",   () => Svc.Commands.ProcessCommand("/comfort motion")),
+            CandyUI.SmallButton("sh-em-smile",    "Smile",     () => Svc.Commands.ProcessCommand("/smile motion")),
+            CandyUI.SmallButton("sh-em-blowkiss", "Blow Kiss", () => Svc.Commands.ProcessCommand("/blowkiss motion")),
+            CandyUI.SmallButton("sh-em-kneel",    "Kneel",     () => Svc.Commands.ProcessCommand("/kneel motion"))
+        );
+        var emoteRow2 = CandyUI.Row("sh-emotes-row2", 4,
+            CandyUI.SmallButton("sh-em-bow",    "Bow",    () => Svc.Commands.ProcessCommand("/bow motion")),
+            CandyUI.SmallButton("sh-em-beckon", "Beckon", () => Svc.Commands.ProcessCommand("/beckon motion")),
+            CandyUI.SmallButton("sh-em-doze",   "Doze",   () => Svc.Commands.ProcessCommand("/doze motion")),
+            CandyUI.SmallButton("sh-em-laugh",  "Laugh",  () => Svc.Commands.ProcessCommand("/laugh motion"))
+        );
+        var emoteRow3 = CandyUI.Row("sh-emotes-row3", 4,
+            CandyUI.SmallButton("sh-em-wave",   "Wave",   () => Svc.Commands.ProcessCommand("/wave motion")),
+            CandyUI.SmallButton("sh-em-hug",    "Hug",    () => Svc.Commands.ProcessCommand("/hug motion")),
+            CandyUI.SmallButton("sh-em-nuzzle", "Nuzzle", () => Svc.Commands.ProcessCommand("/nuzzle motion")),
+            CandyUI.SmallButton("sh-em-pet",    "Pet",    () => Svc.Commands.ProcessCommand("/pet motion"))
+        );
+        emoteCard.AppendChild(emoteRow1);
+        emoteCard.AppendChild(emoteRow2);
+        emoteCard.AppendChild(emoteRow3);
+        col.AppendChild(emoteCard);
+
+        var items = _plugin.Configuration.ServiceMenu
+            .Where(s => s.Category == ServiceCategory.Session).ToList();
+        if (items.Count > 0)
+        {
+            col.AppendChild(CandyUI.Separator("sh-tools-sep2"));
+            col.AppendChild(CandyUI.SectionHeader("sh-tools-rates-hdr", "Service Rates"));
+            var rateCard = CandyUI.Card("sh-rates-card");
+            for (int i = 0; i < items.Count; i++)
+            {
+                var item = items[i];
+                rateCard.AppendChild(CandyUI.Label($"sh-rate-{i}",
+                    $"{item.Name} — {item.Price:N0} Gil", 12));
+            }
+            col.AppendChild(rateCard);
+        }
+
+        if (_plugin.Configuration.EnableGlamourer)
+        {
+            col.AppendChild(CandyUI.Separator("sh-tools-sep3"));
+            col.AppendChild(CandyUI.Button("sh-glamourer-btn", "Open Glamourer Designs",
+                () => Svc.Commands.ProcessCommand("/glamourer")));
+        }
+
+        return col;
+    }
+
+    private Node BuildTabEarnings()
+    {
+        var col = CandyUI.Column("sh-earnings", 6);
+        col.AppendChild(CandyUI.SectionHeader("sh-earnings-hdr", "Log Earnings"));
+        col.AppendChild(CandyUI.InputSpacer("sh-earnings-log-sp", 0, 28));
+        col.AppendChild(CandyUI.Separator("sh-earnings-sep1"));
+        col.AppendChild(CandyUI.SectionHeader("sh-earnings-history-hdr", "Patron History"));
+
+        if (!string.IsNullOrEmpty(_sessionPatron))
+        {
+            var history = _plugin.Configuration.Earnings
+                .Where(e => e.PatronName == _sessionPatron && e.Role == StaffRole.Sweetheart)
+                .OrderByDescending(e => e.Timestamp).Take(10).ToList();
+            if (history.Count == 0)
+            {
+                col.AppendChild(CandyUI.Muted("sh-earnings-nohist", "No history with this patron."));
+            }
+            else
+            {
+                var card = CandyUI.Card("sh-earnings-hist-card");
+                for (int i = 0; i < history.Count; i++)
+                {
+                    var e = history[i];
+                    card.AppendChild(CandyUI.Label($"sh-hist-{i}",
+                        $"{e.Timestamp:MM/dd} — {e.Description}: {e.Amount:N0} Gil", 12));
+                }
+                col.AppendChild(card);
+            }
+        }
+        else
+        {
+            col.AppendChild(CandyUI.Muted("sh-earnings-nosession", "Start a session to see patron history."));
+        }
+        return col;
+    }
+
+    public Node BuildSettingsNode()
+    {
+        var col = CandyUI.Column("sh-settings", 8);
+        col.AppendChild(CandyUI.SectionHeader("sh-settings-hdr", "Sweetheart Settings"));
+        col.AppendChild(CandyUI.Muted("sh-settings-desc", "Configure your macro bank and role preferences."));
+        col.AppendChild(CandyUI.Separator("sh-settings-sep1"));
+
+        var macros = _plugin.Configuration.SweetheartMacros;
+        var macroCard = CandyUI.Card("sh-settings-macros-card");
+        macroCard.AppendChild(CandyUI.SectionHeader("sh-settings-macros-hdr", "Quick-Tell Macro Bank"));
+        if (macros.Count == 0)
+        {
+            macroCard.AppendChild(CandyUI.Muted("sh-settings-nomacros", "No macros yet. Add one below."));
+        }
+        else
+        {
+            for (int i = 0; i < macros.Count; i++)
+            {
+                var m = macros[i];
+                int ci = i;
+                macroCard.AppendChild(CandyUI.Row($"sh-smacro-row-{ci}", 6,
+                    CandyUI.Label($"sh-smacro-title-{ci}", m.Title, 12),
+                    CandyUI.Muted($"sh-smacro-preview-{ci}",
+                        m.Text.Length > 40 ? m.Text[..40] + "..." : m.Text, 11),
+                    CandyUI.SmallButton($"sh-smacro-del-{ci}", "Del", () =>
+                    {
+                        macros.RemoveAt(ci);
+                        _plugin.Configuration.Save();
+                    })
+                ));
+            }
+        }
+        macroCard.AppendChild(CandyUI.InputSpacer("sh-settings-add-sp", 0, 28));
+        col.AppendChild(macroCard);
+        return col;
+    }
+
+    public void DrawOverlays()
+    {
+        DrawSessionTimer();
+        DrawRoomAssignment();
+
+        // patron lookup input
+        ImGui.SetNextItemWidth(200);
+        ImGui.InputTextWithHint("##SHProfileName", "Patron Name", ref _shLookupPatronName, 100);
+
+        // patron notes overlay
+        var patronName = !string.IsNullOrEmpty(_sessionPatron) ? _sessionPatron : "(no active session)";
+        ImGui.TextDisabled($"For: {patronName}");
+        if (!string.IsNullOrEmpty(_sessionPatron))
+        {
+            ImGui.SetNextItemWidth(-60);
+            ImGui.InputTextWithHint("##SHNote", "Add note...", ref _newNoteText, 500);
+            ImGui.SameLine();
+            if (ImGui.Button("Save##SHNote"))
+            {
+                if (!string.IsNullOrWhiteSpace(_newNoteText))
+                {
+                    _plugin.Configuration.PatronNotes.Add(new PatronNote
+                    {
+                        PatronName  = _sessionPatron,
+                        AuthorRole  = StaffRole.Sweetheart,
+                        AuthorName  = _plugin.Configuration.CharacterName,
+                        Content     = _newNoteText
+                    });
+                    _plugin.Configuration.Save();
+                    _newNoteText = string.Empty;
+                }
+            }
+        }
+
+        // earnings log overlay
+        ImGui.SetNextItemWidth(120);
+        ImGui.InputInt("Gil##SHEarn", ref _earningsAmount, 10000);
+        ImGui.SameLine();
+        if (ImGui.Button("Log Session##SH"))
+        {
+            if (_earningsAmount > 0)
+            {
+                _plugin.Configuration.Earnings.Add(new EarningsEntry
+                {
+                    Role        = StaffRole.Sweetheart,
+                    Type        = EarningsType.Session,
+                    PatronName  = !string.IsNullOrEmpty(_sessionPatron) ? _sessionPatron : "Unknown",
+                    Description = "Session",
+                    Amount      = _earningsAmount
+                });
+                _plugin.Configuration.Save();
+                _earningsAmount = 0;
+            }
+        }
+        ImGui.SameLine();
+        if (ImGui.Button("Log Tip##SH"))
+        {
+            if (_earningsAmount > 0)
+            {
+                _plugin.Configuration.Earnings.Add(new EarningsEntry
+                {
+                    Role        = StaffRole.Sweetheart,
+                    Type        = EarningsType.Tip,
+                    PatronName  = !string.IsNullOrEmpty(_sessionPatron) ? _sessionPatron : "Unknown",
+                    Description = "Tip",
+                    Amount      = _earningsAmount
+                });
+                _plugin.Configuration.Save();
+                _earningsAmount = 0;
+            }
+        }
+    }
+
+    public void DrawSettingsOverlays()
+    {
+        // add macro form
+        ImGui.SetNextItemWidth(100);
+        ImGui.InputTextWithHint("##SHMacroT", "Title", ref _newMacroTitle, 50);
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(220);
+        ImGui.InputTextWithHint("##SHMacroM", "Message ({name})", ref _newMacroText, 200);
+        ImGui.SameLine();
+        if (ImGui.Button("+##SHAddMacro"))
+        {
+            if (!string.IsNullOrWhiteSpace(_newMacroTitle))
+            {
+                _plugin.Configuration.SweetheartMacros.Add(
+                    new MacroTemplate { Title = _newMacroTitle, Text = _newMacroText });
+                _plugin.Configuration.Save();
+                _newMacroTitle = string.Empty;
+                _newMacroText  = string.Empty;
+            }
+        }
+    }
 }
