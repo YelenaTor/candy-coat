@@ -67,6 +67,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         ECommonsMain.Init(PluginInterface, this);
         DrawingLib.Setup(PluginInterface);
+        CandyTheme.Apply();
 
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         var needsProfileSync = MigrateConfig();
