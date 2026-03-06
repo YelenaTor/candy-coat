@@ -4,3 +4,6 @@
 [submodule "CandyCoat/ECommons"]
 	path = CandyCoat/ECommons
 	url = https://github.com/NightmareXIV/ECommons.git
+[submodule "CandyCoat/Una.Drawing"]
+	path = CandyCoat/Una.Drawing
+	url = https://github.com/una-xiv/drawing.git

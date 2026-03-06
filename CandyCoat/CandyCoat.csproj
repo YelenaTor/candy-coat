@@ -13,17 +13,20 @@
   <ItemGroup>
     <Compile Remove="ECommons\**" />
     <Compile Remove="OtterGui\**" />
+    <Compile Remove="Una.Drawing\**" />
     <EmbeddedResource Remove="ECommons\**" />
     <EmbeddedResource Remove="OtterGui\**" />
+    <EmbeddedResource Remove="Una.Drawing\**" />
     <None Remove="ECommons\**" />
     <None Remove="OtterGui\**" />
+    <None Remove="Una.Drawing\**" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <Reference Include="Dalamud.Bindings.ImGui" Private="false" />
     <ProjectReference Include="ECommons\ECommons\ECommons.csproj" />
-    <ProjectReference Include="OtterGui\OtterGui.csproj" />
+    <ProjectReference Include="Una.Drawing\Una.Drawing\Una.Drawing.csproj" />
   </ItemGroup>
 
   <ItemGroup>
