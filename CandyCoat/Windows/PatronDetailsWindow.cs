@@ -39,20 +39,12 @@ public class PatronDetailsWindow : Window, IDisposable
     {
         if (SelectedPatron == null) return;
 
-        CandyCoat.UI.StyleManager.PushStyles();
-        try
-        {
-            using var subTabBar = ImRaii.TabBar("PatronDetailsTabs");
-            if (!subTabBar) return;
+        using var subTabBar = ImRaii.TabBar("PatronDetailsTabs");
+        if (!subTabBar) return;
 
-            DrawInfoTab(SelectedPatron);
-            DrawGlamourTab(SelectedPatron);
-            DrawVipTab(SelectedPatron);
-        }
-        finally
-        {
-            CandyCoat.UI.StyleManager.PopStyles();
-        }
+        DrawInfoTab(SelectedPatron);
+        DrawGlamourTab(SelectedPatron);
+        DrawVipTab(SelectedPatron);
     }
 
     private void DrawInfoTab(Patron patron)

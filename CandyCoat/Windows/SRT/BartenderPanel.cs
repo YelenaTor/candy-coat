@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
-using CandyCoat.UI;
+
 using ECommons.DalamudServices;
 
 namespace CandyCoat.Windows.SRT;
@@ -85,7 +85,7 @@ public class BartenderPanel : IToolboxPanel
 
     public void DrawSettings()
     {
-        ImGui.TextColored(StyleManager.SectionHeader, "\ud83c\udf78 Bartender Settings");
+        ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "\ud83c\udf78 Bartender Settings");
         ImGui.TextDisabled("Configure your RP emote macro bank.");
         ImGui.Spacing();
 
@@ -96,7 +96,7 @@ public class BartenderPanel : IToolboxPanel
             ImGui.PopStyleColor();
             if (!card) return;
 
-            ImGui.TextColored(StyleManager.SectionHeader, "RP Emote Macro Bank");
+            ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "RP Emote Macro Bank");
             ImGui.Separator();
             ImGui.Spacing();
             ImGui.TextDisabled("Use {patron} and {drink} tokens.");
@@ -202,7 +202,7 @@ public class BartenderPanel : IToolboxPanel
             {
                 OrderStatus.Pending => new Vector4(1f, 0.8f, 0.2f, 1f),
                 OrderStatus.Making  => new Vector4(0.4f, 0.8f, 1f, 1f),
-                OrderStatus.Served  => StyleManager.SyncOk,
+                OrderStatus.Served  => new Vector4(0.5f, 0.9f, 0.65f, 1.0f),
                 _                   => Vector4.One,
             };
             ImGui.PushID($"btord{i}");

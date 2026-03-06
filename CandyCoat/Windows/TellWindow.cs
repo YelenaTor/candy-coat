@@ -56,37 +56,29 @@ public class TellWindow : Window, IDisposable
 
     public override void Draw()
     {
-        CandyCoat.UI.StyleManager.PushStyles();
-        try
+        // Sync selection from TellService (e.g. opened via ChatTwo IPC or TellAutoOpen)
+        var svcSelected = _plugin.TellService.SelectedConversation;
+        if (svcSelected != null && svcSelected != _selectedConversation)
         {
-            // Sync selection from TellService (e.g. opened via ChatTwo IPC or TellAutoOpen)
-            var svcSelected = _plugin.TellService.SelectedConversation;
-            if (svcSelected != null && svcSelected != _selectedConversation)
-            {
-                _selectedConversation = svcSelected;
-                _notesBuffer = _selectedConversation.Notes;
-                _scrollToBottom = true;
-            }
-
-            var contentRegion = ImGui.GetContentRegionAvail();
-
-            ImGui.PushStyleColor(ImGuiCol.ChildBg, CandyCoat.UI.StyleManager.SidebarBg);
-            using (var left = ImRaii.Child("##TellLeft", new Vector2(LeftPanelWidth, contentRegion.Y), true))
-            {
-                ImGui.PopStyleColor();
-                if (left) DrawConversationList();
-            }
-
-            ImGui.SameLine(0, 0);
-
-            using (var right = ImRaii.Child("##TellRight", new Vector2(0, contentRegion.Y), false))
-            {
-                if (right) DrawRightPanel();
-            }
+            _selectedConversation = svcSelected;
+            _notesBuffer = _selectedConversation.Notes;
+            _scrollToBottom = true;
         }
-        finally
+
+        var contentRegion = ImGui.GetContentRegionAvail();
+
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.08f, 0.07f, 0.11f, 0.95f));
+        using (var left = ImRaii.Child("##TellLeft", new Vector2(LeftPanelWidth, contentRegion.Y), true))
         {
-            CandyCoat.UI.StyleManager.PopStyles();
+            ImGui.PopStyleColor();
+            if (left) DrawConversationList();
+        }
+
+        ImGui.SameLine(0, 0);
+
+        using (var right = ImRaii.Child("##TellRight", new Vector2(0, contentRegion.Y), false))
+        {
+            if (right) DrawRightPanel();
         }
     }
 

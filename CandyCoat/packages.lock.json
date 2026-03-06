@@ -20,32 +20,32 @@
         "resolved": "13.0.3",
         "contentHash": "HrC5BXdl00IP9zeV+0Z848QWPAoCr9P3bDEZguI+gkLcBKAOxix/tLEAAHC+UvDNPv4a2d18lOReHMOagPa+zQ=="
       },
-      "JetBrains.Annotations": {
+      "SkiaSharp": {
         "type": "Transitive",
-        "resolved": "2024.3.0",
-        "contentHash": "ox5pkeLQXjvJdyAB4b2sBYAlqZGLh3PjSnP1bQNVx72ONuTJ9+34/+Rq91Fc0dG29XG9RgZur9+NcP4riihTug=="
-      },
-      "Microsoft.Extensions.DependencyInjection": {
-        "type": "Transitive",
-        "resolved": "9.0.2",
-        "contentHash": "ZffbJrskOZ40JTzcTyKwFHS5eACSWp2bUQBBApIgGV+es8RaTD4OxUG7XxFr3RIPLXtYQ1jQzF2DjKB5fZn7Qg==",
+        "resolved": "3.118.0-preview.1.2",
+        "contentHash": "0ee/n3BGXKjwPGPr4/uOtoAsUWHUrqMnyyJrdxB5NCZ1VjuJA5u++CtY5W0zziBhzpmb8llws+Vgop1KNv9zsQ==",
         "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.2"
+          "SkiaSharp.NativeAssets.Win32": "3.118.0-preview.1.2",
+          "SkiaSharp.NativeAssets.macOS": "3.118.0-preview.1.2"
         }
       },
-      "Microsoft.Extensions.DependencyInjection.Abstractions": {
+      "SkiaSharp.NativeAssets.macOS": {
         "type": "Transitive",
-        "resolved": "9.0.2",
-        "contentHash": "MNe7GSTBf3jQx5vYrXF0NZvn6l7hUKF6J54ENfAgCO8y6xjN1XUmKKWG464LP2ye6QqDiA1dkaWEZBYnhoZzjg=="
+        "resolved": "3.118.0-preview.1.2",
+        "contentHash": "08uDbkHlSe0NhMmVn9V+KenxiGWU79KONBE3nd+gPh6IwXMSQbWS/j5Di3Gg5vVKDxI8n+m3igBDqQy4ngW9IA=="
+      },
+      "SkiaSharp.NativeAssets.Win32": {
+        "type": "Transitive",
+        "resolved": "3.118.0-preview.1.2",
+        "contentHash": "pjcuvrYCJ74gPdz+W327JcwJKyy5QVXOfVXxAKnih+n1d8b6A0m41LNqlOMhUzfbpl4TDnqB19KraMWZqiaVjg=="
       },
       "ecommons": {
         "type": "Project"
       },
-      "ottergui": {
+      "una.drawing": {
         "type": "Project",
         "dependencies": {
-          "JetBrains.Annotations": "[2024.3.0, )",
-          "Microsoft.Extensions.DependencyInjection": "[9.0.2, )"
+          "SkiaSharp": "[3.118.0-preview.1.2, )"
         }
       }
     }

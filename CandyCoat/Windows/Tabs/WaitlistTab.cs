@@ -1,7 +1,6 @@
 using System;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
-using OtterGui.Widgets;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Services;
 using CandyCoat.Data;

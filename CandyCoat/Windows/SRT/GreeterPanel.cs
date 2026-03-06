@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
-using CandyCoat.UI;
+
 using ECommons.DalamudServices;
 
 namespace CandyCoat.Windows.SRT;
@@ -83,7 +83,7 @@ public class GreeterPanel : IToolboxPanel
 
     public void DrawSettings()
     {
-        ImGui.TextColored(StyleManager.SectionHeader, "\ud83d\udea8 Greeter Settings");
+        ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "\ud83d\udea8 Greeter Settings");
         ImGui.TextDisabled("Configure welcome macros, broadcasts, and preferences.");
         ImGui.Spacing();
 
@@ -96,7 +96,7 @@ public class GreeterPanel : IToolboxPanel
             ImGui.PopStyleColor();
             if (card1)
             {
-                ImGui.TextColored(StyleManager.SectionHeader, "Welcome Macro Bank");
+                ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "Welcome Macro Bank");
                 ImGui.Separator();
                 ImGui.TextDisabled("Use {name} and {venue} tokens. Fires /t {target} {msg}.");
                 ImGui.Spacing();
@@ -136,7 +136,7 @@ public class GreeterPanel : IToolboxPanel
             ImGui.PopStyleColor();
             if (card2)
             {
-                ImGui.TextColored(StyleManager.SectionHeader, "Venue Info Broadcasts");
+                ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "Venue Info Broadcasts");
                 ImGui.Separator();
                 ImGui.TextDisabled("Quick-fire venue info to chat channels.");
                 ImGui.Spacing();
@@ -147,7 +147,7 @@ public class GreeterPanel : IToolboxPanel
                     {
                         var b = cfg.GreeterBroadcasts[i];
                         ImGui.PushID($"grbc{i}");
-                        ImGui.TextColored(StyleManager.SyncOk, $"[{b.Channel}]");
+                        ImGui.TextColored(new Vector4(0.5f, 0.9f, 0.65f, 1.0f), $"[{b.Channel}]");
                         ImGui.SameLine();
                         ImGui.Text(b.Label);
                         ImGui.SameLine();
@@ -178,7 +178,7 @@ public class GreeterPanel : IToolboxPanel
             ImGui.PopStyleColor();
             if (card3)
             {
-                ImGui.TextColored(StyleManager.SectionHeader, "Greeter Preferences");
+                ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "Greeter Preferences");
                 ImGui.Separator();
                 ImGui.Spacing();
 
@@ -206,13 +206,13 @@ public class GreeterPanel : IToolboxPanel
         // On Door / On Break toggle
         if (_onDoor)
         {
-            ImGui.TextColored(StyleManager.SyncOk, "\ud83d\udfe2 On Door");
+            ImGui.TextColored(new Vector4(0.5f, 0.9f, 0.65f, 1.0f), "\ud83d\udfe2 On Door");
             ImGui.SameLine();
             if (ImGui.SmallButton("Take Break##GR")) _onDoor = false;
         }
         else
         {
-            ImGui.TextColored(StyleManager.SyncWarn, "\u23f8 On Break");
+            ImGui.TextColored(new Vector4(1.0f, 0.85f, 0.4f, 1.0f), "\u23f8 On Break");
             ImGui.SameLine();
             if (ImGui.SmallButton("Back to Door##GR")) _onDoor = true;
         }
@@ -224,7 +224,7 @@ public class GreeterPanel : IToolboxPanel
         ImGui.SameLine();
         ImGui.Text("Nearby:");
         ImGui.SameLine();
-        ImGui.TextColored(nearbyCount > 48 ? StyleManager.SyncWarn : StyleManager.SyncOk, $"{nearbyCount}");
+        ImGui.TextColored(nearbyCount > 48 ? new Vector4(1.0f, 0.85f, 0.4f, 1.0f) : new Vector4(0.5f, 0.9f, 0.65f, 1.0f), $"{nearbyCount}");
 
         ImGui.Spacing();
 
@@ -252,9 +252,9 @@ public class GreeterPanel : IToolboxPanel
                 ImGui.SameLine();
                 var statusColor = p.Status switch
                 {
-                    PatronStatus.Blacklisted => StyleManager.SyncError,
-                    PatronStatus.Warning     => StyleManager.SyncWarn,
-                    _                        => StyleManager.SyncOk,
+                    PatronStatus.Blacklisted => new Vector4(1.0f, 0.45f, 0.45f, 1.0f),
+                    PatronStatus.Warning     => new Vector4(1.0f, 0.85f, 0.4f, 1.0f),
+                    _                        => new Vector4(0.5f, 0.9f, 0.65f, 1.0f),
                 };
                 ImGui.TextColored(statusColor, p.Status.ToString());
             }
@@ -404,7 +404,7 @@ public class GreeterPanel : IToolboxPanel
         {
             var color = room.Status switch
             {
-                RoomStatus.Available => StyleManager.SyncOk,
+                RoomStatus.Available => new Vector4(0.5f, 0.9f, 0.65f, 1.0f),
                 RoomStatus.Occupied  => new Vector4(1f, 0.4f, 0.4f, 1f),
                 RoomStatus.Reserved  => new Vector4(1f, 0.8f, 0.2f, 1f),
                 _                    => new Vector4(0.5f, 0.5f, 0.5f, 1f),

@@ -1,11 +1,9 @@
 using System;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
-using OtterGui.Widgets;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
 using CandyCoat.Services;
-using CandyCoat.UI;
 
 namespace CandyCoat.Windows.Tabs;
 
@@ -115,7 +113,7 @@ public class BookingsTab : ITab
 
     private void DrawTeamBookings()
     {
-        ImGui.TextColored(StyleManager.SectionHeader, "Team Bookings (Synced)");
+        ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "Team Bookings (Synced)");
         ImGui.TextDisabled("All active bookings from all staff via backend sync.");
         ImGui.Spacing();
 
@@ -147,9 +145,9 @@ public class BookingsTab : ITab
             ImGui.TableNextColumn();
             var stateColor = b.State switch
             {
-                "Active"          => StyleManager.SyncOk,
+                "Active"          => new Vector4(0.5f, 0.9f, 0.65f, 1.0f),
                 "CompletedPaid"   => new Vector4(0.6f, 0.75f, 1f, 1f),
-                "CompletedUnpaid" => StyleManager.SyncError,
+                "CompletedUnpaid" => new Vector4(1.0f, 0.45f, 0.45f, 1.0f),
                 _                 => new Vector4(0.5f, 0.5f, 0.5f, 1f),
             };
             ImGui.TextColored(stateColor, b.State);
@@ -198,7 +196,7 @@ public class BookingsTab : ITab
                 
                 if (timeRemaining.TotalMinutes <= 0)
                 {
-                    ImGui.TextColored(StyleManager.SyncError, "OVERDUE");
+                    ImGui.TextColored(new Vector4(1.0f, 0.45f, 0.45f, 1.0f), "OVERDUE");
                     if (ImGui.IsItemHovered())
                         ImGui.SetTooltip($"Overdue by {Math.Abs(timeRemaining.TotalMinutes):F0} minutes");
                 }
@@ -230,10 +228,10 @@ public class BookingsTab : ITab
             ImGui.TableNextColumn();
             var stateColor = booking.State switch
             {
-                BookingState.Active        => StyleManager.SyncOk,
+                BookingState.Active        => new Vector4(0.5f, 0.9f, 0.65f, 1.0f),
                 BookingState.Inactive      => new Vector4(0.5f, 0.5f, 0.5f, 1.0f),
                 BookingState.CompletedPaid => new Vector4(0.6f, 0.75f, 1f, 1.0f), // lavender-blue
-                BookingState.CompletedUnpaid => StyleManager.SyncError,
+                BookingState.CompletedUnpaid => new Vector4(1.0f, 0.45f, 0.45f, 1.0f),
                 _                          => Vector4.One
             };
             ImGui.TextColored(stateColor, booking.State.ToString());

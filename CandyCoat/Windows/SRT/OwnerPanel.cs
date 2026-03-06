@@ -6,6 +6,7 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
 using CandyCoat.UI;
+
 using ECommons.DalamudServices;
 
 namespace CandyCoat.Windows.SRT;
@@ -103,7 +104,7 @@ public class OwnerPanel : IToolboxPanel
 
     public void DrawSettings()
     {
-        ImGui.TextColored(StyleManager.SectionHeader, "Owner Settings");
+        ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "Owner Settings");
         ImGui.TextDisabled("Venue configuration, rooms, menu, and role cosmetics.");
         ImGui.Spacing();
 
@@ -115,7 +116,7 @@ public class OwnerPanel : IToolboxPanel
             if (regCard)
             {
                 var cfg = _plugin.Configuration;
-                ImGui.TextColored(StyleManager.SectionHeader, "Venue Registration");
+                ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "Venue Registration");
                 ImGui.Separator();
                 ImGui.Spacing();
 
@@ -168,7 +169,7 @@ public class OwnerPanel : IToolboxPanel
             if (venueCard)
             {
                 if (!_venueNameInit) { _venueNameInput = _plugin.Configuration.VenueName; _venueNameInit = true; }
-                ImGui.TextColored(StyleManager.SectionHeader, "Venue Info");
+                ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "Venue Info");
                 ImGui.Separator();
                 ImGui.Spacing();
                 ImGui.SetNextItemWidth(200);
@@ -185,7 +186,7 @@ public class OwnerPanel : IToolboxPanel
             ImGui.PopStyleColor();
             if (roomCard)
             {
-                ImGui.TextColored(StyleManager.SectionHeader, "Room Editor");
+                ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "Room Editor");
                 ImGui.Separator();
                 ImGui.Spacing();
                 var rooms = _plugin.Configuration.Rooms;
@@ -200,7 +201,7 @@ public class OwnerPanel : IToolboxPanel
                 for (int i = 0; i < rooms.Count; i++)
                 {
                     var room = rooms[i];
-                    var color = room.Status switch { RoomStatus.Available => StyleManager.SyncOk, RoomStatus.Occupied => new Vector4(1f, 0.4f, 0.4f, 1f), RoomStatus.Reserved => new Vector4(1f, 0.8f, 0.2f, 1f), _ => new Vector4(0.5f, 0.5f, 0.5f, 1f) };
+                    var color = room.Status switch { RoomStatus.Available => new Vector4(0.5f, 0.9f, 0.65f, 1.0f), RoomStatus.Occupied => new Vector4(1f, 0.4f, 0.4f, 1f), RoomStatus.Reserved => new Vector4(1f, 0.8f, 0.2f, 1f), _ => new Vector4(0.5f, 0.5f, 0.5f, 1f) };
                     ImGui.PushID($"ownrm{i}");
                     ImGui.TextColored(color, $"\u2022 {room.Name}: {room.Status}");
                     if (room.Status == RoomStatus.Occupied) { ImGui.SameLine(); ImGui.TextDisabled($"({room.OccupiedBy} + {room.PatronName})"); }
@@ -220,7 +221,7 @@ public class OwnerPanel : IToolboxPanel
             ImGui.PopStyleColor();
             if (menuCard)
             {
-                ImGui.TextColored(StyleManager.SectionHeader, "Service Menu Editor");
+                ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "Service Menu Editor");
                 ImGui.Separator();
                 ImGui.Spacing();
                 var menu = _plugin.Configuration.ServiceMenu;
@@ -264,7 +265,7 @@ public class OwnerPanel : IToolboxPanel
             ImGui.PopStyleColor();
             if (vipCard)
             {
-                ImGui.TextColored(StyleManager.SectionHeader, "VIP Packages");
+                ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "VIP Packages");
                 ImGui.Separator();
                 ImGui.Spacing();
                 DrawVipPackages();
@@ -324,7 +325,7 @@ public class OwnerPanel : IToolboxPanel
                 ImGui.TextDisabled($"{pkg.PriceGil:N0} Gil");
                 ImGui.SameLine(0, 6f);
                 if (pkg.IsActive)
-                    ImGui.TextColored(StyleManager.SyncOk, "Active");
+                    ImGui.TextColored(new Vector4(0.5f, 0.9f, 0.65f, 1.0f), "Active");
                 else
                     ImGui.TextDisabled("Disabled");
                 ImGui.SameLine(0, 6f);
@@ -354,7 +355,7 @@ public class OwnerPanel : IToolboxPanel
             if (editPkg != null)
             {
                 ImGui.Spacing();
-                ImGui.TextColored(StyleManager.SectionHeader, "Edit Package");
+                ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "Edit Package");
                 ImGui.Separator();
                 ImGui.SetNextItemWidth(150f); ImGui.InputText("Name##VipE", ref _vipEditName, 100);
                 ImGui.SameLine();
@@ -392,7 +393,7 @@ public class OwnerPanel : IToolboxPanel
         ImGui.Separator();
 
         // Add new package form
-        ImGui.TextColored(StyleManager.SectionHeader, "+ Add Package");
+        ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "+ Add Package");
         ImGui.SetNextItemWidth(150f); ImGui.InputTextWithHint("##VipNewN", "Name", ref _vipNewName, 100);
         ImGui.SameLine();
         ImGui.SetNextItemWidth(80f);  ImGui.Combo("##VipNewT", ref _vipNewTierIdx, VipTierLabels, VipTierLabels.Length);
@@ -498,7 +499,7 @@ public class OwnerPanel : IToolboxPanel
     private void DrawStaffLeaderboard()
     {
         ImGui.Spacing();
-        if (_plugin.SyncService.IsConnected) ImGui.TextColored(StyleManager.SyncOk, "\u25cf Showing synced data."); else ImGui.TextColored(StyleManager.SyncWarn, "\u26a0 Local data only.");
+        if (_plugin.SyncService.IsConnected) ImGui.TextColored(new Vector4(0.5f, 0.9f, 0.65f, 1.0f), "\u25cf Showing synced data."); else ImGui.TextColored(new Vector4(1.0f, 0.85f, 0.4f, 1.0f), "\u26a0 Local data only.");
         var myEarnings = _plugin.Configuration.Earnings.GroupBy(e => e.Role).Select(g => (Role: g.Key, Total: g.Sum(e => e.Amount))).OrderByDescending(x => x.Total).ToList();
         if (myEarnings.Count == 0) { ImGui.TextDisabled("No earnings logged."); ImGui.Spacing(); return; }
         foreach (var (role, total) in myEarnings) ImGui.BulletText($"{role}: {total:N0} Gil");
@@ -568,7 +569,7 @@ public class OwnerPanel : IToolboxPanel
 
     private void DrawLoyaltyTierThresholds()
     {
-        ImGui.TextColored(StyleManager.SectionHeader, "Patron Loyalty Tier Thresholds");
+        ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "Patron Loyalty Tier Thresholds");
         ImGui.Separator();
         ImGui.Spacing();
         var config = _plugin.Configuration;
@@ -600,7 +601,7 @@ public class OwnerPanel : IToolboxPanel
 
     private void DrawRoleCosmeticDefaults()
     {
-        ImGui.TextColored(StyleManager.SectionHeader, "Role Cosmetic Defaults");
+        ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "Role Cosmetic Defaults");
         ImGui.Separator();
         ImGui.Spacing();
         var config = _plugin.Configuration;
@@ -613,7 +614,7 @@ public class OwnerPanel : IToolboxPanel
             bool enabled = rd.Enabled;
             if (ImGui.Checkbox($"##{role}_en", ref enabled)) { rd.Enabled = enabled; dirty = true; }
             ImGui.SameLine();
-            ImGui.TextColored(StyleManager.SectionHeader, role.ToString());
+            ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), role.ToString());
             ImGui.SameLine();
             int badgeIdx = System.Array.IndexOf(CosmeticRenderer.BadgeTemplates, rd.BadgeTemplate);
             if (badgeIdx < 0) badgeIdx = 1;

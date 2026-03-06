@@ -1,10 +1,9 @@
 using System;
 using System.Linq;
+using System.Numerics;
 using Dalamud.Bindings.ImGui;
-using OtterGui.Widgets;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
-using CandyCoat.UI;
 
 namespace CandyCoat.Windows.Tabs;
 
@@ -75,7 +74,7 @@ public class OverviewTab : ITab
             if (shift != null)
             {
                 var dur = shift.Duration;
-                ImGui.TextColored(StyleManager.SyncOk,
+                ImGui.TextColored(new Vector4(0.5f, 0.9f, 0.65f, 1.0f),
                     $"Clocked in — {dur.Hours:D2}:{dur.Minutes:D2}:{dur.Seconds:D2}");
                 ImGui.Text($"Earnings this shift: {shift.GilEarned:N0} Gil");
             }

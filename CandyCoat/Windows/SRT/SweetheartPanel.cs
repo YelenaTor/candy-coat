@@ -4,7 +4,7 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
-using CandyCoat.UI;
+
 using ECommons.DalamudServices;
 
 namespace CandyCoat.Windows.SRT;
@@ -98,7 +98,7 @@ public class SweetheartPanel : IToolboxPanel
 
     public void DrawSettings()
     {
-        ImGui.TextColored(StyleManager.SectionHeader, "♥ Sweetheart Settings");
+        ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "♥ Sweetheart Settings");
         ImGui.TextDisabled("Configure your macro bank and role preferences.");
         ImGui.Spacing();
 
@@ -109,7 +109,7 @@ public class SweetheartPanel : IToolboxPanel
             ImGui.PopStyleColor();
             if (!card) return;
 
-            ImGui.TextColored(StyleManager.SectionHeader, "Quick-Tell Macro Bank");
+            ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "Quick-Tell Macro Bank");
             ImGui.Separator();
             ImGui.Spacing();
 
@@ -167,7 +167,7 @@ public class SweetheartPanel : IToolboxPanel
             var elapsed = DateTime.Now - _sessionStart;
             var remaining = TimeSpan.FromMinutes(_sessionDurationMin) - elapsed;
 
-            ImGui.TextColored(StyleManager.SyncOk, $"IN SESSION \u2014 {_sessionPatron}");
+            ImGui.TextColored(new Vector4(0.5f, 0.9f, 0.65f, 1.0f), $"IN SESSION \u2014 {_sessionPatron}");
             ImGui.Text($"Elapsed:   {elapsed.Hours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}");
 
             if (remaining.TotalSeconds > 0)
@@ -214,7 +214,7 @@ public class SweetheartPanel : IToolboxPanel
 
             ImGui.Checkbox("Do Not Disturb##SH", ref _dndToggle);
             if (_dndToggle)
-                ImGui.TextColored(StyleManager.SyncOk, "DND synced to staff.");
+                ImGui.TextColored(new Vector4(0.5f, 0.9f, 0.65f, 1.0f), "DND synced to staff.");
 
             if (!string.IsNullOrWhiteSpace(_sessionPatron))
             {
@@ -304,7 +304,7 @@ public class SweetheartPanel : IToolboxPanel
         if (patron.Status is PatronStatus.Warning or PatronStatus.Blacklisted)
         {
             ImGui.SameLine();
-            var statusColor = patron.Status == PatronStatus.Blacklisted ? StyleManager.SyncError : StyleManager.SyncWarn;
+            var statusColor = patron.Status == PatronStatus.Blacklisted ? new Vector4(1.0f, 0.45f, 0.45f, 1.0f) : new Vector4(1.0f, 0.85f, 0.4f, 1.0f);
             ImGui.TextColored(statusColor, $"[{patron.Status}]");
         }
 

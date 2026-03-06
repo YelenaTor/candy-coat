@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
-using CandyCoat.UI;
+
 using ECommons.DalamudServices;
 
 namespace CandyCoat.Windows.SRT;
@@ -80,7 +80,7 @@ public class ManagementPanel : IToolboxPanel
 
     public void DrawSettings()
     {
-        ImGui.TextColored(StyleManager.SectionHeader, "\ud83d\udccb Management Settings");
+        ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "\ud83d\udccb Management Settings");
         ImGui.TextDisabled("Configure capacity thresholds and roster defaults.");
         ImGui.Spacing();
 
@@ -93,7 +93,7 @@ public class ManagementPanel : IToolboxPanel
 
             if (!_capacityInit) { _capacityWarning = 48; _capacityInit = true; }
 
-            ImGui.TextColored(StyleManager.SectionHeader, "Capacity Thresholds");
+            ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "Capacity Thresholds");
             ImGui.Separator();
             ImGui.Spacing();
             ImGui.SetNextItemWidth(80);
@@ -111,7 +111,7 @@ public class ManagementPanel : IToolboxPanel
         var nearbyCount = _plugin.LocatorService.GetNearbyCount();
         ImGui.Text("Nearby Players: ");
         ImGui.SameLine();
-        var capacityColor = nearbyCount > _capacityWarning ? new Vector4(1f, 0.8f, 0.2f, 1f) : StyleManager.SyncOk;
+        var capacityColor = nearbyCount > _capacityWarning ? new Vector4(1f, 0.8f, 0.2f, 1f) : new Vector4(0.5f, 0.9f, 0.65f, 1.0f);
         ImGui.TextColored(capacityColor, $"{nearbyCount}");
         if (nearbyCount > _capacityWarning) { ImGui.SameLine(); ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "  \u26a0 Near capacity"); }
         ImGui.Spacing();
@@ -138,7 +138,7 @@ public class ManagementPanel : IToolboxPanel
             ImGui.TableNextColumn();
             var statusColor = room.Status switch
             {
-                RoomStatus.Available   => StyleManager.SyncOk,
+                RoomStatus.Available   => new Vector4(0.5f, 0.9f, 0.65f, 1.0f),
                 RoomStatus.Occupied    => new Vector4(1f, 0.45f, 0.45f, 1f),
                 RoomStatus.Reserved    => new Vector4(1f, 0.8f, 0.2f, 1f),
                 RoomStatus.Maintenance => new Vector4(0.6f, 0.6f, 0.6f, 1f),
@@ -189,7 +189,7 @@ public class ManagementPanel : IToolboxPanel
         if (shiftManager.CurrentShift != null)
         {
             var d = shiftManager.CurrentShift.Duration;
-            ImGui.TextColored(StyleManager.SyncOk, $"You: Clocked In \u2014 {d.Hours:D2}:{d.Minutes:D2}:{d.Seconds:D2}");
+            ImGui.TextColored(new Vector4(0.5f, 0.9f, 0.65f, 1.0f), $"You: Clocked In \u2014 {d.Hours:D2}:{d.Minutes:D2}:{d.Seconds:D2}");
             ImGui.Text($"Earnings this shift: {shiftManager.CurrentShift.GilEarned:N0} Gil");
         }
         else
@@ -198,9 +198,9 @@ public class ManagementPanel : IToolboxPanel
         }
         ImGui.Spacing();
         if (_plugin.SyncService.IsConnected)
-            ImGui.TextColored(StyleManager.SyncOk, "\ud83d\udfe2 Staff roster synced.");
+            ImGui.TextColored(new Vector4(0.5f, 0.9f, 0.65f, 1.0f), "\ud83d\udfe2 Staff roster synced.");
         else
-            ImGui.TextColored(StyleManager.SyncWarn, "\u26a0 Staff roster is local-only.");
+            ImGui.TextColored(new Vector4(1.0f, 0.85f, 0.4f, 1.0f), "\u26a0 Staff roster is local-only.");
     }
 
     private void DrawIncidentLog()

@@ -126,28 +126,19 @@ public class MainWindow : Window, IDisposable
 
     public override void Draw()
     {
-        CandyCoat.UI.StyleManager.PushStyles();
+        var contentRegion = ImGui.GetContentRegionAvail();
 
-        try
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.08f, 0.07f, 0.11f, 0.95f));
         {
-            var contentRegion = ImGui.GetContentRegionAvail();
-
-            ImGui.PushStyleColor(ImGuiCol.ChildBg, CandyCoat.UI.StyleManager.SidebarBg);
-            {
-                using var sidebar = ImRaii.Child("##Sidebar", new Vector2(SidebarWidth, contentRegion.Y), true);
-                ImGui.PopStyleColor();
-                DrawSidebar();
-            }
-
-            ImGui.SameLine();
-            {
-                using var content = ImRaii.Child("##Content", new Vector2(0, contentRegion.Y));
-                DrawContentPanel();
-            }
+            using var sidebar = ImRaii.Child("##Sidebar", new Vector2(SidebarWidth, contentRegion.Y), true);
+            ImGui.PopStyleColor();
+            DrawSidebar();
         }
-        finally
+
+        ImGui.SameLine();
         {
-            CandyCoat.UI.StyleManager.PopStyles();
+            using var content = ImRaii.Child("##Content", new Vector2(0, contentRegion.Y));
+            DrawContentPanel();
         }
     }
 
@@ -203,12 +194,12 @@ public class MainWindow : Window, IDisposable
 
                     ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 8f);
                     ImGui.PushStyleColor(ImGuiCol.Button,
-                        isSelected ? CandyCoat.UI.StyleManager.PastelPink : new Vector4(0.18f, 0.14f, 0.22f, 1f));
+                        isSelected ? new Vector4(1.0f, 0.7f, 0.75f, 1.0f) : new Vector4(0.18f, 0.14f, 0.22f, 1f));
                     ImGui.PushStyleColor(ImGuiCol.ButtonHovered,
-                        isSelected ? CandyCoat.UI.StyleManager.PastelPinkHover : new Vector4(0.28f, 0.20f, 0.36f, 1f));
-                    ImGui.PushStyleColor(ImGuiCol.ButtonActive, CandyCoat.UI.StyleManager.PastelPinkActive);
+                        isSelected ? new Vector4(1.0f, 0.8f, 0.85f, 1.0f) : new Vector4(0.28f, 0.20f, 0.36f, 1f));
+                    ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(1.0f, 0.6f, 0.65f, 1.0f));
                     ImGui.PushStyleColor(ImGuiCol.Text,
-                        isSelected ? new Vector4(0.15f, 0.08f, 0.12f, 1f) : CandyCoat.UI.StyleManager.PastelText);
+                        isSelected ? new Vector4(0.15f, 0.08f, 0.12f, 1f) : new Vector4(0.95f, 0.90f, 0.95f, 1.0f));
 
                     if (ImGui.Button(
                         $"{PanelIcon(visiblePanels[i].Role)}  {visiblePanels[i].Name}##srt{i}",
@@ -260,7 +251,7 @@ public class MainWindow : Window, IDisposable
         if (ImGui.Selectable("\u2699 Settings", settingsSelected)) _activeSection = SidebarSection.Settings;
         if (settingsSelected) ImGui.PopStyleColor();
 
-        ImGui.PushStyleColor(ImGuiCol.Text, CandyCoat.UI.StyleManager.SyncWarn);
+        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1.0f, 0.85f, 0.4f, 1.0f));
         if (ImGui.Selectable("\u2615 Support on Ko-Fi"))
             ECommons.GenericHelpers.ShellStart("https://ko-fi.com/yorudev");
         ImGui.PopStyleColor();
@@ -358,7 +349,7 @@ public class MainWindow : Window, IDisposable
         else
         {
             // Floating mode: right panel shows Settings only
-            ImGui.TextColored(CandyCoat.UI.StyleManager.SectionHeader,
+            ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f),
                 $"  {PanelIcon(selectedPanel.Role)}  {selectedPanel.Name} \u2014 Settings");
             ImGui.TextDisabled("  Configure your role toolbox. Features are in the floating window.");
             ImGui.Spacing();
@@ -519,7 +510,7 @@ public class MainWindow : Window, IDisposable
             ImGui.Spacing();
             if (config.IsManagementModeEnabled)
             {
-                ImGui.TextColored(CandyCoat.UI.StyleManager.SyncOk, "\u2714\ufe0f Management Mode Active");
+                ImGui.TextColored(new Vector4(0.5f, 0.9f, 0.65f, 1.0f), "\u2714\ufe0f Management Mode Active");
             }
             else
             {
@@ -624,7 +615,7 @@ public class MainWindow : Window, IDisposable
         {
             var (name, amount, linked) = _tradeNotifications[i];
             if (linked)
-                ImGui.TextColored(CandyCoat.UI.StyleManager.SyncOk, $"\u2714 Trade: {amount:N0} Gil from {name} \u2014 linked to booking");
+                ImGui.TextColored(new Vector4(0.5f, 0.9f, 0.65f, 1.0f), $"\u2714 Trade: {amount:N0} Gil from {name} \u2014 linked to booking");
             else
                 ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), $"\ud83d\udcb0 Trade: {amount:N0} Gil from {name} \u2014 no matching active booking");
             ImGui.SameLine();

@@ -2,7 +2,6 @@ using System;
 using System.Numerics;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
-using CandyCoat.UI;
 
 namespace CandyCoat.Windows;
 
@@ -28,15 +27,7 @@ public class ProfileWindow : Window, IDisposable
 
     public override void Draw()
     {
-        StyleManager.PushStyles();
-        try
-        {
-            DrawContent();
-        }
-        finally
-        {
-            StyleManager.PopStyles();
-        }
+        DrawContent();
     }
 
     private void DrawContent()

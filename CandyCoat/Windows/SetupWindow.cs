@@ -3,7 +3,6 @@ using System.Numerics;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
 using CandyCoat.Data;
-using CandyCoat.UI;
 using CandyCoat.Windows.SetupWizard;
 
 namespace CandyCoat.Windows;
@@ -93,30 +92,22 @@ public class SetupWindow : Window, IDisposable
 
     public override void Draw()
     {
-        StyleManager.PushStyles();
-        try
+        // Auto-save whenever the step changes
+        if (_currentStep != _lastSavedStep)
         {
-            // Auto-save whenever the step changes
-            if (_currentStep != _lastSavedStep)
-            {
-                SaveProgress();
-                _lastSavedStep = _currentStep;
-            }
-
-            switch (_currentStep)
-            {
-                case 0: _step0.DrawContent(ref _currentStep, _state); break;
-                case 1: _stepSync.DrawContent(ref _currentStep, _state, _plugin); break;
-                case 2: _step1.DrawContent(ref _currentStep, _state, _plugin, this); break;
-                case 3: DrawModeSelectionWithNav(); break;
-                case 4: DrawRoleSelectionWithNav(); break;
-                case 5: DrawVenueKeyWithNav(); break;
-                case 6: DrawFinishWithNav(); break;
-            }
+            SaveProgress();
+            _lastSavedStep = _currentStep;
         }
-        finally
+
+        switch (_currentStep)
         {
-            StyleManager.PopStyles();
+            case 0: _step0.DrawContent(ref _currentStep, _state); break;
+            case 1: _stepSync.DrawContent(ref _currentStep, _state, _plugin); break;
+            case 2: _step1.DrawContent(ref _currentStep, _state, _plugin, this); break;
+            case 3: DrawModeSelectionWithNav(); break;
+            case 4: DrawRoleSelectionWithNav(); break;
+            case 5: DrawVenueKeyWithNav(); break;
+            case 6: DrawFinishWithNav(); break;
         }
     }
 

@@ -8,7 +8,7 @@ using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
-using CandyCoat.UI;
+
 using ECommons.DalamudServices;
 
 namespace CandyCoat.Windows.SRT;
@@ -113,7 +113,7 @@ public class GambaPanel : IToolboxPanel, IDisposable
 
     public void DrawSettings()
     {
-        ImGui.TextColored(StyleManager.SectionHeader, "\ud83c\udfb2 Gamba Settings");
+        ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "\ud83c\udfb2 Gamba Settings");
         ImGui.TextDisabled("Manage your game presets.");
         ImGui.Spacing();
 
@@ -126,7 +126,7 @@ public class GambaPanel : IToolboxPanel, IDisposable
             ImGui.PopStyleColor();
             if (!card) return;
 
-            ImGui.TextColored(StyleManager.SectionHeader, "Game Preset Manager");
+            ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "Game Preset Manager");
             ImGui.Separator();
             ImGui.Spacing();
 
@@ -238,7 +238,7 @@ public class GambaPanel : IToolboxPanel, IDisposable
     private void DrawRolls()
     {
         ImGui.Spacing();
-        ImGui.TextColored(StyleManager.SyncOk, "\u25cf Auto-capture active");
+        ImGui.TextColored(new Vector4(0.5f, 0.9f, 0.65f, 1.0f), "\u25cf Auto-capture active");
         ImGui.SameLine();
         if (ImGui.Button("/random##GB")) Svc.Commands.ProcessCommand("/random");
         ImGui.SameLine();
@@ -286,7 +286,7 @@ public class GambaPanel : IToolboxPanel, IDisposable
     {
         ImGui.Spacing();
         var net = _bankIn - _bankOut;
-        var color = net >= 0 ? StyleManager.SyncOk : StyleManager.SyncError;
+        var color = net >= 0 ? new Vector4(0.5f, 0.9f, 0.65f, 1.0f) : new Vector4(1.0f, 0.45f, 0.45f, 1.0f);
         ImGui.Text($"Bets In:     {_bankIn:N0} Gil");
         ImGui.Text($"Payouts Out: {_bankOut:N0} Gil");
         ImGui.TextColored(color, $"Net P/L:     {net:N0} Gil");

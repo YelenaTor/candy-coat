@@ -57,19 +57,11 @@ public class PatronAlertOverlay : Window, IDisposable
 
         if (alerts.Count == 0) return;
 
-        StyleManager.PushStyles();
-        try
+        for (int i = 0; i < alerts.Count; i++)
         {
-            for (int i = 0; i < alerts.Count; i++)
-            {
-                DrawCard(alerts[i]);
-                if (i < alerts.Count - 1)
-                    ImGui.Spacing();
-            }
-        }
-        finally
-        {
-            StyleManager.PopStyles();
+            DrawCard(alerts[i]);
+            if (i < alerts.Count - 1)
+                ImGui.Spacing();
         }
     }
 

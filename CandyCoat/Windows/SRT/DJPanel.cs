@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
-using CandyCoat.UI;
+
 using ECommons.DalamudServices;
 
 namespace CandyCoat.Windows.SRT;
@@ -88,7 +88,7 @@ public class DJPanel : IToolboxPanel
 
     public void DrawSettings()
     {
-        ImGui.TextColored(StyleManager.SectionHeader, "\ud83c\udfb5 DJ Settings");
+        ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "\ud83c\udfb5 DJ Settings");
         ImGui.TextDisabled("Configure stream URL and set preferences.");
         ImGui.Spacing();
 
@@ -99,7 +99,7 @@ public class DJPanel : IToolboxPanel
             ImGui.PopStyleColor();
             if (!card) return;
 
-            ImGui.TextColored(StyleManager.SectionHeader, "Default Stream URL");
+            ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "Default Stream URL");
             ImGui.Separator();
             ImGui.Spacing();
             ImGui.SetNextItemWidth(-1);
@@ -116,7 +116,7 @@ public class DJPanel : IToolboxPanel
         {
             var total = DateTime.Now - _performanceStart;
             var segElapsed = DateTime.Now - _segmentStart;
-            ImGui.TextColored(StyleManager.SyncOk, $"LIVE \u2014 {total.Hours:D2}:{total.Minutes:D2}:{total.Seconds:D2}");
+            ImGui.TextColored(new Vector4(0.5f, 0.9f, 0.65f, 1.0f), $"LIVE \u2014 {total.Hours:D2}:{total.Minutes:D2}:{total.Seconds:D2}");
             ImGui.Text($"Segment: {segElapsed.Minutes:D2}:{segElapsed.Seconds:D2}");
 
             if (ImGui.Button("Mark Segment##DJ"))

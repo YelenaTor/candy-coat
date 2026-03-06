@@ -5,7 +5,6 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Bindings.ImGui;
 using CandyCoat.Services;
-using CandyCoat.UI;
 
 namespace CandyCoat.Windows;
 
@@ -33,55 +32,47 @@ public class SessionWindow : Window, IDisposable
 
     public override void Draw()
     {
-        StyleManager.PushStyles();
-        try
+        if (!_sessionManager.IsCapturing)
         {
-            if (!_sessionManager.IsCapturing)
-            {
-                ImGui.TextDisabled("No active session.");
-                return;
-            }
-
-            ImGui.Text($"Session with: {_sessionManager.TargetName}");
-            ImGui.SameLine();
-            if (ImGui.SmallButton("Copy"))
-                ImGui.SetClipboardText(_sessionManager.GetExportText());
-            ImGui.SameLine();
-            if (ImGui.SmallButton("Save to File"))
-                _sessionManager.SaveToFile(_configDir);
-            ImGui.Separator();
-
-            var region = ImGui.GetContentRegionAvail();
-            using var log = ImRaii.Child("SessionLog", region, true, ImGuiWindowFlags.HorizontalScrollbar);
-
-            foreach (var msg in _sessionManager.Messages)
-            {
-                // Formatting
-                ImGui.TextDisabled($"[{msg.Timestamp:HH:mm}]");
-                ImGui.SameLine();
-
-                if (msg.IsMe)
-                {
-                    ImGui.TextColored(new Vector4(0.75f, 0.6f, 1f, 1.0f), $"[You]:");
-                }
-                else
-                {
-                    ImGui.TextColored(new Vector4(1.0f, 0.6f, 0.8f, 1.0f), $"[{msg.Sender}]:");
-                }
-
-                ImGui.SameLine();
-                ImGui.TextUnformatted(msg.Content.TextValue);
-            }
-
-            // Auto-scroll
-            if (ImGui.GetScrollY() >= ImGui.GetScrollMaxY())
-            {
-                ImGui.SetScrollHereY(1.0f);
-            }
+            ImGui.TextDisabled("No active session.");
+            return;
         }
-        finally
+
+        ImGui.Text($"Session with: {_sessionManager.TargetName}");
+        ImGui.SameLine();
+        if (ImGui.SmallButton("Copy"))
+            ImGui.SetClipboardText(_sessionManager.GetExportText());
+        ImGui.SameLine();
+        if (ImGui.SmallButton("Save to File"))
+            _sessionManager.SaveToFile(_configDir);
+        ImGui.Separator();
+
+        var region = ImGui.GetContentRegionAvail();
+        using var log = ImRaii.Child("SessionLog", region, true, ImGuiWindowFlags.HorizontalScrollbar);
+
+        foreach (var msg in _sessionManager.Messages)
         {
-            StyleManager.PopStyles();
+            // Formatting
+            ImGui.TextDisabled($"[{msg.Timestamp:HH:mm}]");
+            ImGui.SameLine();
+
+            if (msg.IsMe)
+            {
+                ImGui.TextColored(new Vector4(0.75f, 0.6f, 1f, 1.0f), $"[You]:");
+            }
+            else
+            {
+                ImGui.TextColored(new Vector4(1.0f, 0.6f, 0.8f, 1.0f), $"[{msg.Sender}]:");
+            }
+
+            ImGui.SameLine();
+            ImGui.TextUnformatted(msg.Content.TextValue);
+        }
+
+        // Auto-scroll
+        if (ImGui.GetScrollY() >= ImGui.GetScrollMaxY())
+        {
+            ImGui.SetScrollHereY(1.0f);
         }
     }
 }

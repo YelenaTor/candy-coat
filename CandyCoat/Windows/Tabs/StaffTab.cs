@@ -2,10 +2,8 @@ using System;
 using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
-using OtterGui.Widgets;
 using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Services;
-using CandyCoat.UI;
 
 namespace CandyCoat.Windows.Tabs;
 
@@ -35,7 +33,7 @@ public class StaffTab : ITab
         var currentShift = _manager.CurrentShift;
         if (currentShift != null)
         {
-            ImGui.TextColored(StyleManager.SyncOk, "You are currently CLOCKED IN.");
+            ImGui.TextColored(new Vector4(0.5f, 0.9f, 0.65f, 1.0f), "You are currently CLOCKED IN.");
             var duration = currentShift.Duration;
             ImGui.Text($"Duration: {duration.Hours:D2}:{duration.Minutes:D2}:{duration.Seconds:D2}");
             ImGui.Text($"Earnings this shift: {currentShift.GilEarned:N0} Gil");
@@ -60,7 +58,7 @@ public class StaffTab : ITab
         ImGui.Separator();
         ImGui.Spacing();
 
-        ImGui.TextColored(StyleManager.SectionHeader, "Recent Shifts");
+        ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), "Recent Shifts");
 
         var history = _manager.ShiftHistory.Take(5).ToList();
         if (history.Count == 0)
