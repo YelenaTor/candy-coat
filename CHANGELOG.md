@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.17.0] - 2026-03-07
+
+### Changed
+- Complete UI rework: replaced ImGui+OtterGui layout system with Una.Drawing retained-mode node rendering
+- Added CandyTheme named color system for consistent theming across all panels
+- Added CandyUI node factory (WindowRoot, Sidebar, ContentPanel, Card, Button, GhostButton, TabContainer, StatusBadge, ScrollBox, InputSpacer, etc.)
+- Migrated MainWindow sidebar and content panel to Una.Drawing
+- Migrated all 6 dashboard tabs (Overview, Bookings, Locator, Session, Waitlist, Staff) to Una.Drawing
+- Migrated all 8 SRT panels (Sweetheart, CandyHeart, Bartender, Gamba, DJ, Management, Greeter, Owner) to Una.Drawing
+- Migrated Settings panel, ProfileWindow, TellWindow, PatronDetailsWindow, SessionWindow, CosmeticWindow, PatronAlertOverlay to Una.Drawing
+- Migrated setup wizard (SetupWindow + all step classes) to Una.Drawing
+
+### Removed
+- OtterGui dependency (removed submodule and ProjectReference)
+- StyleManager.cs (replaced by CandyTheme named colors)
+
+---
+
 ## [0.16.2] — 2026-03-04
 
 ### Changed
