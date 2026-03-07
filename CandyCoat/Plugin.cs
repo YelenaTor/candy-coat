@@ -203,27 +203,26 @@ public sealed class Plugin : IDalamudPlugin
 
     public void Dispose()
     {
-        DrawingLib.Dispose();
-        ECommonsMain.Dispose();
-
-        // Unregister all actions to not leak anythign during disposal of plugin
+        // 1. Unregister all hooks and event handlers first
         Svc.ContextMenu.OnMenuOpened -= OnMenuOpened;
         PluginInterface.UiBuilder.Draw -= WindowSystem.Draw;
         PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUi;
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUi;
-        
+
+        // 2. Remove windows from window system
         WindowSystem.RemoveAllWindows();
 
+        // 3. Dispose IPC (before ECommons since it may use Svc)
         ChatTwoIpc?.Disable();
         ChatTwoIpc?.Dispose();
-        NameplateRenderer.Dispose();
-        
+
+        // 4. Dispose all windows and services that hold Una.Drawing nodes
         ToolbarService?.Dispose();
-        PatronDetailsWindow.Dispose();
+        NameplateRenderer?.Dispose();
+        PatronDetailsWindow?.Dispose();
         ProfileWindow?.Dispose();
         SessionWindow?.Dispose();
         SetupWindow?.Dispose();
-        
         TellService?.Dispose();
         TellWindow?.Dispose();
         SessionManager?.Dispose();
@@ -236,6 +235,12 @@ public sealed class Plugin : IDalamudPlugin
         CosmeticWindow?.Dispose();
 
         CommandManager.RemoveHandler(MainCommandName);
+
+        // 5. DrawingLib last — after all nodes are disposed
+        DrawingLib.Dispose();
+
+        // 6. ECommons last of all
+        ECommonsMain.Dispose();
     }
 
     private void OnMainCommand(string command, string args)
