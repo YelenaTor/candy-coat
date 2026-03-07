@@ -104,6 +104,7 @@ jobs:
 
         $testingDownloadUrl = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$zipName"
         $entry | Add-Member -Force -NotePropertyName "TestingAssemblyVersion" -NotePropertyValue "$version.0"
+        $entry | Add-Member -Force -NotePropertyName "TestingDalamudApiLevel" -NotePropertyValue 14
         $entry | Add-Member -Force -NotePropertyName "DownloadLinkTesting" -NotePropertyValue $testingDownloadUrl
         $entry | Add-Member -Force -NotePropertyName "TestingChangelog" -NotePropertyValue $changelogText
 
