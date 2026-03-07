@@ -84,9 +84,8 @@ public class SessionTab : ITab
 
     public Node BuildNode()
     {
-        var root = CandyUI.Column("session-root", 8);
-        root.AppendChild(CandyUI.SectionHeader("session-header", "Session Capture"));
-        root.AppendChild(CandyUI.Separator("session-sep1"));
+        var root    = UdtHelper.CreateFromTemplate("session-tab.xml", "session-layout");
+        var dynamic = root.QuerySelector("#session-dynamic")!;
 
         var manager    = _plugin.SessionManager;
         var statusCard = CandyUI.Card("session-status-card");
@@ -108,9 +107,9 @@ public class SessionTab : ITab
             btnRow.AppendChild(CandyUI.InputSpacer("session-use-target-btn", 160, 28));
             statusCard.AppendChild(btnRow);
         }
-        root.AppendChild(statusCard);
+        dynamic.AppendChild(statusCard);
 
-        root.AppendChild(CandyUI.Muted("session-hint",
+        dynamic.AppendChild(CandyUI.Muted("session-hint",
             "Right-click a player in Chat to start a session (requires ChatTwo)."));
 
         return root;

@@ -292,14 +292,17 @@ public class ManagementPanel : IToolboxPanel
 
     public Node BuildNode()
     {
+        var root    = UdtHelper.CreateFromTemplate("srt-management.xml", "management-layout");
+        var dynamic = root.QuerySelector("#srt-management-dynamic")!;
         Node content = _mgActiveTab switch {
             0 => BuildMgTabFloor(),
             1 => BuildMgTabIncidents(),
             2 => BuildMgTabPatrons(),
             _ => BuildMgTabShift(),
         };
-        return CandyUI.TabContainer("mg-tabs", MgTabs, _mgActiveTab,
-            idx => { _mgActiveTab = idx; }, content);
+        dynamic.AppendChild(CandyUI.TabContainer("mg-tabs", MgTabs, _mgActiveTab,
+            idx => { _mgActiveTab = idx; }, content));
+        return root;
     }
 
     private Node BuildMgTabFloor()
@@ -435,6 +438,8 @@ public class ManagementPanel : IToolboxPanel
 
     public Node BuildSettingsNode()
     {
+        var root    = UdtHelper.CreateFromTemplate("srt-management.xml", "management-settings-layout");
+        var dynamic = root.QuerySelector("#srt-management-settings-dynamic")!;
         var col = CandyUI.Column("mg-settings", 8);
         col.AppendChild(CandyUI.SectionHeader("mg-settings-hdr", "Management Settings"));
         col.AppendChild(CandyUI.Muted("mg-settings-desc", "Configure capacity thresholds and roster defaults."));
@@ -446,7 +451,8 @@ public class ManagementPanel : IToolboxPanel
         capCard.AppendChild(CandyUI.Muted("mg-settings-cap-hint",
             "Players nearby before showing capacity alert.", 11));
         col.AppendChild(capCard);
-        return col;
+        dynamic.AppendChild(col);
+        return root;
     }
 
     public void DrawOverlays()

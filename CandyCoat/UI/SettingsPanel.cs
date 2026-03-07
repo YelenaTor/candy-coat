@@ -32,15 +32,7 @@ public class SettingsPanel
     /// </summary>
     public Node BuildNode()
     {
-        return new Node
-        {
-            Id    = "settings-placeholder",
-            Style = new Style
-            {
-                AutoSize        = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Grow),
-                BackgroundColor = new Color(CandyTheme.BgWindow),
-            },
-        };
+        return UdtHelper.CreateFromTemplate("settings-panel.xml", "settings-layout");
     }
 
     /// <summary>
@@ -51,10 +43,10 @@ public class SettingsPanel
 
     public void DrawOverlays(Vector2 region)
     {
-        const float sidebarW = 200f + 16f; // sidebar width + its internal padding
-        var contentPos  = ImGui.GetWindowPos() + ImGui.GetWindowContentRegionMin()
-                          + new Vector2(sidebarW, 0);
-        var contentSize = new Vector2(region.X - sidebarW, region.Y);
+        // The balloon ghost window is already positioned at the balloon origin —
+        // no sidebar offset needed here.
+        var contentPos  = ImGui.GetWindowPos() + ImGui.GetWindowContentRegionMin();
+        var contentSize = new Vector2(region.X, region.Y);
 
         ImGui.SetNextWindowPos(contentPos, ImGuiCond.Always);
         ImGui.SetNextWindowSize(contentSize, ImGuiCond.Always);

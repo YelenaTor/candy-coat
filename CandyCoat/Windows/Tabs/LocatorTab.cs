@@ -191,9 +191,8 @@ public class LocatorTab : ITab
 
     public Node BuildNode()
     {
-        var root = CandyUI.Column("locator-root", 8);
-        root.AppendChild(CandyUI.SectionHeader("locator-header", "Patron Locator"));
-        root.AppendChild(CandyUI.Separator("locator-sep1"));
+        var root    = UdtHelper.CreateFromTemplate("locator-tab.xml", "locator-layout");
+        var dynamic = root.QuerySelector("#locator-dynamic")!;
 
         // Track-patron input row — live inputs in DrawOverlays()
         var addCard = CandyUI.Card("locator-add-card");
@@ -207,9 +206,9 @@ public class LocatorTab : ITab
         addCard.AppendChild(inputRow);
 
         addCard.AppendChild(CandyUI.InputSpacer("locator-detect-btn", 140, 28));
-        root.AppendChild(addCard);
+        dynamic.AppendChild(addCard);
 
-        root.AppendChild(CandyUI.Separator("locator-sep2"));
+        dynamic.AppendChild(CandyUI.Separator("locator-sep2"));
 
         // Nearby summary card
         var nearby = _plugin.LocatorService.NearbyRegulars;
@@ -231,11 +230,11 @@ public class LocatorTab : ITab
                     $"{patron.Name}  ({dist:F1}m)"));
             }
         }
-        root.AppendChild(nearbyCard);
+        dynamic.AppendChild(nearbyCard);
 
         // Patron list — rendered via DrawOverlays()
-        root.AppendChild(CandyUI.Muted("locator-list-label", "Regulars & Tracked List:"));
-        root.AppendChild(CandyUI.InputSpacer("locator-list-spacer", 0, 200));
+        dynamic.AppendChild(CandyUI.Muted("locator-list-label", "Regulars & Tracked List:"));
+        dynamic.AppendChild(CandyUI.InputSpacer("locator-list-spacer", 0, 200));
 
         return root;
     }

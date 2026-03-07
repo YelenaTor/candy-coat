@@ -1,0 +1,41 @@
+<udt>
+    <![CDATA[
+    #srt-dj-root {
+        flow: vertical;
+        auto-size: grow grow;
+        padding: 8;
+        gap: 6;
+    }
+
+    #srt-dj-dynamic {
+        flow: vertical;
+        auto-size: grow grow;
+        gap: 6;
+    }
+
+    #srt-dj-settings-root {
+        flow: vertical;
+        auto-size: grow grow;
+        padding: 8;
+        gap: 6;
+    }
+
+    #srt-dj-settings-dynamic {
+        flow: vertical;
+        auto-size: grow grow;
+        gap: 6;
+    }
+    ]]>
+
+    <template name="dj-layout">
+        <node id="srt-dj-root">
+            <node id="srt-dj-dynamic"/>
+        </node>
+    </template>
+
+    <template name="dj-settings-layout">
+        <node id="srt-dj-settings-root">
+            <node id="srt-dj-settings-dynamic"/>
+        </node>
+    </template>
+</udt>

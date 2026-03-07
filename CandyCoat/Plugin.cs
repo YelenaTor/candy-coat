@@ -69,6 +69,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         ECommonsMain.Init(PluginInterface, this);
         DrawingLib.Setup(PluginInterface);
+        UdtHelper.Initialize();
         CandyTheme.Apply();
 
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();

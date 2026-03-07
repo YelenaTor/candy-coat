@@ -1,0 +1,228 @@
+<udt>
+    <![CDATA[
+    .candy-card {
+        flow: vertical;
+        auto-size: grow fit;
+        padding: 10 12 10 12;
+        gap: 6;
+        background-color: 0xFF2A1C14;
+        border-color: 0xFF6A4A2A;
+        border-width: 1;
+        border-radius: 6;
+    }
+
+    .candy-button {
+        auto-size: fit fit;
+        size: 0 28;
+        padding: 0 12 0 12;
+        background-color: 0xFFB8804A;
+        border-radius: 4;
+        color: 0xFFF0E8E0;
+        font-size: 13;
+        text-align: middle-center;
+    }
+
+    .candy-button:hover {
+        background-color: 0xFFC8905A;
+    }
+
+    .candy-ghost-button {
+        auto-size: fit fit;
+        size: 0 26;
+        padding: 0 10 0 10;
+        background-color: 0xFF38281A;
+        border-radius: 4;
+        border-color: 0xFF6A4A2A;
+        border-width: 1;
+        color: 0xFFA09080;
+        font-size: 12;
+        text-align: middle-center;
+    }
+
+    .candy-ghost-button:hover {
+        background-color: 0xFF403024;
+        color: 0xFFF0E8E0;
+    }
+
+    .candy-small-button {
+        auto-size: fit fit;
+        size: 0 22;
+        padding: 0 8 0 8;
+        background-color: 0xFF38281A;
+        border-radius: 3;
+        border-color: 0xFF302018;
+        border-width: 1;
+        color: 0xFF706050;
+        font-size: 11;
+        text-align: middle-center;
+    }
+
+    .candy-small-button:hover {
+        color: 0xFFF0E8E0;
+    }
+
+    .candy-label {
+        auto-size: fit fit;
+        color: 0xFFF0E8E0;
+        font-size: 13;
+        text-align: middle-left;
+    }
+
+    .candy-section-header {
+        auto-size: grow fit;
+        color: 0xFFE8C070;
+        font-size: 14;
+        text-align: middle-left;
+        padding: 0 0 4 0;
+    }
+
+    .candy-muted {
+        auto-size: fit fit;
+        color: 0xFF706050;
+        font-size: 11;
+        text-align: middle-left;
+    }
+
+    .candy-separator {
+        size: 0 1;
+        auto-size: grow fit;
+        margin: 4 0 4 0;
+        background-color: 0xFF302018;
+    }
+
+    .candy-row {
+        auto-size: grow fit;
+        flow: horizontal;
+        gap: 8;
+    }
+
+    .candy-column {
+        auto-size: grow fit;
+        flow: vertical;
+        gap: 6;
+    }
+
+    .candy-scroll-box {
+        auto-size: grow fit;
+        flow: vertical;
+        gap: 4;
+    }
+
+    .candy-status-badge {
+        auto-size: fit fit;
+        flow: horizontal;
+        gap: 5;
+    }
+
+    .candy-status-dot {
+        size: 8 8;
+        border-radius: 4;
+    }
+
+    .candy-status-label {
+        auto-size: fit fit;
+        font-size: 12;
+        text-align: middle-left;
+    }
+
+    .candy-input-spacer {
+        /* Invisible spacer for ImGui overlay widgets */
+    }
+    ]]>
+
+    <!-- Card container -->
+    <template name="card">
+        <argument name="id" default="card"/>
+        <node id="${id}" class="candy-card">
+            <slot/>
+        </node>
+    </template>
+
+    <!-- Primary button -->
+    <template name="button">
+        <argument name="id" default="btn"/>
+        <argument name="label" default="Button"/>
+        <node id="${id}" class="candy-button" value="${label}"/>
+    </template>
+
+    <!-- Ghost button -->
+    <template name="ghost-button">
+        <argument name="id" default="ghost-btn"/>
+        <argument name="label" default="Button"/>
+        <node id="${id}" class="candy-ghost-button" value="${label}"/>
+    </template>
+
+    <!-- Small button -->
+    <template name="small-button">
+        <argument name="id" default="small-btn"/>
+        <argument name="label" default="Button"/>
+        <node id="${id}" class="candy-small-button" value="${label}"/>
+    </template>
+
+    <!-- Label -->
+    <template name="label">
+        <argument name="id" default="lbl"/>
+        <argument name="text" default=""/>
+        <node id="${id}" class="candy-label" value="${text}"/>
+    </template>
+
+    <!-- Section header -->
+    <template name="section-header">
+        <argument name="id" default="hdr"/>
+        <argument name="text" default=""/>
+        <node id="${id}" class="candy-section-header" value="${text}"/>
+    </template>
+
+    <!-- Muted text -->
+    <template name="muted">
+        <argument name="id" default="muted"/>
+        <argument name="text" default=""/>
+        <node id="${id}" class="candy-muted" value="${text}"/>
+    </template>
+
+    <!-- Separator -->
+    <template name="separator">
+        <argument name="id" default="sep"/>
+        <node id="${id}" class="candy-separator"/>
+    </template>
+
+    <!-- Row -->
+    <template name="row">
+        <argument name="id" default="row"/>
+        <node id="${id}" class="candy-row">
+            <slot/>
+        </node>
+    </template>
+
+    <!-- Column -->
+    <template name="column">
+        <argument name="id" default="col"/>
+        <node id="${id}" class="candy-column">
+            <slot/>
+        </node>
+    </template>
+
+    <!-- Scroll box — set size in C# after creation -->
+    <template name="scroll-box">
+        <argument name="id" default="scroll"/>
+        <node id="${id}" class="candy-scroll-box">
+            <slot/>
+        </node>
+    </template>
+
+    <!-- Status badge -->
+    <template name="status-badge">
+        <argument name="id" default="badge"/>
+        <argument name="label" default=""/>
+        <node id="${id}" class="candy-status-badge">
+            <node id="${id}-dot" class="candy-status-dot"/>
+            <node id="${id}-label" class="candy-status-label" value="${label}"/>
+        </node>
+    </template>
+
+    <!-- Input spacer — invisible layout reserve for ImGui overlays -->
+    <template name="input-spacer">
+        <argument name="id" default="spacer"/>
+        <node id="${id}" class="candy-input-spacer"/>
+    </template>
+</udt>

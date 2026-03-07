@@ -1,0 +1,12 @@
+<udt>
+    <![CDATA[
+    #settings-placeholder {
+        auto-size: grow grow;
+        background-color: 0xFF17110D;
+    }
+    ]]>
+
+    <template name="settings-layout">
+        <node id="settings-placeholder"/>
+    </template>
+</udt>

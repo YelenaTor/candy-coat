@@ -102,9 +102,8 @@ public class OverviewTab : ITab
 
     public Node BuildNode()
     {
-        var root = CandyUI.Column("overview-root", 8);
-        root.AppendChild(CandyUI.SectionHeader("overview-header", "Overview"));
-        root.AppendChild(CandyUI.Separator("overview-sep1"));
+        var root    = UdtHelper.CreateFromTemplate("overview-tab.xml", "overview-layout");
+        var dynamic = root.QuerySelector("#overview-dynamic")!;
 
         var cfg = _plugin.Configuration;
 
@@ -118,7 +117,7 @@ public class OverviewTab : ITab
             earningsCard.AppendChild(CandyUI.Label("overview-earnings-title", "Dashboard & Analytics", 13));
             earningsCard.AppendChild(CandyUI.Label("overview-daily",  $"Today's Earnings: {dailyEarnings:N0} Gil"));
             earningsCard.AppendChild(CandyUI.Label("overview-total",  $"All-Time Earnings: {totalEarnings:N0} Gil"));
-            root.AppendChild(earningsCard);
+            dynamic.AppendChild(earningsCard);
 
             var spendersCard = CandyUI.Card("overview-spenders-card");
             spendersCard.AppendChild(CandyUI.Label("overview-spenders-title", "Top 5 Spenders", 13));
@@ -141,7 +140,7 @@ public class OverviewTab : ITab
                     spendersCard.AppendChild(CandyUI.Label($"overview-spender-{i}", $"{p.Name}: {p.TotalGilSpent:N0} Gil"));
                 }
             }
-            root.AppendChild(spendersCard);
+            dynamic.AppendChild(spendersCard);
         }
         else
         {
@@ -167,9 +166,9 @@ public class OverviewTab : ITab
             statusCard.AppendChild(CandyUI.Separator("overview-status-sep"));
             statusCard.AppendChild(CandyUI.Label("overview-bookings-count", $"Active Bookings: {activeBookings}"));
             statusCard.AppendChild(CandyUI.Label("overview-waitlist-count", $"Waitlist Queue: {waitlistCount}"));
-            root.AppendChild(statusCard);
+            dynamic.AppendChild(statusCard);
 
-            root.AppendChild(CandyUI.Muted("overview-hint",
+            dynamic.AppendChild(CandyUI.Muted("overview-hint",
                 "Head to Bookings, Waitlist, or Staff Shifts to get started."));
         }
 

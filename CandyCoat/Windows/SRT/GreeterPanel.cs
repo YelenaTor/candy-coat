@@ -477,6 +477,8 @@ public class GreeterPanel : IToolboxPanel
 
     public Node BuildNode()
     {
+        var root    = UdtHelper.CreateFromTemplate("srt-greeter.xml", "greeter-layout");
+        var dynamic = root.QuerySelector("#srt-greeter-dynamic")!;
         Node content = _grActiveTab switch {
             0 => BuildGrTabQueue(),
             1 => BuildGrTabTells(),
@@ -489,7 +491,8 @@ public class GreeterPanel : IToolboxPanel
         col.AppendChild(CandyUI.Separator("gr-door-sep"));
         col.AppendChild(CandyUI.TabContainer("gr-tabs", GrTabs, _grActiveTab,
             idx => { _grActiveTab = idx; }, content));
-        return col;
+        dynamic.AppendChild(col);
+        return root;
     }
 
     private Node BuildGrTabQueue()
@@ -647,6 +650,8 @@ public class GreeterPanel : IToolboxPanel
 
     public Node BuildSettingsNode()
     {
+        var root    = UdtHelper.CreateFromTemplate("srt-greeter.xml", "greeter-settings-layout");
+        var dynamic = root.QuerySelector("#srt-greeter-settings-dynamic")!;
         var col = CandyUI.Column("gr-settings", 8);
         col.AppendChild(CandyUI.SectionHeader("gr-settings-hdr", "Greeter Settings"));
         col.AppendChild(CandyUI.Muted("gr-settings-desc", "Configure welcome macros, broadcasts, and preferences."));
@@ -722,8 +727,8 @@ public class GreeterPanel : IToolboxPanel
         prefCard.AppendChild(CandyUI.SectionHeader("gr-settings-pref-hdr", "Greeter Preferences"));
         prefCard.AppendChild(CandyUI.InputSpacer("gr-settings-pref-sp", 0, 50));
         col.AppendChild(prefCard);
-
-        return col;
+        dynamic.AppendChild(col);
+        return root;
     }
 
     public void DrawOverlays()

@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Una.Drawing;
@@ -16,8 +15,8 @@ public sealed class BalloonService : IDisposable
     // Constants
     // -------------------------------------------------------------------------
 
-    private const float BalloonHeight   = 480f;
-    private const float BalloonMaxWidth = 340f;
+    private const float BalloonHeight   = 500f;
+    private const float BalloonMaxWidth = 480f;
     private const float AnimSpeed       = 18f;
 
     // -------------------------------------------------------------------------
@@ -38,9 +37,9 @@ public sealed class BalloonService : IDisposable
     // -------------------------------------------------------------------------
 
     private readonly Configuration _config;
-    private readonly TabStrip      _tabStrip;
 
     private readonly Node _balloonRoot;
+    private readonly Node _titleBar;
     private readonly Node _contentArea;
 
     /// <summary>Animation alpha: 0 = fully closed, 1 = fully open.</summary>
@@ -55,8 +54,24 @@ public sealed class BalloonService : IDisposable
 
     public BalloonService(Configuration config)
     {
-        _config   = config;
-        _tabStrip = new TabStrip();
+        _config = config;
+
+        // Title bar — single-line label showing the active entry name
+        _titleBar = new Node
+        {
+            Id        = "BalloonTitleBar",
+            NodeValue = string.Empty,
+            Style     = new Style
+            {
+                Flow            = Flow.Horizontal,
+                AutoSize        = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Fit),
+                Padding         = new EdgeSize(6, 12),
+                BackgroundColor = new Color("Balloon.TabStripBg"),
+                Color           = new Color("Tab.Active"),
+                FontSize        = 13,
+                TextAlign       = Anchor.MiddleLeft,
+            },
+        };
 
         // Content area — fills remaining vertical space in the balloon
         _contentArea = new Node
@@ -69,7 +84,7 @@ public sealed class BalloonService : IDisposable
             },
         };
 
-        // Root balloon node — vertical stack: [TabStrip, ContentArea]
+        // Root balloon node — vertical stack: [TitleBar, ContentArea]
         _balloonRoot = new Node
         {
             Id    = "BalloonRoot",
@@ -86,7 +101,7 @@ public sealed class BalloonService : IDisposable
             },
         };
 
-        _balloonRoot.AppendChild(_tabStrip.Root);
+        _balloonRoot.AppendChild(_titleBar);
         _balloonRoot.AppendChild(_contentArea);
     }
 
@@ -120,12 +135,8 @@ public sealed class BalloonService : IDisposable
         var panelNode = entry.BuildPanel();
         _contentArea.AppendChild(panelNode);
 
-        // Update tab strip with a single tab representing this entry
-        _tabStrip.SetTabs(
-            new List<(string Id, string Label)> { (entry.Id, entry.Label) },
-            entry.Id,
-            _ => { /* Single-tab strip; no tab switching needed here */ }
-        );
+        // Update title bar to show the active entry label
+        _titleBar.NodeValue = entry.Label;
     }
 
     /// <summary>
@@ -209,8 +220,6 @@ public sealed class BalloonService : IDisposable
 
     public void Dispose()
     {
-        _tabStrip.Dispose();
-
         if (!_balloonRoot.IsDisposed)
             _balloonRoot.Dispose();
     }

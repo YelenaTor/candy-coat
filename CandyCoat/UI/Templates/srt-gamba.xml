@@ -1,0 +1,41 @@
+<udt>
+    <![CDATA[
+    #srt-gamba-root {
+        flow: vertical;
+        auto-size: grow grow;
+        padding: 8;
+        gap: 6;
+    }
+
+    #srt-gamba-dynamic {
+        flow: vertical;
+        auto-size: grow grow;
+        gap: 6;
+    }
+
+    #srt-gamba-settings-root {
+        flow: vertical;
+        auto-size: grow grow;
+        padding: 8;
+        gap: 6;
+    }
+
+    #srt-gamba-settings-dynamic {
+        flow: vertical;
+        auto-size: grow grow;
+        gap: 6;
+    }
+    ]]>
+
+    <template name="gamba-layout">
+        <node id="srt-gamba-root">
+            <node id="srt-gamba-dynamic"/>
+        </node>
+    </template>
+
+    <template name="gamba-settings-layout">
+        <node id="srt-gamba-settings-root">
+            <node id="srt-gamba-settings-dynamic"/>
+        </node>
+    </template>
+</udt>

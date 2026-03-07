@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.19.0] - 2026-03-07
+
+### Changed
+- **Backstage retheme**: replaced pink/purple palette with dark charcoal + steel blue + ice blue throughout all panels, toolbar, and balloon
+- **UDT XML migration**: all Una.Drawing node layouts migrated to embedded XML template resources under `UI/Templates/` — cleaner separation of layout and logic
+- **Balloon expanded to 480px**: wider panel for better content readability (was 340px)
+- **Balloon title bar**: replaced single-tab TabStrip at top of balloon with a simple title bar showing the active entry name — less visual noise
+
+### Fixed
+- **FontAwesome icons**: toolbar buttons now correctly render FA glyphs (was showing `[X]` boxes) — `Style.Font = 2` points to FontRegistry slot pre-loaded by `DrawingLib.Setup()`
+- **Settings panel positioning**: removed incorrect 216px sidebar offset from `SettingsPanel.DrawOverlays()` — settings content now fills the balloon ghost window correctly without clipping
+
+---
+
 ## [0.18.0] - 2026-03-07
 
 ### Changed

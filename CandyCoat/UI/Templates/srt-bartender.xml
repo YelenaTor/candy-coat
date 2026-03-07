@@ -1,0 +1,41 @@
+<udt>
+    <![CDATA[
+    #srt-bartender-root {
+        flow: vertical;
+        auto-size: grow grow;
+        padding: 8;
+        gap: 6;
+    }
+
+    #srt-bartender-dynamic {
+        flow: vertical;
+        auto-size: grow grow;
+        gap: 6;
+    }
+
+    #srt-bartender-settings-root {
+        flow: vertical;
+        auto-size: grow grow;
+        padding: 8;
+        gap: 6;
+    }
+
+    #srt-bartender-settings-dynamic {
+        flow: vertical;
+        auto-size: grow grow;
+        gap: 6;
+    }
+    ]]>
+
+    <template name="bartender-layout">
+        <node id="srt-bartender-root">
+            <node id="srt-bartender-dynamic"/>
+        </node>
+    </template>
+
+    <template name="bartender-settings-layout">
+        <node id="srt-bartender-settings-root">
+            <node id="srt-bartender-settings-dynamic"/>
+        </node>
+    </template>
+</udt>

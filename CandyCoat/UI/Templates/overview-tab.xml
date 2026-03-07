@@ -1,0 +1,39 @@
+<udt>
+    <![CDATA[
+    #overview-root {
+        flow: vertical;
+        auto-size: grow grow;
+        padding: 12;
+        gap: 8;
+    }
+
+    #overview-header {
+        auto-size: grow fit;
+        font-size: 14;
+        color: 0xFFE8C070;
+        text-align: middle-left;
+        padding: 0 0 4 0;
+    }
+
+    #overview-sep {
+        size: 0 1;
+        auto-size: grow fit;
+        margin: 4 0 4 0;
+        background-color: 0xFF302018;
+    }
+
+    #overview-dynamic {
+        flow: vertical;
+        auto-size: grow grow;
+        gap: 8;
+    }
+    ]]>
+
+    <template name="overview-layout">
+        <node id="overview-root">
+            <node id="overview-header" value="Overview"/>
+            <node id="overview-sep"/>
+            <node id="overview-dynamic"/>
+        </node>
+    </template>
+</udt>

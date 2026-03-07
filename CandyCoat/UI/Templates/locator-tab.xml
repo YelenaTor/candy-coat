@@ -1,0 +1,39 @@
+<udt>
+    <![CDATA[
+    #locator-root {
+        flow: vertical;
+        auto-size: grow grow;
+        padding: 12;
+        gap: 8;
+    }
+
+    #locator-header {
+        auto-size: grow fit;
+        font-size: 14;
+        color: 0xFFE8C070;
+        text-align: middle-left;
+        padding: 0 0 4 0;
+    }
+
+    #locator-sep {
+        size: 0 1;
+        auto-size: grow fit;
+        margin: 4 0 4 0;
+        background-color: 0xFF302018;
+    }
+
+    #locator-dynamic {
+        flow: vertical;
+        auto-size: grow grow;
+        gap: 8;
+    }
+    ]]>
+
+    <template name="locator-layout">
+        <node id="locator-root">
+            <node id="locator-header" value="Locator"/>
+            <node id="locator-sep"/>
+            <node id="locator-dynamic"/>
+        </node>
+    </template>
+</udt>

@@ -68,6 +68,7 @@ public sealed class ToolbarButton : IDisposable
             Style     = new Style
             {
                 Size        = new Size(36, 36),
+                Font        = 2,  // FontAwesome Free Solid, registered at ID 2 by DrawingLib.Setup()
                 FontSize    = 18,
                 TextAlign   = Anchor.MiddleCenter,
                 Color       = new Color("Toolbar.Icon"),

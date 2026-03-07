@@ -1,0 +1,72 @@
+<udt>
+    <![CDATA[
+    #tab-strip-root {
+        flow: vertical;
+        auto-size: grow fit;
+        background-color: 0xFF18100A;
+        gap: 0;
+    }
+
+    #tab-strip-row {
+        flow: horizontal;
+        auto-size: grow fit;
+        gap: 0;
+        padding: 0;
+    }
+
+    #tab-strip-sep {
+        size: 0 1;
+        auto-size: grow fit;
+        background-color: 0xFF38281A;
+    }
+
+    .tab-item {
+        flow: horizontal;
+        anchor: middle-left;
+        padding: 6 12 6 12;
+        gap: 0;
+        auto-size: fit fit;
+        background-color: 0x00000000;
+    }
+
+    .tab-item:hover {
+        background-color: 0xFF38281A;
+    }
+
+    .tab-item-label {
+        font-size: 12;
+        color: 0xFF706050;
+        text-align: middle-center;
+        text-overflow: false;
+    }
+
+    .tab-item-label:hover {
+        color: 0xFFD8C090;
+    }
+
+    .tab-item-active {
+        background-color: 0xFF50301A;
+        border-color: 0xFFE8C070;
+        border-width: 0 0 2 0;
+    }
+
+    .tab-item-active-label {
+        color: 0xFFE8C070;
+    }
+    ]]>
+
+    <template name="tab-strip-root">
+        <node id="tab-strip-root">
+            <node id="tab-strip-row"/>
+            <node id="tab-strip-sep"/>
+        </node>
+    </template>
+
+    <template name="tab-item">
+        <argument name="id" default="tab"/>
+        <argument name="label" default="Tab"/>
+        <node id="${id}" class="tab-item">
+            <node id="${id}-label" class="tab-item-label" value="${label}"/>
+        </node>
+    </template>
+</udt>

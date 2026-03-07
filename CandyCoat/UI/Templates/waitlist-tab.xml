@@ -1,0 +1,39 @@
+<udt>
+    <![CDATA[
+    #waitlist-root {
+        flow: vertical;
+        auto-size: grow grow;
+        padding: 12;
+        gap: 8;
+    }
+
+    #waitlist-header {
+        auto-size: grow fit;
+        font-size: 14;
+        color: 0xFFE8C070;
+        text-align: middle-left;
+        padding: 0 0 4 0;
+    }
+
+    #waitlist-sep {
+        size: 0 1;
+        auto-size: grow fit;
+        margin: 4 0 4 0;
+        background-color: 0xFF302018;
+    }
+
+    #waitlist-dynamic {
+        flow: vertical;
+        auto-size: grow grow;
+        gap: 8;
+    }
+    ]]>
+
+    <template name="waitlist-layout">
+        <node id="waitlist-root">
+            <node id="waitlist-header" value="Waitlist"/>
+            <node id="waitlist-sep"/>
+            <node id="waitlist-dynamic"/>
+        </node>
+    </template>
+</udt>

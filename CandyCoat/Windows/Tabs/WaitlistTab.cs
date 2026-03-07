@@ -130,9 +130,8 @@ public class WaitlistTab : ITab
 
     public Node BuildNode()
     {
-        var root = CandyUI.Column("waitlist-root", 8);
-        root.AppendChild(CandyUI.SectionHeader("waitlist-header", "Waitlist"));
-        root.AppendChild(CandyUI.Separator("waitlist-sep1"));
+        var root    = UdtHelper.CreateFromTemplate("waitlist-tab.xml", "waitlist-layout");
+        var dynamic = root.QuerySelector("#waitlist-dynamic")!;
 
         // Add-entry row — live input rendered via DrawOverlays()
         var addCard = CandyUI.Card("waitlist-add-card");
@@ -142,9 +141,9 @@ public class WaitlistTab : ITab
         inputRow.AppendChild(CandyUI.InputSpacer("waitlist-name-input", 200));
         inputRow.AppendChild(CandyUI.InputSpacer("waitlist-add-btn",    120, 28));
         addCard.AppendChild(inputRow);
-        root.AppendChild(addCard);
+        dynamic.AppendChild(addCard);
 
-        root.AppendChild(CandyUI.Separator("waitlist-sep2"));
+        dynamic.AppendChild(CandyUI.Separator("waitlist-sep2"));
 
         // Queue summary card
         var queueCard = CandyUI.Card("waitlist-queue-card");
@@ -161,7 +160,7 @@ public class WaitlistTab : ITab
             // Spacer for the ImGui table rendered in DrawOverlays()
             queueCard.AppendChild(CandyUI.InputSpacer("waitlist-table-spacer", 0, 200));
         }
-        root.AppendChild(queueCard);
+        dynamic.AppendChild(queueCard);
 
         return root;
     }

@@ -236,7 +236,7 @@ public sealed class ToolbarService : IDisposable
             ToolbarAnchor.Left   => new Vector2(toolbarPos.X + _toolbarWidth + 6f,        toolbarPos.Y),
             ToolbarAnchor.Right  => new Vector2(toolbarPos.X - _config.BalloonWidth - 6f, toolbarPos.Y),
             ToolbarAnchor.Top    => new Vector2(toolbarPos.X,                             toolbarPos.Y + GetToolbarHeight() + 6f),
-            ToolbarAnchor.Bottom => new Vector2(toolbarPos.X,                             toolbarPos.Y - 480f - 6f),
+            ToolbarAnchor.Bottom => new Vector2(toolbarPos.X,                             toolbarPos.Y - 500f - 6f),
             _                    => new Vector2(toolbarPos.X + _toolbarWidth + 6f,        toolbarPos.Y),
         };
     }

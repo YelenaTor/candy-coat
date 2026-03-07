@@ -1,0 +1,41 @@
+<udt>
+    <![CDATA[
+    #srt-sweetheart-root {
+        flow: vertical;
+        auto-size: grow grow;
+        padding: 8;
+        gap: 6;
+    }
+
+    #srt-sweetheart-dynamic {
+        flow: vertical;
+        auto-size: grow grow;
+        gap: 6;
+    }
+
+    #srt-sweetheart-settings-root {
+        flow: vertical;
+        auto-size: grow grow;
+        padding: 8;
+        gap: 6;
+    }
+
+    #srt-sweetheart-settings-dynamic {
+        flow: vertical;
+        auto-size: grow grow;
+        gap: 6;
+    }
+    ]]>
+
+    <template name="sweetheart-layout">
+        <node id="srt-sweetheart-root">
+            <node id="srt-sweetheart-dynamic"/>
+        </node>
+    </template>
+
+    <template name="sweetheart-settings-layout">
+        <node id="srt-sweetheart-settings-root">
+            <node id="srt-sweetheart-settings-dynamic"/>
+        </node>
+    </template>
+</udt>

@@ -659,14 +659,17 @@ public class OwnerPanel : IToolboxPanel
 
     public Node BuildNode()
     {
+        var root    = UdtHelper.CreateFromTemplate("srt-owner.xml", "owner-layout");
+        var dynamic = root.QuerySelector("#srt-owner-dynamic")!;
         Node content = _owActiveTab switch {
             0 => BuildOwTabRevenue(),
             1 => BuildOwTabPatrons(),
             2 => BuildOwTabManage(),
             _ => BuildOwTabPing(),
         };
-        return CandyUI.TabContainer("ow-tabs", OwTabs, _owActiveTab,
-            idx => { _owActiveTab = idx; }, content);
+        dynamic.AppendChild(CandyUI.TabContainer("ow-tabs", OwTabs, _owActiveTab,
+            idx => { _owActiveTab = idx; }, content));
+        return root;
     }
 
     private Node BuildOwTabRevenue()
@@ -879,6 +882,8 @@ public class OwnerPanel : IToolboxPanel
 
     public Node BuildSettingsNode()
     {
+        var root    = UdtHelper.CreateFromTemplate("srt-owner.xml", "owner-settings-layout");
+        var dynamic = root.QuerySelector("#srt-owner-settings-dynamic")!;
         var col = CandyUI.Column("ow-settings", 8);
         col.AppendChild(CandyUI.SectionHeader("ow-settings-hdr", "Owner Settings"));
         col.AppendChild(CandyUI.Muted("ow-settings-desc", "Venue configuration, rooms, menu, and role cosmetics."));
@@ -984,8 +989,8 @@ public class OwnerPanel : IToolboxPanel
         var roleCount = Enum.GetValues<StaffRole>().Count(r => r != StaffRole.None);
         cosCard.AppendChild(CandyUI.InputSpacer("ow-settings-cos-sp", 0, roleCount * 30 + 20));
         col.AppendChild(cosCard);
-
-        return col;
+        dynamic.AppendChild(col);
+        return root;
     }
 
     public void DrawOverlays()

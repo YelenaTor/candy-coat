@@ -302,6 +302,8 @@ public class BartenderPanel : IToolboxPanel
 
     public Node BuildNode()
     {
+        var root    = UdtHelper.CreateFromTemplate("srt-bartender.xml", "bartender-layout");
+        var dynamic = root.QuerySelector("#srt-bartender-dynamic")!;
         Node content = _btActiveTab switch {
             0 => BuildBtTabMenu(),
             1 => BuildBtTabTabs(),
@@ -314,7 +316,8 @@ public class BartenderPanel : IToolboxPanel
         col.AppendChild(CandyUI.Separator("bt-queue-sep"));
         col.AppendChild(CandyUI.TabContainer("bt-tabs", BtTabs, _btActiveTab,
             idx => { _btActiveTab = idx; }, content));
-        return col;
+        dynamic.AppendChild(col);
+        return root;
     }
 
     private Node BuildBtTabMenu()
@@ -412,6 +415,8 @@ public class BartenderPanel : IToolboxPanel
 
     public Node BuildSettingsNode()
     {
+        var root    = UdtHelper.CreateFromTemplate("srt-bartender.xml", "bartender-settings-layout");
+        var dynamic = root.QuerySelector("#srt-bartender-settings-dynamic")!;
         var col = CandyUI.Column("bt-settings", 8);
         col.AppendChild(CandyUI.SectionHeader("bt-settings-hdr", "Bartender Settings"));
         col.AppendChild(CandyUI.Muted("bt-settings-desc", "Configure your RP emote macro bank."));
@@ -445,7 +450,8 @@ public class BartenderPanel : IToolboxPanel
         }
         macroCard.AppendChild(CandyUI.InputSpacer("bt-settings-add-sp", 0, 28));
         col.AppendChild(macroCard);
-        return col;
+        dynamic.AppendChild(col);
+        return root;
     }
 
     public void DrawOverlays()

@@ -1,0 +1,49 @@
+<udt>
+    <![CDATA[
+    #balloon-root {
+        flow: vertical;
+        background-color: 0xFF20150D;
+        border-color: 0xFF6A4A2A;
+        border-width: 1;
+        border-radius: 6;
+    }
+
+    #balloon-titlebar {
+        flow: horizontal;
+        auto-size: grow fit;
+        padding: 8 12 8 12;
+        gap: 8;
+        background-color: 0xFF18100A;
+    }
+
+    #balloon-titlebar-label {
+        auto-size: grow fit;
+        font-size: 13;
+        color: 0xFFE8C070;
+        text-align: middle-left;
+    }
+
+    #balloon-titlebar-sep {
+        size: 0 1;
+        auto-size: grow fit;
+        background-color: 0xFF38281A;
+    }
+
+    #balloon-content {
+        flow: vertical;
+        auto-size: grow grow;
+        padding: 12;
+        gap: 8;
+    }
+    ]]>
+
+    <template name="balloon-root">
+        <node id="balloon-root">
+            <node id="balloon-titlebar">
+                <node id="balloon-titlebar-label" value=""/>
+            </node>
+            <node id="balloon-titlebar-sep"/>
+            <node id="balloon-content"/>
+        </node>
+    </template>
+</udt>

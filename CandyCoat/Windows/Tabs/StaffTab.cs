@@ -80,9 +80,8 @@ public class StaffTab : ITab
 
     public Node BuildNode()
     {
-        var root = CandyUI.Column("staff-root", 8);
-        root.AppendChild(CandyUI.SectionHeader("staff-header", "Staff Shifts"));
-        root.AppendChild(CandyUI.Separator("staff-sep1"));
+        var root    = UdtHelper.CreateFromTemplate("staff-tab.xml", "staff-layout");
+        var dynamic = root.QuerySelector("#staff-dynamic")!;
 
         var shift      = _manager.CurrentShift;
         var statusCard = CandyUI.Card("staff-status-card");
@@ -104,9 +103,9 @@ public class StaffTab : ITab
             statusCard.AppendChild(CandyUI.Button("staff-clockin-btn", "Clock In",
                 () => _manager.ClockIn()));
         }
-        root.AppendChild(statusCard);
+        dynamic.AppendChild(statusCard);
 
-        root.AppendChild(CandyUI.Separator("staff-sep2"));
+        dynamic.AppendChild(CandyUI.Separator("staff-sep2"));
 
         // Recent shifts card
         var historyCard = CandyUI.Card("staff-history-card");
@@ -128,7 +127,7 @@ public class StaffTab : ITab
                     $"{s.StartTime:MM/dd}  {durStr}  {s.GilEarned:N0} Gil"));
             }
         }
-        root.AppendChild(historyCard);
+        dynamic.AppendChild(historyCard);
 
         return root;
     }

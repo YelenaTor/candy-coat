@@ -486,14 +486,17 @@ public class CandyHeartPanel : IToolboxPanel
 
     public Node BuildNode()
     {
+        var root    = UdtHelper.CreateFromTemplate("srt-candyheart.xml", "candyheart-layout");
+        var dynamic = root.QuerySelector("#srt-candyheart-dynamic")!;
         Node content = _chActiveTab switch {
             0 => BuildChTabSession(),
             1 => BuildChTabPatron(),
             2 => BuildChTabTools(),
             _ => BuildChTabEarnings(),
         };
-        return CandyUI.TabContainer("ch-tabs", ChTabs, _chActiveTab,
-            idx => { _chActiveTab = idx; }, content);
+        dynamic.AppendChild(CandyUI.TabContainer("ch-tabs", ChTabs, _chActiveTab,
+            idx => { _chActiveTab = idx; }, content));
+        return root;
     }
 
     private Node BuildChTabSession()
@@ -665,6 +668,8 @@ public class CandyHeartPanel : IToolboxPanel
 
     public Node BuildSettingsNode()
     {
+        var root    = UdtHelper.CreateFromTemplate("srt-candyheart.xml", "candyheart-settings-layout");
+        var dynamic = root.QuerySelector("#srt-candyheart-settings-dynamic")!;
         var col = CandyUI.Column("ch-settings", 8);
         col.AppendChild(CandyUI.SectionHeader("ch-settings-hdr", "Candy Heart Settings"));
         col.AppendChild(CandyUI.Muted("ch-settings-desc", "Configure your welcome macro bank."));
@@ -697,7 +702,8 @@ public class CandyHeartPanel : IToolboxPanel
         }
         macroCard.AppendChild(CandyUI.InputSpacer("ch-settings-add-sp", 0, 28));
         col.AppendChild(macroCard);
-        return col;
+        dynamic.AppendChild(col);
+        return root;
     }
 
     public void DrawOverlays()

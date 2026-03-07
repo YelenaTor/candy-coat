@@ -253,6 +253,8 @@ public class DJPanel : IToolboxPanel
 
     public Node BuildNode()
     {
+        var root    = UdtHelper.CreateFromTemplate("srt-dj.xml", "dj-layout");
+        var dynamic = root.QuerySelector("#srt-dj-dynamic")!;
         Node content = _djActiveTab switch {
             0 => BuildDjTabSet(),
             1 => BuildDjTabEngage(),
@@ -265,7 +267,8 @@ public class DJPanel : IToolboxPanel
         col.AppendChild(CandyUI.Separator("dj-timer-sep"));
         col.AppendChild(CandyUI.TabContainer("dj-tabs", DjTabs, _djActiveTab,
             idx => { _djActiveTab = idx; }, content));
-        return col;
+        dynamic.AppendChild(col);
+        return root;
     }
 
     private Node BuildDjTabSet()
@@ -359,6 +362,8 @@ public class DJPanel : IToolboxPanel
 
     public Node BuildSettingsNode()
     {
+        var root    = UdtHelper.CreateFromTemplate("srt-dj.xml", "dj-settings-layout");
+        var dynamic = root.QuerySelector("#srt-dj-settings-dynamic")!;
         var col = CandyUI.Column("dj-settings", 8);
         col.AppendChild(CandyUI.SectionHeader("dj-settings-hdr", "DJ Settings"));
         col.AppendChild(CandyUI.Muted("dj-settings-desc", "Configure stream URL and set preferences."));
@@ -370,7 +375,8 @@ public class DJPanel : IToolboxPanel
         streamCard.AppendChild(CandyUI.Muted("dj-settings-stream-hint",
             "Paste URL here to pre-fill the stream link field.", 11));
         col.AppendChild(streamCard);
-        return col;
+        dynamic.AppendChild(col);
+        return root;
     }
 
     public void DrawOverlays()

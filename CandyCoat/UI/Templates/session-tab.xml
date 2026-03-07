@@ -1,0 +1,39 @@
+<udt>
+    <![CDATA[
+    #session-root {
+        flow: vertical;
+        auto-size: grow grow;
+        padding: 12;
+        gap: 8;
+    }
+
+    #session-header {
+        auto-size: grow fit;
+        font-size: 14;
+        color: 0xFFE8C070;
+        text-align: middle-left;
+        padding: 0 0 4 0;
+    }
+
+    #session-sep {
+        size: 0 1;
+        auto-size: grow fit;
+        margin: 4 0 4 0;
+        background-color: 0xFF302018;
+    }
+
+    #session-dynamic {
+        flow: vertical;
+        auto-size: grow grow;
+        gap: 8;
+    }
+    ]]>
+
+    <template name="session-layout">
+        <node id="session-root">
+            <node id="session-header" value="Session"/>
+            <node id="session-sep"/>
+            <node id="session-dynamic"/>
+        </node>
+    </template>
+</udt>

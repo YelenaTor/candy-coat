@@ -483,14 +483,17 @@ public class SweetheartPanel : IToolboxPanel
 
     public Node BuildNode()
     {
+        var root    = UdtHelper.CreateFromTemplate("srt-sweetheart.xml", "sweetheart-layout");
+        var dynamic = root.QuerySelector("#srt-sweetheart-dynamic")!;
         Node content = _activeTab switch {
             0 => BuildTabSession(),
             1 => BuildTabPatron(),
             2 => BuildTabTools(),
             _ => BuildTabEarnings(),
         };
-        return CandyUI.TabContainer("sh-tabs", Tabs, _activeTab,
-            idx => { _activeTab = idx; }, content);
+        dynamic.AppendChild(CandyUI.TabContainer("sh-tabs", Tabs, _activeTab,
+            idx => { _activeTab = idx; }, content));
+        return root;
     }
 
     private Node BuildTabSession()
@@ -687,6 +690,8 @@ public class SweetheartPanel : IToolboxPanel
 
     public Node BuildSettingsNode()
     {
+        var root    = UdtHelper.CreateFromTemplate("srt-sweetheart.xml", "sweetheart-settings-layout");
+        var dynamic = root.QuerySelector("#srt-sweetheart-settings-dynamic")!;
         var col = CandyUI.Column("sh-settings", 8);
         col.AppendChild(CandyUI.SectionHeader("sh-settings-hdr", "Sweetheart Settings"));
         col.AppendChild(CandyUI.Muted("sh-settings-desc", "Configure your macro bank and role preferences."));
@@ -719,7 +724,8 @@ public class SweetheartPanel : IToolboxPanel
         }
         macroCard.AppendChild(CandyUI.InputSpacer("sh-settings-add-sp", 0, 28));
         col.AppendChild(macroCard);
-        return col;
+        dynamic.AppendChild(col);
+        return root;
     }
 
     public void DrawOverlays()

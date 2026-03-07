@@ -258,9 +258,8 @@ public class BookingsTab : ITab
 
     public Node BuildNode()
     {
-        var root = CandyUI.Column("bookings-root", 8);
-        root.AppendChild(CandyUI.SectionHeader("bookings-header", "Bookings"));
-        root.AppendChild(CandyUI.Separator("bookings-sep1"));
+        var root    = UdtHelper.CreateFromTemplate("bookings-tab.xml", "bookings-layout");
+        var dynamic = root.QuerySelector("#bookings-dynamic")!;
 
         // Input form card — live ImGui inputs are rendered in DrawOverlays()
         var formCard = CandyUI.Card("bookings-form-card");
@@ -277,9 +276,9 @@ public class BookingsTab : ITab
         formCard.AppendChild(row2);
 
         formCard.AppendChild(CandyUI.InputSpacer("bookings-add-btn", 120, 32));
-        root.AppendChild(formCard);
+        dynamic.AppendChild(formCard);
 
-        root.AppendChild(CandyUI.Separator("bookings-sep2"));
+        dynamic.AppendChild(CandyUI.Separator("bookings-sep2"));
 
         // Current bookings summary card
         var listCard = CandyUI.Card("bookings-list-card");
@@ -295,10 +294,10 @@ public class BookingsTab : ITab
                 $"{activeCount} active / {count} total bookings"));
             listCard.AppendChild(CandyUI.Muted("bookings-table-hint", "Full booking table rendered below."));
         }
-        root.AppendChild(listCard);
+        dynamic.AppendChild(listCard);
 
         // Spacer so the ImGui table rendered in DrawOverlays() has room
-        root.AppendChild(CandyUI.InputSpacer("bookings-table-spacer", 0, 300));
+        dynamic.AppendChild(CandyUI.InputSpacer("bookings-table-spacer", 0, 300));
 
         return root;
     }

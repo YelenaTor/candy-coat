@@ -1,0 +1,41 @@
+<udt>
+    <![CDATA[
+    #srt-candyheart-root {
+        flow: vertical;
+        auto-size: grow grow;
+        padding: 8;
+        gap: 6;
+    }
+
+    #srt-candyheart-dynamic {
+        flow: vertical;
+        auto-size: grow grow;
+        gap: 6;
+    }
+
+    #srt-candyheart-settings-root {
+        flow: vertical;
+        auto-size: grow grow;
+        padding: 8;
+        gap: 6;
+    }
+
+    #srt-candyheart-settings-dynamic {
+        flow: vertical;
+        auto-size: grow grow;
+        gap: 6;
+    }
+    ]]>
+
+    <template name="candyheart-layout">
+        <node id="srt-candyheart-root">
+            <node id="srt-candyheart-dynamic"/>
+        </node>
+    </template>
+
+    <template name="candyheart-settings-layout">
+        <node id="srt-candyheart-settings-root">
+            <node id="srt-candyheart-settings-dynamic"/>
+        </node>
+    </template>
+</udt>

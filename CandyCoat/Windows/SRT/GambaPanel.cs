@@ -315,6 +315,8 @@ public class GambaPanel : IToolboxPanel, IDisposable
 
     public Node BuildNode()
     {
+        var root    = UdtHelper.CreateFromTemplate("srt-gamba.xml", "gamba-layout");
+        var dynamic = root.QuerySelector("#srt-gamba-dynamic")!;
         Node content = _gbActiveTab switch {
             0 => BuildGbTabRolls(),
             1 => BuildGbTabPayout(),
@@ -327,7 +329,8 @@ public class GambaPanel : IToolboxPanel, IDisposable
         col.AppendChild(CandyUI.Separator("gb-round-sep"));
         col.AppendChild(CandyUI.TabContainer("gb-tabs", GbTabs, _gbActiveTab,
             idx => { _gbActiveTab = idx; }, content));
-        return col;
+        dynamic.AppendChild(col);
+        return root;
     }
 
     private Node BuildGbTabRolls()
@@ -432,6 +435,8 @@ public class GambaPanel : IToolboxPanel, IDisposable
 
     public Node BuildSettingsNode()
     {
+        var root    = UdtHelper.CreateFromTemplate("srt-gamba.xml", "gamba-settings-layout");
+        var dynamic = root.QuerySelector("#srt-gamba-settings-dynamic")!;
         var col = CandyUI.Column("gb-settings", 8);
         col.AppendChild(CandyUI.SectionHeader("gb-settings-hdr", "Gamba Settings"));
         col.AppendChild(CandyUI.Muted("gb-settings-desc", "Manage your game presets."));
@@ -465,7 +470,8 @@ public class GambaPanel : IToolboxPanel, IDisposable
         }
         presetCard.AppendChild(CandyUI.InputSpacer("gb-settings-add-sp", 0, 56));
         col.AppendChild(presetCard);
-        return col;
+        dynamic.AppendChild(col);
+        return root;
     }
 
     public void DrawOverlays()

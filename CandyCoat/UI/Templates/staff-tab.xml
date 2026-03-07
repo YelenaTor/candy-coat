@@ -1,0 +1,39 @@
+<udt>
+    <![CDATA[
+    #staff-root {
+        flow: vertical;
+        auto-size: grow grow;
+        padding: 12;
+        gap: 8;
+    }
+
+    #staff-header {
+        auto-size: grow fit;
+        font-size: 14;
+        color: 0xFFE8C070;
+        text-align: middle-left;
+        padding: 0 0 4 0;
+    }
+
+    #staff-sep {
+        size: 0 1;
+        auto-size: grow fit;
+        margin: 4 0 4 0;
+        background-color: 0xFF302018;
+    }
+
+    #staff-dynamic {
+        flow: vertical;
+        auto-size: grow grow;
+        gap: 8;
+    }
+    ]]>
+
+    <template name="staff-layout">
+        <node id="staff-root">
+            <node id="staff-header" value="Staff Shifts"/>
+            <node id="staff-sep"/>
+            <node id="staff-dynamic"/>
+        </node>
+    </template>
+</udt>

@@ -1,0 +1,50 @@
+<udt>
+    <![CDATA[
+    .tb-btn {
+        flow: horizontal;
+        anchor: middle-left;
+        padding: 4;
+        gap: 0;
+        background-color: 0x00000000;
+    }
+
+    .tb-btn:hover {
+        background-color: 0xFF38281A;
+        border-radius: 6;
+    }
+
+    .tb-icon {
+        size: 36 36;
+        font: 2;
+        font-size: 18;
+        text-align: middle-center;
+        color: 0xFFB89060;
+        anchor: middle-center;
+        stroke-color: 0xFFE8C070;
+        stroke-width: 2;
+    }
+
+    .tb-icon:hover {
+        color: 0xFFE8C070;
+    }
+
+    .tb-label {
+        font-size: 11;
+        color: 0xFFA09080;
+        text-align: middle-center;
+        text-overflow: false;
+        is-visible: false;
+        margin: 0 0 0 6;
+    }
+    ]]>
+
+    <template name="toolbar-button">
+        <argument name="id" default="btn"/>
+        <argument name="icon" default=""/>
+        <argument name="label" default=""/>
+        <node id="${id}-btn" class="tb-btn">
+            <node id="${id}-icon" class="tb-icon" value="${icon}"/>
+            <node id="${id}-label" class="tb-label" value="${label}"/>
+        </node>
+    </template>
+</udt>
