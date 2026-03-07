@@ -98,6 +98,12 @@ public class Configuration : IPluginConfiguration
     public bool CosmeticAutoRedraw { get; set; } = false;
     public DateTime LastSyncTimestamp { get; set; } = DateTime.MinValue;
 
+    // Toolbar layout
+    public ToolbarAnchor ToolbarAnchor { get; set; } = ToolbarAnchor.Left;
+    public bool ToolbarLocked { get; set; } = false;
+    public float BalloonWidth { get; set; } = 380f;
+    public string LastActiveEntryId { get; set; } = string.Empty;
+
     // The below exist just to make saving less cumbersome
     public void Save()
     {
