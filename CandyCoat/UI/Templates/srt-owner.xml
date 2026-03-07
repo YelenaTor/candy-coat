@@ -12,30 +12,9 @@
         auto-size: grow grow;
         gap: 6;
     }
-
-    #srt-owner-settings-root {
-        flow: vertical;
-        auto-size: grow grow;
-        padding: 8;
-        gap: 6;
-    }
-
-    #srt-owner-settings-dynamic {
-        flow: vertical;
-        auto-size: grow grow;
-        gap: 6;
-    }
     ]]>
 
-    <template name="owner-layout">
-        <node id="srt-owner-root">
-            <node id="srt-owner-dynamic"/>
-        </node>
-    </template>
-
-    <template name="owner-settings-layout">
-        <node id="srt-owner-settings-root">
-            <node id="srt-owner-settings-dynamic"/>
-        </node>
-    </template>
+    <node id="srt-owner-root">
+        <node id="srt-owner-dynamic"/>
+    </node>
 </udt>

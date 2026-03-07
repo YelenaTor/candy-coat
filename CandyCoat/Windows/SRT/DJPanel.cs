@@ -362,7 +362,7 @@ public class DJPanel : IToolboxPanel
 
     public Node BuildSettingsNode()
     {
-        var root    = UdtHelper.CreateFromTemplate("srt-dj.xml", "dj-settings-layout");
+        var root    = UdtHelper.CreateFromTemplate("srt-dj-settings.xml", "dj-settings-layout");
         var dynamic = root.QuerySelector("#srt-dj-settings-dynamic")!;
         var col = CandyUI.Column("dj-settings", 8);
         col.AppendChild(CandyUI.SectionHeader("dj-settings-hdr", "DJ Settings"));

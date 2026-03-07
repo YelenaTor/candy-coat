@@ -668,7 +668,7 @@ public class CandyHeartPanel : IToolboxPanel
 
     public Node BuildSettingsNode()
     {
-        var root    = UdtHelper.CreateFromTemplate("srt-candyheart.xml", "candyheart-settings-layout");
+        var root    = UdtHelper.CreateFromTemplate("srt-candyheart-settings.xml", "candyheart-settings-layout");
         var dynamic = root.QuerySelector("#srt-candyheart-settings-dynamic")!;
         var col = CandyUI.Column("ch-settings", 8);
         col.AppendChild(CandyUI.SectionHeader("ch-settings-hdr", "Candy Heart Settings"));

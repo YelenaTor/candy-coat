@@ -650,7 +650,7 @@ public class GreeterPanel : IToolboxPanel
 
     public Node BuildSettingsNode()
     {
-        var root    = UdtHelper.CreateFromTemplate("srt-greeter.xml", "greeter-settings-layout");
+        var root    = UdtHelper.CreateFromTemplate("srt-greeter-settings.xml", "greeter-settings-layout");
         var dynamic = root.QuerySelector("#srt-greeter-settings-dynamic")!;
         var col = CandyUI.Column("gr-settings", 8);
         col.AppendChild(CandyUI.SectionHeader("gr-settings-hdr", "Greeter Settings"));

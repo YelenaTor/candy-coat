@@ -29,11 +29,9 @@
     }
     ]]>
 
-    <template name="waitlist-layout">
-        <node id="waitlist-root">
-            <node id="waitlist-header" value="Waitlist"/>
-            <node id="waitlist-sep"/>
-            <node id="waitlist-dynamic"/>
-        </node>
-    </template>
+    <node id="waitlist-root">
+        <node id="waitlist-header" value="Waitlist"/>
+        <node id="waitlist-sep"/>
+        <node id="waitlist-dynamic"/>
+    </node>
 </udt>

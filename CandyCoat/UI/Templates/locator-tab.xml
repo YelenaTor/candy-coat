@@ -29,11 +29,9 @@
     }
     ]]>
 
-    <template name="locator-layout">
-        <node id="locator-root">
-            <node id="locator-header" value="Locator"/>
-            <node id="locator-sep"/>
-            <node id="locator-dynamic"/>
-        </node>
-    </template>
+    <node id="locator-root">
+        <node id="locator-header" value="Locator"/>
+        <node id="locator-sep"/>
+        <node id="locator-dynamic"/>
+    </node>
 </udt>

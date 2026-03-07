@@ -29,11 +29,9 @@
     }
     ]]>
 
-    <template name="session-layout">
-        <node id="session-root">
-            <node id="session-header" value="Session"/>
-            <node id="session-sep"/>
-            <node id="session-dynamic"/>
-        </node>
-    </template>
+    <node id="session-root">
+        <node id="session-header" value="Session"/>
+        <node id="session-sep"/>
+        <node id="session-dynamic"/>
+    </node>
 </udt>

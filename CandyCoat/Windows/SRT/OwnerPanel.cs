@@ -882,7 +882,7 @@ public class OwnerPanel : IToolboxPanel
 
     public Node BuildSettingsNode()
     {
-        var root    = UdtHelper.CreateFromTemplate("srt-owner.xml", "owner-settings-layout");
+        var root    = UdtHelper.CreateFromTemplate("srt-owner-settings.xml", "owner-settings-layout");
         var dynamic = root.QuerySelector("#srt-owner-settings-dynamic")!;
         var col = CandyUI.Column("ow-settings", 8);
         col.AppendChild(CandyUI.SectionHeader("ow-settings-hdr", "Owner Settings"));

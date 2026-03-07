@@ -438,7 +438,7 @@ public class ManagementPanel : IToolboxPanel
 
     public Node BuildSettingsNode()
     {
-        var root    = UdtHelper.CreateFromTemplate("srt-management.xml", "management-settings-layout");
+        var root    = UdtHelper.CreateFromTemplate("srt-management-settings.xml", "management-settings-layout");
         var dynamic = root.QuerySelector("#srt-management-settings-dynamic")!;
         var col = CandyUI.Column("mg-settings", 8);
         col.AppendChild(CandyUI.SectionHeader("mg-settings-hdr", "Management Settings"));

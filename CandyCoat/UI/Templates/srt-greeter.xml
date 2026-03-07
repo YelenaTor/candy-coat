@@ -12,30 +12,9 @@
         auto-size: grow grow;
         gap: 6;
     }
-
-    #srt-greeter-settings-root {
-        flow: vertical;
-        auto-size: grow grow;
-        padding: 8;
-        gap: 6;
-    }
-
-    #srt-greeter-settings-dynamic {
-        flow: vertical;
-        auto-size: grow grow;
-        gap: 6;
-    }
     ]]>
 
-    <template name="greeter-layout">
-        <node id="srt-greeter-root">
-            <node id="srt-greeter-dynamic"/>
-        </node>
-    </template>
-
-    <template name="greeter-settings-layout">
-        <node id="srt-greeter-settings-root">
-            <node id="srt-greeter-settings-dynamic"/>
-        </node>
-    </template>
+    <node id="srt-greeter-root">
+        <node id="srt-greeter-dynamic"/>
+    </node>
 </udt>

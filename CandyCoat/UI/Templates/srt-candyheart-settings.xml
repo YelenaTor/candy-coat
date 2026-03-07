@@ -1,20 +1,20 @@
 <udt>
     <![CDATA[
-    #srt-gamba-root {
+    #srt-candyheart-settings-root {
         flow: vertical;
         auto-size: grow grow;
         padding: 8;
         gap: 6;
     }
 
-    #srt-gamba-dynamic {
+    #srt-candyheart-settings-dynamic {
         flow: vertical;
         auto-size: grow grow;
         gap: 6;
     }
     ]]>
 
-    <node id="srt-gamba-root">
-        <node id="srt-gamba-dynamic"/>
+    <node id="srt-candyheart-settings-root">
+        <node id="srt-candyheart-settings-dynamic"/>
     </node>
 </udt>

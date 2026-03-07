@@ -435,7 +435,7 @@ public class GambaPanel : IToolboxPanel, IDisposable
 
     public Node BuildSettingsNode()
     {
-        var root    = UdtHelper.CreateFromTemplate("srt-gamba.xml", "gamba-settings-layout");
+        var root    = UdtHelper.CreateFromTemplate("srt-gamba-settings.xml", "gamba-settings-layout");
         var dynamic = root.QuerySelector("#srt-gamba-settings-dynamic")!;
         var col = CandyUI.Column("gb-settings", 8);
         col.AppendChild(CandyUI.SectionHeader("gb-settings-hdr", "Gamba Settings"));

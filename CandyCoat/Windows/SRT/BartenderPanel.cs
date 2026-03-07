@@ -415,7 +415,7 @@ public class BartenderPanel : IToolboxPanel
 
     public Node BuildSettingsNode()
     {
-        var root    = UdtHelper.CreateFromTemplate("srt-bartender.xml", "bartender-settings-layout");
+        var root    = UdtHelper.CreateFromTemplate("srt-bartender-settings.xml", "bartender-settings-layout");
         var dynamic = root.QuerySelector("#srt-bartender-settings-dynamic")!;
         var col = CandyUI.Column("bt-settings", 8);
         col.AppendChild(CandyUI.SectionHeader("bt-settings-hdr", "Bartender Settings"));

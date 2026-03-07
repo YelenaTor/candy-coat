@@ -29,11 +29,9 @@
     }
     ]]>
 
-    <template name="overview-layout">
-        <node id="overview-root">
-            <node id="overview-header" value="Overview"/>
-            <node id="overview-sep"/>
-            <node id="overview-dynamic"/>
-        </node>
-    </template>
+    <node id="overview-root">
+        <node id="overview-header" value="Overview"/>
+        <node id="overview-sep"/>
+        <node id="overview-dynamic"/>
+    </node>
 </udt>

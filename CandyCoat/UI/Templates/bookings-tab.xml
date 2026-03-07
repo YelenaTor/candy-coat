@@ -29,11 +29,9 @@
     }
     ]]>
 
-    <template name="bookings-layout">
-        <node id="bookings-root">
-            <node id="bookings-header" value="Bookings"/>
-            <node id="bookings-sep"/>
-            <node id="bookings-dynamic"/>
-        </node>
-    </template>
+    <node id="bookings-root">
+        <node id="bookings-header" value="Bookings"/>
+        <node id="bookings-sep"/>
+        <node id="bookings-dynamic"/>
+    </node>
 </udt>

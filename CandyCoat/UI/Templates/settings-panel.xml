@@ -6,7 +6,5 @@
     }
     ]]>
 
-    <template name="settings-layout">
-        <node id="settings-placeholder"/>
-    </template>
+    <node id="settings-placeholder"/>
 </udt>

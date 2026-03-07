@@ -690,7 +690,7 @@ public class SweetheartPanel : IToolboxPanel
 
     public Node BuildSettingsNode()
     {
-        var root    = UdtHelper.CreateFromTemplate("srt-sweetheart.xml", "sweetheart-settings-layout");
+        var root    = UdtHelper.CreateFromTemplate("srt-sweetheart-settings.xml", "sweetheart-settings-layout");
         var dynamic = root.QuerySelector("#srt-sweetheart-settings-dynamic")!;
         var col = CandyUI.Column("sh-settings", 8);
         col.AppendChild(CandyUI.SectionHeader("sh-settings-hdr", "Sweetheart Settings"));
