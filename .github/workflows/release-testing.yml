@@ -83,14 +83,22 @@ jobs:
         }
         Compress-Archive -Path "$stagingDir/*" -DestinationPath $zipName -Force
 
-        # Build a repo.json that merges testing fields into the current manifest.
-        # We fetch the current stable repo.json from GitHub Pages to preserve stable fields.
-        $stableRepoUrl = "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/repo.json"
+        # Build a repo.json that merges testing fields into the latest STABLE release's repo.json.
+        # We fetch from the GitHub Releases API (latest non-pre-release) to avoid using a
+        # potentially stale or corrupted GitHub Pages deployment as the base.
+        $apiHeaders = @{ Authorization = "Bearer ${{ secrets.GITHUB_TOKEN }}"; "User-Agent" = "CandyCoat-CI" }
         try {
-          $stableRepo = Invoke-RestMethod -Uri $stableRepoUrl -ErrorAction Stop
-          $entry = $stableRepo[0]
+          $latestRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/releases/latest" -Headers $apiHeaders -ErrorAction Stop
+          $repoJsonAsset = $latestRelease.assets | Where-Object { $_.name -eq "repo.json" } | Select-Object -First 1
+          if ($repoJsonAsset) {
+            $stableRepo = Invoke-RestMethod -Uri $repoJsonAsset.browser_download_url -Headers $apiHeaders -ErrorAction Stop
+            $entry = if ($stableRepo -is [array]) { $stableRepo[0] } else { $stableRepo }
+            Write-Host "Using stable base from release: $($latestRelease.tag_name)"
+          } else {
+            throw "No repo.json asset found in latest release."
+          }
         } catch {
-          Write-Host "Could not fetch stable repo.json — using local manifest as base."
+          Write-Host "Could not fetch stable repo.json from releases API — using local manifest as base. Error: $_"
           $entry = Get-Content $manifestPath | ConvertFrom-Json
         }
 

@@ -8,6 +8,7 @@ on:
 
 jobs:
   build_release:
+    if: ${{ !contains(github.ref_name, '-testing') }}
     runs-on: windows-2022
     permissions:
       contents: write # Needed to create GitHub Release
@@ -117,6 +118,7 @@ jobs:
 
   deploy_pages:
     needs: build_release
+    if: ${{ !contains(github.ref_name, '-testing') }}
     runs-on: ubuntu-latest
     permissions:
       pages: write
