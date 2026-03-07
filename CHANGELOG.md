@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.18.0] - 2026-03-07
+
+### Changed
+- **Complete UI overhaul**: replaced `MainWindow` (ImGui window with parallax/shift bug) with a screen-anchored toolbar rendered directly to the background draw list — no more UI shifting when the game window moves
+- Toolbar anchors to the left screen edge by default; configurable to Right, Top, or Bottom in Settings
+- Balloon panel slides out from toolbar with smooth lerp animation when a button is clicked
+- All SRT panels and Overview tabs now accessible via the toolbar balloon — no separate draggable window
+- Tab strip with named tabs at the top of each balloon panel
+- Toolbar collapses to icon-only when not hovered, expands with labels on hover
+- Overview button groups all dashboard tabs (Overview, Bookings, Locator, Session, Waitlist, Staff)
+- Each SRT role gets its own dedicated toolbar button
+
+### Fixed
+- Fixed parallax/shifting bug where the entire UI would shift while dragging the ImGui window
+
+### Removed
+- `MainWindow.cs` removed — replaced entirely by `ToolbarService` + `BalloonService`
+
+---
+
 ## [0.17.0] - 2026-03-07
 
 ### Changed
