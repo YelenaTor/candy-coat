@@ -7,9 +7,9 @@
 [![Dalamud API](https://img.shields.io/badge/Dalamud%20API-14-f472b6?style=flat)](https://github.com/goatcorp/Dalamud)
 
 **A private venue operations plugin for FFXIV — built for Sugar Venue staff.**
-**Current version: v0.17.0**
+**Current version: v0.18.0**
 
-Candy Coat is a comprehensive in-game assistant that handles the full operational stack for adult-friendly FFXIV venues: booking management, patron CRM, shift tracking, earnings logging, team sync, and a role-gated staff toolbox — all from a single ImGui window.
+Candy Coat is a comprehensive in-game assistant that handles the full operational stack for adult-friendly FFXIV venues: booking management, patron CRM, shift tracking, earnings logging, team sync, and a role-gated staff toolbox — all from a screen-anchored toolbar interface.
 
 As of v0.16.0, the plugin supports multi-venue registration. Venue Owners can register their venue through the setup wizard to get a unique Venue Key to share with their staff. Staff enter the key during setup to connect to their venue's Backstage API.
 
@@ -80,6 +80,16 @@ A full membership subscription layer sitting above the existing loyalty tier sys
 - Automatic gil trade detection via system message hook — attributes earnings to the current shift
 - Earnings ledger with role breakdown; backend sync for team-wide visibility
 
+### Screen-Anchored Toolbar (v0.18.0)
+The main UI is now a compact icon strip anchored to the screen edge — not a draggable ImGui window. No more UI parallaxing or shifting as the game window moves.
+
+- Anchors to Left / Right / Top / Bottom edge — configurable in Settings
+- Collapses to icon-only when not hovered; expands with labels on hover
+- Click any button to open its balloon panel, which slides out with a smooth animation
+- Each balloon has a named tab strip at the top; the Overview balloon groups all dashboard tabs
+- Each SRT role gets its own dedicated toolbar button — only enabled roles are shown
+- All inputs (text fields, combos) work via an invisible ghost ImGui window pinned to the balloon
+
 ### Staff Role Toolbox (SRT)
 Role-gated panels — each staff member only sees panels matching their assigned role(s).
 
@@ -120,7 +130,7 @@ Permanently hosted API (`CandyCoat.API`) on an OCI VM behind Caddy with automati
 | [Dalamud](https://github.com/goatcorp/Dalamud) | API 14 — runs within the Dalamud framework |
 | [Glamourer](https://github.com/Ottermandias/Glamourer) | Required for quick-swap functionality |
 | [ChatTwo](https://github.com/cottonvibes/ChatTwo) | Required for session capture context menus |
-| OtterGui | Bundled — used for UI helpers |
+| Una.Drawing | Bundled — retained-mode node rendering library |
 | ECommons | Bundled — Dalamud utility library |
 
 The backend API is permanently hosted and configured automatically on first run. All write operations are fire-and-forget; panels degrade gracefully if the API is unreachable.
@@ -149,7 +159,7 @@ and load `CandyCoat.dll` directly from the Dalamud dev tools.
 - **.NET 10 Preview** — `net10.0-windows7.0`
 - **Dalamud API 14** — `Dalamud.NET.Sdk/14.0.1`
 - **ImGui** via `Dalamud.Bindings.ImGui`
-- **OtterGui** — ImGui helpers and widgets
+- **Una.Drawing** — retained-mode node UI rendering (submodule)
 - **ECommons** — Dalamud service utilities
 - **Backend**: ASP.NET Core 10 minimal API · PostgreSQL (Npgsql/EF Core) · Docker
 
@@ -166,7 +176,9 @@ CandyCoat/               Plugin source
     SRT/                 IToolboxPanel implementations (role-gated panels)
   Services/              Business logic (VenueService, SyncService, etc.)
   Data/                  Data models and enums
-  UI/                    StyleManager, NameplateRenderer, CosmeticRenderer
+  UI/
+    Toolbar/             Screen-anchored toolbar (ToolbarService, BalloonService, IToolbarEntry)
+                         NameplateRenderer, CosmeticRenderer, CandyTheme, SettingsPanel
   IPC/                   Glamourer and ChatTwo IPC wrappers
 CandyCoat.API/           Self-hosted backend
   Program.cs             Minimal API endpoints
