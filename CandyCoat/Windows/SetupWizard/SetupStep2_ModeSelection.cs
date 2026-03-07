@@ -1,6 +1,3 @@
-using System.Numerics;
-using Dalamud.Bindings.ImGui;
-using Dalamud.Interface.Utility.Raii;
 using CandyCoat.UI;
 using Una.Drawing;
 
@@ -8,10 +5,119 @@ namespace CandyCoat.Windows.SetupWizard;
 
 internal sealed class SetupStep2_ModeSelection
 {
+    private bool _staffSelected;
+
     // ─── Una.Drawing node ────────────────────────────────────────────────────
 
     public Node BuildStepNode(WizardState state)
     {
+        _staffSelected = false;
+
+        // Staff card — clickable, hover highlight with ice-blue border
+        var staffCard = new Node
+        {
+            Id         = "step2-staff-card",
+            Stylesheet = new Stylesheet([
+                new Stylesheet.StyleDefinition(
+                    "#step2-staff-card:hover",
+                    new Style
+                    {
+                        BackgroundColor = new Color(CandyTheme.BgCardHover),
+                        BorderColor     = new BorderColor(new Color(CandyTheme.BorderFocus)),
+                    }
+                ),
+            ]),
+            Style = new Style
+            {
+                AutoSize        = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Fit),
+                BackgroundColor = new Color(CandyTheme.BgCard),
+                BorderColor     = new BorderColor(new Color(CandyTheme.BorderCard)),
+                BorderWidth     = new EdgeSize(1),
+                BorderRadius    = 6,
+                Padding         = new EdgeSize(12),
+                Flow            = Flow.Vertical,
+                Gap             = 6,
+            },
+        };
+        staffCard.AppendChild(new Node
+        {
+            Id        = "step2-staff-title",
+            NodeValue = "Staff",
+            Style     = new Style
+            {
+                AutoSize  = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Fit),
+                Color     = new Color(CandyTheme.TextAccent),
+                FontSize  = 14,
+                TextAlign = Anchor.MiddleCenter,
+            },
+        });
+        staffCard.AppendChild(new Node
+        {
+            Id        = "step2-staff-desc",
+            NodeValue = "Venue staff member — access role toolboxes, shifts, and patron tools.",
+            Style     = new Style
+            {
+                AutoSize  = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Fit),
+                Color     = new Color(CandyTheme.TextSecondary),
+                FontSize  = 12,
+                TextAlign = Anchor.MiddleLeft,
+            },
+        });
+        staffCard.OnClick += _ => _staffSelected = true;
+
+        // Patron card — visually disabled (muted colours, no hover/click)
+        var patronCard = new Node
+        {
+            Id    = "step2-patron-card",
+            Style = new Style
+            {
+                AutoSize        = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Fit),
+                BackgroundColor = new Color(CandyTheme.BgCard),
+                BorderColor     = new BorderColor(new Color(CandyTheme.BorderDivider)),
+                BorderWidth     = new EdgeSize(1),
+                BorderRadius    = 6,
+                Padding         = new EdgeSize(12),
+                Flow            = Flow.Vertical,
+                Gap             = 6,
+            },
+        };
+        patronCard.AppendChild(new Node
+        {
+            Id        = "step2-patron-title",
+            NodeValue = "Patron",
+            Style     = new Style
+            {
+                AutoSize  = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Fit),
+                Color     = new Color(CandyTheme.TextMuted),
+                FontSize  = 14,
+                TextAlign = Anchor.MiddleCenter,
+            },
+        });
+        patronCard.AppendChild(new Node
+        {
+            Id        = "step2-patron-desc",
+            NodeValue = "Venue guest access — coming in a future update.",
+            Style     = new Style
+            {
+                AutoSize  = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Fit),
+                Color     = new Color(CandyTheme.TextMuted),
+                FontSize  = 12,
+                TextAlign = Anchor.MiddleLeft,
+            },
+        });
+        patronCard.AppendChild(new Node
+        {
+            Id        = "step2-patron-soon",
+            NodeValue = "Coming Soon",
+            Style     = new Style
+            {
+                AutoSize  = (Una.Drawing.AutoSize.Fit, Una.Drawing.AutoSize.Fit),
+                Color     = new Color(CandyTheme.TextWarning),
+                FontSize  = 11,
+                TextAlign = Anchor.MiddleLeft,
+            },
+        });
+
         return CandyUI.Column("step2-content", 8,
             CandyUI.Muted("step2-subtitle", "Step 3 of 5 — Choose Your Mode"),
             new Node
@@ -26,65 +132,19 @@ internal sealed class SetupStep2_ModeSelection
                     TextAlign = Anchor.MiddleLeft,
                 },
             },
-            // Reserve space for the two mode-selection cards drawn as overlay
-            CandyUI.InputSpacer("step2-cards-spacer", 0, 140)
+            CandyUI.Row("step2-cards-row", 12, staffCard, patronCard)
         );
     }
 
-    // ─── Raw ImGui overlay ────────────────────────────────────────────────────
+    // ─── Step navigation (ref int cannot be captured in closure) ─────────────
 
     public void DrawOverlays(WizardState state, ref int step)
     {
-        var pink    = new Vector4(1f, 0.6f, 0.8f, 1f);
-        var cardBg  = new Vector4(0.12f, 0.08f, 0.16f, 1f);
-
-        const float CardWidth  = 200f;
-        const float CardHeight = 120f;
-
-        // Staff Card
-        ImGui.PushStyleColor(ImGuiCol.ChildBg, cardBg);
-        using (var staffCard = ImRaii.Child("##staffCard", new Vector2(CardWidth, CardHeight), true))
-        {
-            ImGui.PopStyleColor();
-            ImGui.Spacing();
-            ImGui.SetCursorPosX((CardWidth - ImGui.CalcTextSize("Staff").X) / 2f);
-            ImGui.TextColored(pink, "Staff");
-            ImGui.Spacing();
-            ImGui.TextWrapped("Venue staff member — access role toolboxes, shifts, and patron tools.");
-        }
-
-        bool staffHovered = ImGui.IsItemHovered();
-        if (staffHovered)
-        {
-            ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
-            var min = ImGui.GetItemRectMin();
-            var max = ImGui.GetItemRectMax();
-            ImGui.GetWindowDrawList().AddRect(min, max, ImGui.GetColorU32(pink), 4f, ImDrawFlags.None, 1.5f);
-        }
-
-        if (ImGui.IsItemClicked())
+        if (_staffSelected)
         {
             state.UserMode = "Staff";
             step = 4;
+            _staffSelected = false;
         }
-
-        ImGui.SameLine(0, 16f);
-
-        // Patron Card (disabled)
-        ImGui.BeginDisabled();
-        ImGui.PushStyleColor(ImGuiCol.ChildBg, cardBg);
-        using (var patronCard = ImRaii.Child("##patronCard", new Vector2(CardWidth, CardHeight), true))
-        {
-            ImGui.PopStyleColor();
-            ImGui.Spacing();
-            ImGui.SetCursorPosX((CardWidth - ImGui.CalcTextSize("Patron").X) / 2f);
-            ImGui.TextDisabled("Patron");
-            ImGui.Spacing();
-            ImGui.TextDisabled("Venue guest access — coming in a future update.");
-        }
-        ImGui.EndDisabled();
-
-        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            ImGui.SetTooltip("Coming Soon — Not yet implemented");
     }
 }

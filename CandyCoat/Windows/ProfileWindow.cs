@@ -73,21 +73,26 @@ public class ProfileWindow : Window, IDisposable
         // Sync status badge
         var syncBadge = CandyUI.StatusBadge("prof-sync-badge", "Connected", CandyTheme.StatusOnline);
 
-        _root = CandyUI.Column("profile-root", 8,
-            CandyUI.Card("profile-card",
-                CandyUI.Row("prof-char-row", 6,
-                    CandyUI.Muted("prof-char-label", "Character"),
-                    CandyUI.Label("prof-char-value", charValue)),
-                profileIdRow,
-                CandyUI.Row("prof-venue-row", 6,
-                    CandyUI.Muted("prof-venue-label", "Venue"),
-                    CandyUI.Label("prof-venue-value", venueValue)),
-                CandyUI.Separator("prof-sep"),
-                CandyUI.Row("prof-sync-row", 6,
-                    CandyUI.Muted("prof-sync-label", "Sync Status"),
-                    syncBadge)
-            )
+        // Close button — full-width ghost button at bottom
+        var closeBtn = CandyUI.GhostButton("prof-close-btn", "Close", () => IsOpen = false);
+        closeBtn.Style.AutoSize = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Fit);
+
+        var card = CandyUI.Card("profile-card",
+            CandyUI.Row("prof-char-row", 6,
+                CandyUI.Muted("prof-char-label", "Character"),
+                CandyUI.Label("prof-char-value", charValue)),
+            profileIdRow,
+            CandyUI.Row("prof-venue-row", 6,
+                CandyUI.Muted("prof-venue-label", "Venue"),
+                CandyUI.Label("prof-venue-value", venueValue)),
+            CandyUI.Separator("prof-sep"),
+            CandyUI.Row("prof-sync-row", 6,
+                CandyUI.Muted("prof-sync-label", "Sync Status"),
+                syncBadge)
         );
+        card.Style.AutoSize = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Grow);
+
+        _root = CandyUI.Column("profile-root", 8, card, closeBtn);
     }
 
     public override void Draw()
@@ -96,18 +101,10 @@ public class ProfileWindow : Window, IDisposable
         BuildRoot();
 
         var region = ImGui.GetContentRegionAvail();
-        _root!.Style.Size = new Size((int)region.X, (int)region.Y - 28);
+        _root!.Style.Size = new Size((int)region.X, (int)region.Y);
 
         var pos = ImGui.GetWindowPos() + ImGui.GetWindowContentRegionMin();
         _root.Render(ImGui.GetWindowDrawList(), pos);
-        ImGui.Dummy(new Vector2(region.X, region.Y - 28));
-
-        DrawOverlays();
-    }
-
-    private void DrawOverlays()
-    {
-        if (ImGui.Button("Close", new Vector2(-1, 0)))
-            IsOpen = false;
+        ImGui.Dummy(region);
     }
 }

@@ -38,14 +38,28 @@ public class CosmeticWindow : Window, IDisposable
     {
         _root?.Dispose();
 
-        // The content area is a spacer — actual tab content and footer are ImGui overlays.
-        _root = CandyUI.Column("cosmetic-root", 0,
-            CandyUI.Card("cosmetic-content-card",
-                CandyUI.InputSpacer("cosmetic-content-spacer", 0, 0))
+        // Content area grows to fill available space
+        var contentSpacer = CandyUI.InputSpacer("cosmetic-content-spacer", 0, 0);
+        contentSpacer.Style.AutoSize = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Grow);
+        var contentCard = CandyUI.Card("cosmetic-content-card", contentSpacer);
+        contentCard.Style.AutoSize = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Grow);
+
+        // Footer row 1: enable nameplate checkbox spacer (full width)
+        var enableSpacer = CandyUI.InputSpacer("cosmetic-enable-spacer", 0, 24);
+        enableSpacer.Style.AutoSize = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Fit);
+
+        // Footer row 2: re-draw button + auto re-draw checkbox
+        var redrawSpacer    = CandyUI.InputSpacer("cosmetic-redraw-spacer", 70, 24);
+        var autoRedrawSpacer = CandyUI.InputSpacer("cosmetic-autoredraw-spacer", 0, 24);
+        autoRedrawSpacer.Style.AutoSize = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Fit);
+
+        _root = CandyUI.Column("cosmetic-root", 4,
+            contentCard,
+            CandyUI.Separator("cosmetic-sep1"),
+            enableSpacer,
+            CandyUI.Separator("cosmetic-sep2"),
+            CandyUI.Row("cosmetic-redraw-row", 8, redrawSpacer, autoRedrawSpacer)
         );
-        // Content card grows to fill; footer overlays sit below it.
-        _root.QuerySelector("#cosmetic-content-card")!.Style.AutoSize =
-            (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Grow);
     }
 
     public override void Draw()
@@ -64,39 +78,57 @@ public class CosmeticWindow : Window, IDisposable
 
     private void DrawOverlays()
     {
-        ImGui.SetCursorPos(new Vector2(0, 0));
+        // Una.Drawing bounds are screen-space; subtract window origin for ImGui cursor coords.
+        var origin = ImGui.GetWindowPos() + ImGui.GetWindowContentRegionMin();
 
-        var footerHeight = ImGui.GetFrameHeightWithSpacing() * 2 + ImGui.GetStyle().ItemSpacing.Y * 2;
-        var contentHeight = ImGui.GetContentRegionAvail().Y - footerHeight;
-
-        if (ImGui.BeginChild("CosmeticContent", new Vector2(0, contentHeight), false))
-            _tab.DrawContent();
-        ImGui.EndChild();
-
-        ImGui.Separator();
-
-        // Row 1 — On/Off toggle
-        var enabled = _plugin.Configuration.EnableNameplateCosmetics;
-        if (ImGui.Checkbox("Enable Candy Coat Nameplates", ref enabled))
+        // Content area — render the cosmetic tab in the growing card spacer
+        var contentSpacer = _root!.QuerySelector("#cosmetic-content-spacer");
+        if (contentSpacer != null)
         {
-            _plugin.Configuration.EnableNameplateCosmetics = enabled;
-            _plugin.Configuration.Save();
-            Plugin.NamePlateGui.RequestRedraw();
+            var r = contentSpacer.Bounds.ContentRect;
+            ImGui.SetCursorPos(new Vector2(r.X1 - origin.X, r.Y1 - origin.Y));
+            if (ImGui.BeginChild("CosmeticContent", new Vector2(r.Width, r.Height), false))
+                _tab.DrawContent();
+            ImGui.EndChild();
         }
 
-        ImGui.Separator();
-
-        // Row 2 — Re-draw controls (local client-side refresh only)
-        if (ImGui.Button("Re-draw"))
-            ForceLocalRedraw();
-
-        ImGui.SameLine();
-
-        var autoRedraw = _plugin.Configuration.CosmeticAutoRedraw;
-        if (ImGui.Checkbox("Auto re-draw", ref autoRedraw))
+        // Row 1 — Enable nameplate checkbox
+        var enableSpacer = _root!.QuerySelector("#cosmetic-enable-spacer");
+        if (enableSpacer != null)
         {
-            _plugin.Configuration.CosmeticAutoRedraw = autoRedraw;
-            _plugin.Configuration.Save();
+            var r = enableSpacer.Bounds.ContentRect;
+            ImGui.SetCursorPos(new Vector2(r.X1 - origin.X, r.Y1 - origin.Y));
+            var enabled = _plugin.Configuration.EnableNameplateCosmetics;
+            if (ImGui.Checkbox("Enable Candy Coat Nameplates", ref enabled))
+            {
+                _plugin.Configuration.EnableNameplateCosmetics = enabled;
+                _plugin.Configuration.Save();
+                Plugin.NamePlateGui.RequestRedraw();
+            }
+        }
+
+        // Row 2 — Re-draw button
+        var redrawSpacer = _root!.QuerySelector("#cosmetic-redraw-spacer");
+        if (redrawSpacer != null)
+        {
+            var r = redrawSpacer.Bounds.ContentRect;
+            ImGui.SetCursorPos(new Vector2(r.X1 - origin.X, r.Y1 - origin.Y));
+            if (ImGui.Button("Re-draw"))
+                ForceLocalRedraw();
+        }
+
+        // Row 2 — Auto re-draw checkbox
+        var autoRedrawSpacer = _root!.QuerySelector("#cosmetic-autoredraw-spacer");
+        if (autoRedrawSpacer != null)
+        {
+            var r = autoRedrawSpacer.Bounds.ContentRect;
+            ImGui.SetCursorPos(new Vector2(r.X1 - origin.X, r.Y1 - origin.Y));
+            var autoRedraw = _plugin.Configuration.CosmeticAutoRedraw;
+            if (ImGui.Checkbox("Auto re-draw", ref autoRedraw))
+            {
+                _plugin.Configuration.CosmeticAutoRedraw = autoRedraw;
+                _plugin.Configuration.Save();
+            }
         }
 
         // Auto re-draw timer — local redraw every 30 s when enabled

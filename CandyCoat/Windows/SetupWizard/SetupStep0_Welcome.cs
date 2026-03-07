@@ -1,5 +1,3 @@
-using System.Numerics;
-using Dalamud.Bindings.ImGui;
 using CandyCoat.UI;
 using Una.Drawing;
 
@@ -7,10 +5,18 @@ namespace CandyCoat.Windows.SetupWizard;
 
 internal sealed class SetupStep0_Welcome
 {
+    private bool _getStartedClicked;
+
     // ─── Una.Drawing node ────────────────────────────────────────────────────
 
     public Node BuildStepNode(WizardState state)
     {
+        _getStartedClicked = false;
+
+        var btn = CandyUI.Button("step0-btn", "Get Started", () => _getStartedClicked = true);
+        btn.Style.Size     = new Size(0, 40);
+        btn.Style.AutoSize = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Fit);
+
         return CandyUI.Column("step0-content", 8,
             new Node
             {
@@ -60,35 +66,18 @@ internal sealed class SetupStep0_Welcome
                     TextAlign = Anchor.MiddleLeft,
                 },
             },
-            // Spacer so the button overlay lands in the right place
-            CandyUI.InputSpacer("step0-btn-spacer", 180, 40)
+            btn
         );
     }
 
-    // ─── Raw ImGui overlay ────────────────────────────────────────────────────
+    // ─── Step navigation (ref int cannot be captured in closure) ─────────────
 
     public void DrawOverlays(WizardState state, ref int step)
     {
-        var pink = new Vector4(1f, 0.6f, 0.8f, 1f);
-
-        const float BtnWidth  = 180f;
-        const float BtnHeight = 40f;
-
-        var windowWidth = ImGui.GetContentRegionAvail().X;
-        ImGui.SetCursorPosX((windowWidth - BtnWidth) / 2f + 4f);
-
-        ImGui.PushStyleColor(ImGuiCol.Button,        new Vector4(0f, 0f, 0f, 0f));
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1f, 0.6f, 0.8f, 0.12f));
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive,  new Vector4(1f, 0.6f, 0.8f, 0.22f));
-        ImGui.PushStyleColor(ImGuiCol.Text,          pink);
-        ImGui.PushStyleColor(ImGuiCol.Border,        new Vector4(1f, 0.6f, 0.8f, 0.8f));
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 1.5f);
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 10f);
-
-        if (ImGui.Button("Get Started", new Vector2(BtnWidth, BtnHeight)))
+        if (_getStartedClicked)
+        {
             step = 1;
-
-        ImGui.PopStyleVar(2);
-        ImGui.PopStyleColor(5);
+            _getStartedClicked = false;
+        }
     }
 }

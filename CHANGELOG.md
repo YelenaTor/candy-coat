@@ -5,6 +5,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.20.0] - 2026-03-08
+
+### Changed
+- **Window migrations**: completed remaining ImGui → Una.Drawing migrations across `ProfileWindow`, `SessionWindow`, `CosmeticWindow`, and setup wizard steps 0, 2, and 4
+  - `ProfileWindow`: Close button now a Una.Drawing `GhostButton` node — no raw ImGui button
+  - `SetupStep0_Welcome`: "Get Started" button is now a `CandyUI.Button` node embedded in the step layout
+  - `SetupStep2_ModeSelection`: Staff/Patron cards are now Una.Drawing nodes with `:hover` highlight and `BorderFocus` on hover
+  - `SetupStep4_Finish`: Summary card, Launch button, and integration toggles (Glamourer/ChatTwo) all Una.Drawing — no `ImRaii.Child` boxes or styled `ImGui.Button`
+  - `SessionWindow`: log area positions via `InputSpacer.Bounds.ContentRect`; log spacer grows to fill window on resize
+  - `CosmeticWindow`: footer (enable checkbox, Re-draw button, Auto re-draw checkbox) positioned via `InputSpacer` bounds — footer layout part of the Una.Drawing tree
+- **TellWindow Discord rework**: completely rebuilt with Discord-inspired two-panel layout
+  - Left sidebar (160px): conversation items rendered as Una.Drawing nodes — avatar circle with first letter, name + preview column, unread count badge; hover highlight; right-click context menu for Pin/Unpin/Clear/Delete
+  - Right panel: Una.Drawing shell; header row shows player name + tier icon + Session/Export action buttons; message thread stays ImGui child (rich text coloring); quick replies rendered as Una.Drawing `SmallButton` nodes above the input row; Send button is a `CandyUI.Button` node
+  - Notes field: ImGui input overlay anchored to `InputSpacer` bounds in right panel
+  - Root rebuilt every Draw() to keep conversation list in sync with `TellHistory`
+
+### Fixed
+- **API diagnosis (Phase 3)**: Neon Backstage DB confirmed healthy (compute active, `SELECT 1` passing). OCI VM `candy-api.service` identified as likely crashed. Any push to `CandyCoat.API/**` on `master` triggers automatic redeploy via GitHub Actions `deploy-api.yml`
+- `Rect` coordinate system: corrected `Bounds.ContentRect` access to use `X1/Y1` (Una.Drawing `Rect` uses `X1,Y1,X2,Y2` not `X,Y,Width,Height`)
+- Origin offset: `DrawOverlays()` methods that use `InputSpacer` bounds now subtract `ImGui.GetWindowPos() + GetWindowContentRegionMin()` to convert screen-space bounds to ImGui cursor coordinates
+
+---
+
 ## [0.19.0] - 2026-03-07
 
 ### Changed

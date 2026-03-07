@@ -52,7 +52,7 @@ app.Use(async (context, next) =>
     await next();
 });
 
-// ─── Health ───
+// ─── Health ─── (v0.20.0 — redeploy to restart OCI VM service)
 app.MapGet("/api/health", async (VenueDbContext db) =>
 {
     try

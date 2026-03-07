@@ -60,8 +60,9 @@ public class SessionWindow : Window, IDisposable
         );
 
         // Log area — messages rendered via ImGui overlay in DrawOverlays()
-        var logCard = CandyUI.Card("session-log-card",
-            CandyUI.InputSpacer("session-log-spacer", 0, 200));
+        var logSpacer = CandyUI.InputSpacer("session-log-spacer", 0, 0);
+        logSpacer.Style.AutoSize = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Grow);
+        var logCard = CandyUI.Card("session-log-card", logSpacer);
         logCard.Style.AutoSize = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Grow);
 
         _root = CandyUI.Column("session-root", 8,
@@ -87,38 +88,54 @@ public class SessionWindow : Window, IDisposable
     {
         if (!_sessionManager.IsCapturing) return;
 
-        // Re-position cursor to header row area for Copy / Save buttons
-        var windowPos  = ImGui.GetWindowPos() + ImGui.GetWindowContentRegionMin();
-        // We use an inline ImGui child for the log area so we get scrolling
-        ImGui.SetCursorPos(new Vector2(0, 0));
-        ImGui.TextUnformatted($"Session with: {_sessionManager.TargetName}");
-        ImGui.SameLine();
-        if (ImGui.SmallButton("Copy"))
-            ImGui.SetClipboardText(_sessionManager.GetExportText());
-        ImGui.SameLine();
-        if (ImGui.SmallButton("Save to File"))
-            _sessionManager.SaveToFile(_configDir);
-        ImGui.Separator();
+        // Una.Drawing bounds are in screen space; ImGui cursor is window-content-relative.
+        var origin = ImGui.GetWindowPos() + ImGui.GetWindowContentRegionMin();
 
-        var region = ImGui.GetContentRegionAvail();
-        using var log = ImRaii.Child("SessionLog", region, true, ImGuiWindowFlags.HorizontalScrollbar);
-        if (!log) return;
+        var spacerCopy = _root!.QuerySelector("#session-copy-spacer");
+        var spacerSave = _root!.QuerySelector("#session-save-spacer");
+        var spacerLog  = _root!.QuerySelector("#session-log-spacer");
 
-        foreach (var msg in _sessionManager.Messages)
+        if (spacerCopy != null)
         {
-            ImGui.TextDisabled($"[{msg.Timestamp:HH:mm}]");
-            ImGui.SameLine();
-
-            if (msg.IsMe)
-                ImGui.TextColored(new Vector4(0.75f, 0.6f, 1f, 1.0f), "[You]:");
-            else
-                ImGui.TextColored(new Vector4(1.0f, 0.6f, 0.8f, 1.0f), $"[{msg.Sender}]:");
-
-            ImGui.SameLine();
-            ImGui.TextUnformatted(msg.Content.TextValue);
+            var r = spacerCopy.Bounds.ContentRect;
+            ImGui.SetCursorPos(new Vector2(r.X1 - origin.X, r.Y1 - origin.Y));
+            if (ImGui.SmallButton("Copy"))
+                ImGui.SetClipboardText(_sessionManager.GetExportText());
         }
 
-        if (ImGui.GetScrollY() >= ImGui.GetScrollMaxY())
-            ImGui.SetScrollHereY(1.0f);
+        if (spacerSave != null)
+        {
+            var r = spacerSave.Bounds.ContentRect;
+            ImGui.SetCursorPos(new Vector2(r.X1 - origin.X, r.Y1 - origin.Y));
+            if (ImGui.SmallButton("Save to File"))
+                _sessionManager.SaveToFile(_configDir);
+        }
+
+        if (spacerLog != null)
+        {
+            var r = spacerLog.Bounds.ContentRect;
+            ImGui.SetCursorPos(new Vector2(r.X1 - origin.X, r.Y1 - origin.Y));
+            using var log = ImRaii.Child("SessionLog",
+                new Vector2(r.Width, r.Height), false,
+                ImGuiWindowFlags.HorizontalScrollbar);
+            if (!log) return;
+
+            foreach (var msg in _sessionManager.Messages)
+            {
+                ImGui.TextDisabled($"[{msg.Timestamp:HH:mm}]");
+                ImGui.SameLine();
+
+                if (msg.IsMe)
+                    ImGui.TextColored(new Vector4(0.75f, 0.6f, 1f, 1.0f), "[You]:");
+                else
+                    ImGui.TextColored(new Vector4(1.0f, 0.6f, 0.8f, 1.0f), $"[{msg.Sender}]:");
+
+                ImGui.SameLine();
+                ImGui.TextUnformatted(msg.Content.TextValue);
+            }
+
+            if (ImGui.GetScrollY() >= ImGui.GetScrollMaxY())
+                ImGui.SetScrollHereY(1.0f);
+        }
     }
 }
