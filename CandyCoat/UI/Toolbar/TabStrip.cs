@@ -157,10 +157,13 @@ public sealed class TabStrip : IDisposable
     /// <summary>
     /// Builds a single tab node with its inner label node and hover stylesheet.
     /// </summary>
+    private static string SanitizeId(string id) => id.Replace(" ", "-");
+
     private static Node BuildTabNode(string tabId, string label, bool isActive)
     {
-        var wrapperId = $"Tab-{tabId}";
-        var labelId   = $"Tab-{tabId}-label";
+        var safeId    = SanitizeId(tabId);
+        var wrapperId = $"Tab-{safeId}";
+        var labelId   = $"Tab-{safeId}-label";
 
         var labelNode = new Node
         {
@@ -225,7 +228,7 @@ public sealed class TabStrip : IDisposable
         tabNode.Style.BorderColor     = new BorderColor(new Color("Tab.Active"));
         tabNode.Style.BorderWidth     = new EdgeSize(0, 0, 2, 0);
 
-        var labelNode = tabNode.QuerySelector($"#Tab-{tabId}-label");
+        var labelNode = tabNode.QuerySelector($"#Tab-{SanitizeId(tabId)}-label");
         if (labelNode != null)
             labelNode.Style.Color = new Color("Tab.Active");
     }
@@ -239,7 +242,7 @@ public sealed class TabStrip : IDisposable
         tabNode.Style.BorderColor     = null;
         tabNode.Style.BorderWidth     = null;
 
-        var labelNode = tabNode.QuerySelector($"#Tab-{tabId}-label");
+        var labelNode = tabNode.QuerySelector($"#Tab-{SanitizeId(tabId)}-label");
         if (labelNode != null)
             labelNode.Style.Color = new Color("Tab.Inactive");
     }
