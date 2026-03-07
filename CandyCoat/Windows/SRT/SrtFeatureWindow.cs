@@ -33,7 +33,7 @@ public class SrtFeatureWindow : Window
             return;
         }
 
-        var icon = MainWindow.PanelIcon(_panel.Role);
+        var icon = SrtPanelHelper.PanelIcon(_panel.Role);
 
         // Title line with flush-right Attach button
         ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.75f, 1.0f), $"{icon}  {_panel.Name} \u2014 Features");
