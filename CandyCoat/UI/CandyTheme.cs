@@ -82,5 +82,26 @@ internal static class CandyTheme
         Color.AssignByName(StatusOnline,  0xFF70C860); // #60C870
         Color.AssignByName(StatusAway,    0xFF60D0FF); // #FFD060
         Color.AssignByName(StatusOffline, 0xFF80607A); // #7A6080
+
+        // Toolbar + Balloon
+        Color.AssignByName("Toolbar.Bg",          0xFF2E1A35); // dark purple
+        Color.AssignByName("Toolbar.Border",      0xFF703060); // muted purple
+        Color.AssignByName("Toolbar.Icon",        0xFFCEAACE); // soft lavender
+        Color.AssignByName("Toolbar.IconActive",  0xFFBF9EFF); // pink-purple
+        Color.AssignByName("Toolbar.Label",       0xFFCEAACE); // soft lavender
+        Color.AssignByName("Toolbar.ButtonHover", 0xFF50203D); // hover bg
+        Color.AssignByName("Toolbar.Glow",        0xFFBF9EFF); // glow ring
+
+        Color.AssignByName("Balloon.Bg",          0xFF231535); // deep purple
+        Color.AssignByName("Balloon.Border",      0xFF703060); // muted purple
+        Color.AssignByName("Balloon.TabStripBg",  0xFF1E1030); // slightly darker
+        Color.AssignByName("Balloon.Separator",   0xFF604060); // divider line
+
+        Color.AssignByName("Tab.Active",          0xFFBF9EFF); // pink-purple text
+        Color.AssignByName("Tab.ActiveBg",        0xFF3D1E50); // highlighted bg
+        Color.AssignByName("Tab.Inactive",        0xFFBB88AA); // muted
+        Color.AssignByName("Tab.InactiveBg",      0x00000000); // transparent
+        Color.AssignByName("Tab.HoverBg",         0xFF401840);
+        Color.AssignByName("Tab.HoverFg",         0xFFDDBBEE);
     }
 }
