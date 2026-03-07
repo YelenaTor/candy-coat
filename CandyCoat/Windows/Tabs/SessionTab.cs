@@ -10,6 +10,7 @@ public class SessionTab : ITab
 {
     private readonly Plugin _plugin;
     private string _manualTargetName = string.Empty;
+    private Node? _root;
 
     public string Name => "Session Capture";
 
@@ -112,41 +113,58 @@ public class SessionTab : ITab
         dynamic.AppendChild(CandyUI.Muted("session-hint",
             "Right-click a player in Chat to start a session (requires ChatTwo)."));
 
-        return root;
+        return _root = root;
     }
 
     public void DrawOverlays()
     {
         var manager = _plugin.SessionManager;
-        if (manager.IsCapturing) return;
+        if (manager.IsCapturing || _root == null) return;
 
-        ImGui.Text("Target Name:");
-        ImGui.SameLine();
-        ImGui.SetNextItemWidth(200);
-        ImGui.InputText("##ManualSessionTarget", ref _manualTargetName, 100);
-
-        if (ImGui.Button("Start Capture"))
+        static bool TryPlace(Node root, string id, out Rect r)
         {
-            if (!string.IsNullOrWhiteSpace(_manualTargetName))
+            r = null!;
+            var node = root.QuerySelector($"#{id}");
+            if (node == null) return false;
+            r = node.Bounds.ContentRect;
+            if (r == null || (r.Width < 1 && r.Height < 1)) return false;
+            ImGui.SetCursorScreenPos(new Vector2(r.X1, r.Y1));
+            return true;
+        }
+
+        if (TryPlace(_root, "session-target-input", out _))
+        {
+            ImGui.SetNextItemWidth(200);
+            ImGui.InputText("##ManualSessionTarget", ref _manualTargetName, 100);
+        }
+
+        if (TryPlace(_root, "session-start-btn", out _))
+        {
+            if (ImGui.Button("Start Capture"))
             {
-                manager.StartCapture(_manualTargetName);
-                foreach (var w in _plugin.WindowSystem.Windows)
+                if (!string.IsNullOrWhiteSpace(_manualTargetName))
                 {
-                    if (w.WindowName.StartsWith("Candy Session"))
+                    manager.StartCapture(_manualTargetName);
+                    foreach (var w in _plugin.WindowSystem.Windows)
                     {
-                        w.IsOpen = true;
-                        break;
+                        if (w.WindowName.StartsWith("Candy Session"))
+                        {
+                            w.IsOpen = true;
+                            break;
+                        }
                     }
                 }
             }
         }
 
-        ImGui.SameLine();
-        if (ImGui.Button("Use Current Target"))
+        if (TryPlace(_root, "session-use-target-btn", out _))
         {
-            var target = Svc.Targets.Target;
-            if (target is Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter pc)
-                _manualTargetName = pc.Name.ToString();
+            if (ImGui.Button("Use Current Target"))
+            {
+                var target = Svc.Targets.Target;
+                if (target is Dalamud.Game.ClientState.Objects.SubKinds.IPlayerCharacter pc)
+                    _manualTargetName = pc.Name.ToString();
+            }
         }
     }
 }

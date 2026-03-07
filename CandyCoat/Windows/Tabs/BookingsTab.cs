@@ -24,6 +24,8 @@ public class BookingsTab : ITab
     public Action<Patron>? OnPatronSelected { get; set; }
     public Patron? SelectedPatron { get; set; }
 
+    private Node? _root;
+
     public string Name => "Bookings";
 
     public BookingsTab(Plugin plugin, VenueService venueService)
@@ -297,64 +299,98 @@ public class BookingsTab : ITab
         dynamic.AppendChild(listCard);
 
         // Spacer so the ImGui table rendered in DrawOverlays() has room
-        dynamic.AppendChild(CandyUI.InputSpacer("bookings-table-spacer", 0, 300));
+        dynamic.AppendChild(CandyUI.InputSpacer("bookings-table-spacer", 440, 300));
 
-        return root;
+        return _root = root;
     }
 
     public void DrawOverlays()
     {
-        // Row 1: Patron Name + Service
-        ImGui.SetNextItemWidth(200);
-        ImGui.InputTextWithHint("##bookingPatron",  "Patron Name", ref newBookingName,    100);
-        ImGui.SameLine();
-        ImGui.SetNextItemWidth(200);
-        ImGui.InputTextWithHint("##bookingService", "Service",     ref newBookingService, 100);
+        if (_root == null) return;
 
-        // Row 2: Room + Gil Amount
-        ImGui.SetNextItemWidth(200);
-        ImGui.InputTextWithHint("##bookingRoom", "Room", ref newBookingRoom, 50);
-        ImGui.SameLine();
-        ImGui.SetNextItemWidth(200);
-        ImGui.InputInt("##bookingGil", ref newBookingGil, 0);
+        // Helper: position cursor at a spacer node's screen location
+        static bool TryPlace(Node root, string id, out Rect r)
+        {
+            r = null!;
+            var node = root.QuerySelector($"#{id}");
+            if (node == null) return false;
+            r = node.Bounds.ContentRect;
+            if (r == null || (r.Width < 1 && r.Height < 1)) return false;
+            ImGui.SetCursorScreenPos(new Vector2(r.X1, r.Y1));
+            return true;
+        }
+
+        // Row 1: Patron Name
+        if (TryPlace(_root, "bookings-patron-input", out _))
+        {
+            ImGui.SetNextItemWidth(200);
+            ImGui.InputTextWithHint("##bookingPatron", "Patron Name", ref newBookingName, 100);
+        }
+
+        // Row 1: Service
+        if (TryPlace(_root, "bookings-service-input", out _))
+        {
+            ImGui.SetNextItemWidth(200);
+            ImGui.InputTextWithHint("##bookingService", "Service", ref newBookingService, 100);
+        }
+
+        // Row 2: Room
+        if (TryPlace(_root, "bookings-room-input", out _))
+        {
+            ImGui.SetNextItemWidth(200);
+            ImGui.InputTextWithHint("##bookingRoom", "Room", ref newBookingRoom, 50);
+        }
+
+        // Row 2: Gil
+        if (TryPlace(_root, "bookings-gil-input", out _))
+        {
+            ImGui.SetNextItemWidth(200);
+            ImGui.InputInt("##bookingGil", ref newBookingGil, 0);
+        }
 
         // Add Booking button
-        if (ImGui.Button("Add Booking", new Vector2(120, 32)))
+        if (TryPlace(_root, "bookings-add-btn", out _))
         {
-            if (!string.IsNullOrWhiteSpace(newBookingName))
+            if (ImGui.Button("Add Booking", new Vector2(120, 32)))
             {
-                var newBooking = _venueService.AddBooking(newBookingName, newBookingService, newBookingRoom, newBookingGil);
-
-                if (newBooking != null)
+                if (!string.IsNullOrWhiteSpace(newBookingName))
                 {
-                    _ = _plugin.SyncService.UpsertBookingAsync(new CandyCoat.Services.SyncedBooking
+                    var newBooking = _venueService.AddBooking(newBookingName, newBookingService, newBookingRoom, newBookingGil);
+                    if (newBooking != null)
                     {
-                        Id          = newBooking.Id,
-                        PatronName  = newBooking.PatronName,
-                        Service     = newBooking.Service,
-                        Room        = newBooking.Room,
-                        Gil         = newBooking.Gil,
-                        State       = newBooking.State.ToString(),
-                        StaffName   = _plugin.Configuration.CharacterName,
-                        Timestamp   = newBooking.Timestamp,
-                        Duration    = newBooking.Duration,
-                    });
+                        _ = _plugin.SyncService.UpsertBookingAsync(new CandyCoat.Services.SyncedBooking
+                        {
+                            Id          = newBooking.Id,
+                            PatronName  = newBooking.PatronName,
+                            Service     = newBooking.Service,
+                            Room        = newBooking.Room,
+                            Gil         = newBooking.Gil,
+                            State       = newBooking.State.ToString(),
+                            StaffName   = _plugin.Configuration.CharacterName,
+                            Timestamp   = newBooking.Timestamp,
+                            Duration    = newBooking.Duration,
+                        });
+                    }
+                    newBookingName    = string.Empty;
+                    newBookingService = string.Empty;
+                    newBookingRoom    = string.Empty;
+                    newBookingGil     = 0;
                 }
-
-                newBookingName    = string.Empty;
-                newBookingService = string.Empty;
-                newBookingRoom    = string.Empty;
-                newBookingGil     = 0;
             }
         }
 
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
-        DrawBookingsTable();
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
-        DrawTeamBookings();
+        // Bookings table in a scrollable child window
+        if (TryPlace(_root, "bookings-table-spacer", out var ts))
+        {
+            using var child = ImRaii.Child("##BookingsContent", new Vector2(ts.Width, ts.Height), false);
+            if (child)
+            {
+                DrawBookingsTable();
+                ImGui.Spacing();
+                ImGui.Separator();
+                ImGui.Spacing();
+                DrawTeamBookings();
+            }
+        }
     }
 }

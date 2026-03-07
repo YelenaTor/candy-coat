@@ -13,6 +13,7 @@ public class WaitlistTab : ITab
 {
     private readonly WaitlistManager _manager;
     private string _newEntryName = string.Empty;
+    private Node? _root;
 
     public string Name => "Waitlist";
 
@@ -158,65 +159,81 @@ public class WaitlistTab : ITab
             queueCard.AppendChild(CandyUI.Label("waitlist-count-label", $"{count} patron(s) in queue", 13));
             queueCard.AppendChild(CandyUI.Muted("waitlist-table-hint", "Queue table rendered below."));
             // Spacer for the ImGui table rendered in DrawOverlays()
-            queueCard.AppendChild(CandyUI.InputSpacer("waitlist-table-spacer", 0, 200));
+            queueCard.AppendChild(CandyUI.InputSpacer("waitlist-table-spacer", 440, 200));
         }
         dynamic.AppendChild(queueCard);
 
-        return root;
+        return _root = root;
     }
 
     public void DrawOverlays()
     {
-        // Add-entry input
-        ImGui.InputText("Patron Name##Waitlist", ref _newEntryName, 100);
-        ImGui.SameLine();
-        if (ImGui.Button("Add to Queue"))
+        if (_root == null) return;
+
+        static bool TryPlace(Node root, string id, out Rect r)
         {
-            if (!string.IsNullOrWhiteSpace(_newEntryName))
+            r = null!;
+            var node = root.QuerySelector($"#{id}");
+            if (node == null) return false;
+            r = node.Bounds.ContentRect;
+            if (r == null || (r.Width < 1 && r.Height < 1)) return false;
+            ImGui.SetCursorScreenPos(new Vector2(r.X1, r.Y1));
+            return true;
+        }
+
+        if (TryPlace(_root, "waitlist-name-input", out _))
+        {
+            ImGui.SetNextItemWidth(200);
+            ImGui.InputText("##WaitlistName", ref _newEntryName, 100);
+        }
+
+        if (TryPlace(_root, "waitlist-add-btn", out _))
+        {
+            if (ImGui.Button("Add to Queue"))
             {
-                _manager.AddToQueue(_newEntryName);
-                _newEntryName = string.Empty;
+                if (!string.IsNullOrWhiteSpace(_newEntryName))
+                {
+                    _manager.AddToQueue(_newEntryName);
+                    _newEntryName = string.Empty;
+                }
             }
         }
 
-        ImGui.Separator();
-        ImGui.Spacing();
+        if (_manager.Entries.Count == 0) return;
 
-        if (_manager.Entries.Count == 0)
+        if (TryPlace(_root, "waitlist-table-spacer", out var ts))
         {
-            ImGui.TextDisabled("The waitlist is currently empty.");
-            return;
-        }
-
-        {
-            using var table = ImRaii.Table("WaitlistTable", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg);
-            if (table)
+            using var child = ImRaii.Child("##WaitlistTable", new Vector2(ts.Width, ts.Height), false);
+            if (child)
             {
-                ImGui.TableSetupColumn("Pos",         ImGuiTableColumnFlags.WidthFixed, 30f);
-                ImGui.TableSetupColumn("Name",        ImGuiTableColumnFlags.WidthStretch);
-                ImGui.TableSetupColumn("Time Waited", ImGuiTableColumnFlags.WidthFixed, 100f);
-                ImGui.TableHeadersRow();
-
-                for (int i = 0; i < _manager.Entries.Count; i++)
+                using var table = ImRaii.Table("WaitlistTable", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg);
+                if (table)
                 {
-                    var entry = _manager.Entries[i];
-                    ImGui.TableNextRow();
-                    ImGui.TableNextColumn(); ImGui.Text($"#{i + 1}");
-                    ImGui.TableNextColumn(); ImGui.Text(entry.PatronName);
-                    ImGui.TableNextColumn();
-                    var time = entry.TimeWaited;
-                    ImGui.Text($"{time.Minutes}m {time.Seconds}s");
+                    ImGui.TableSetupColumn("Pos",         ImGuiTableColumnFlags.WidthFixed, 30f);
+                    ImGui.TableSetupColumn("Name",        ImGuiTableColumnFlags.WidthStretch);
+                    ImGui.TableSetupColumn("Time Waited", ImGuiTableColumnFlags.WidthFixed, 100f);
+                    ImGui.TableHeadersRow();
 
-                    if (ImGui.BeginPopupContextItem($"WaitlistCtx{i}"))
+                    for (int i = 0; i < _manager.Entries.Count; i++)
                     {
-                        if (ImGui.Selectable("Remove from Queue"))
+                        var entry = _manager.Entries[i];
+                        ImGui.TableNextRow();
+                        ImGui.TableNextColumn(); ImGui.Text($"#{i + 1}");
+                        ImGui.TableNextColumn(); ImGui.Text(entry.PatronName);
+                        ImGui.TableNextColumn();
+                        var time = entry.TimeWaited;
+                        ImGui.Text($"{time.Minutes}m {time.Seconds}s");
+
+                        if (ImGui.BeginPopupContextItem($"WaitlistCtx{i}"))
                         {
-                            _manager.RemoveFromQueue(entry);
-                            ImGui.EndPopup();
-                            break;
-                        }
-                        if (ImGui.Selectable("Notify Ready (Tell)"))
-                        {
+                            if (ImGui.Selectable("Remove from Queue"))
+                            {
+                                _manager.RemoveFromQueue(entry);
+                                ImGui.EndPopup();
+                                break;
+                            }
+                            if (ImGui.Selectable("Notify Ready (Tell)"))
+                            {
                             ECommons.DalamudServices.Svc.Chat.Print(new Dalamud.Game.Text.XivChatEntry
                             {
                                 Type    = Dalamud.Game.Text.XivChatType.Echo,
@@ -231,6 +248,7 @@ public class WaitlistTab : ITab
                 }
             }
         }
+        } // end if (TryPlace waitlist-table-spacer)
 
         ImGui.Spacing();
         if (ImGui.Button("Clear All"))

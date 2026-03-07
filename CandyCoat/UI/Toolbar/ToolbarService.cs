@@ -19,9 +19,10 @@ public sealed class ToolbarService : IDisposable
     // Constants
     // -------------------------------------------------------------------------
 
-    private const float CollapsedWidth = 44f;
-    private const float ExpandedWidth  = 160f;
-    private const float AnimSpeed      = 18f;
+    private const float CollapsedWidth  = 44f;
+    private const float ExpandedWidth   = 132f;
+    private const float AnimSpeed       = 18f;
+    private const float DragHandleSize  = 32f;
 
     // -------------------------------------------------------------------------
     // Private fields
@@ -31,12 +32,18 @@ public sealed class ToolbarService : IDisposable
     private readonly Configuration                       _config;
     private readonly BalloonService                      _balloon;
     private readonly Node                                _toolbarRoot;
+    private readonly Node                                _dragHandle;
 
     /// <summary>Ordered list of (entry, button) pairs currently in the toolbar.</summary>
     private readonly List<(IToolbarEntry Entry, ToolbarButton Button)> _buttons = new();
 
     /// <summary>Animated current width (lerps between CollapsedWidth and ExpandedWidth).</summary>
     private float _toolbarWidth = CollapsedWidth;
+
+    // Drag-handle state
+    private bool  _isDragging        = false;
+    private float _dragStartMouseAxis = 0f;
+    private float _dragStartOffset    = 0f;
 
     // -------------------------------------------------------------------------
     // Constructor
@@ -47,6 +54,28 @@ public sealed class ToolbarService : IDisposable
         _pi     = pi;
         _config = config;
         _balloon = new BalloonService(config);
+
+        // Drag handle — grip-vertical icon at the top of the toolbar strip
+        _dragHandle = new Node
+        {
+            Id        = "ToolbarDragHandle",
+            NodeValue = "\uF7A4", // FontAwesome grip-vertical
+            Style     = new Style
+            {
+                Flow        = Flow.Horizontal,
+                AutoSize    = (Una.Drawing.AutoSize.Grow, Una.Drawing.AutoSize.Fit),
+                Size        = new Size(0, (int)DragHandleSize),
+                Font        = 2,
+                FontSize    = 12,
+                TextAlign   = Anchor.MiddleCenter,
+                Color       = new Color("Toolbar.Icon"),
+                Padding     = new EdgeSize(4),
+            },
+            Stylesheet  = new Stylesheet(new List<Stylesheet.StyleDefinition>
+            {
+                new("#ToolbarDragHandle:hover", new Style { Color = new Color("Toolbar.IconActive") }),
+            }),
+        };
 
         // Root toolbar node — vertical flex container rendered to the background draw list
         _toolbarRoot = new Node
@@ -64,6 +93,8 @@ public sealed class ToolbarService : IDisposable
                 Gap             = 2f,
             },
         };
+
+        _toolbarRoot.AppendChild(_dragHandle);
 
         pi.UiBuilder.Draw += OnDraw;
     }
@@ -137,8 +168,43 @@ public sealed class ToolbarService : IDisposable
         float height     = GetToolbarHeight();
         Vector2 toolbarPos = CalculateToolbarPos(viewport, height);
 
-        // ---- Hover detection — expand when mouse is over the toolbar AABB ---
+        // ---- Drag handle interaction -----------------------------------------
         Vector2 mousePos = ImGui.GetIO().MousePos;
+        var handleBounds = _dragHandle.Bounds.ContentRect;
+        bool overHandle  = handleBounds.Width > 0
+            && mousePos.X >= handleBounds.X1 && mousePos.X <= handleBounds.X2
+            && mousePos.Y >= handleBounds.Y1 && mousePos.Y <= handleBounds.Y2;
+
+        bool isVertical = _config.ToolbarAnchor == ToolbarAnchor.Left
+                       || _config.ToolbarAnchor == ToolbarAnchor.Right;
+
+        if (overHandle && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+        {
+            _isDragging         = true;
+            _dragStartMouseAxis = isVertical ? mousePos.Y : mousePos.X;
+            _dragStartOffset    = _config.ToolbarOffset;
+        }
+
+        if (_isDragging)
+        {
+            if (ImGui.IsMouseDown(ImGuiMouseButton.Left))
+            {
+                float curAxis = isVertical ? mousePos.Y : mousePos.X;
+                float maxOff  = isVertical
+                    ? (viewport.Size.Y - height) / 2f - 8f
+                    : (viewport.Size.X - _toolbarWidth) / 2f - 8f;
+                _config.ToolbarOffset = Math.Clamp(
+                    _dragStartOffset + (curAxis - _dragStartMouseAxis),
+                    -maxOff, maxOff);
+            }
+            else
+            {
+                _isDragging = false;
+                _config.Save();
+            }
+        }
+
+        // ---- Hover detection — expand when mouse is over the toolbar AABB ---
         bool hovered =
             mousePos.X >= toolbarPos.X && mousePos.X <= toolbarPos.X + _toolbarWidth &&
             mousePos.Y >= toolbarPos.Y && mousePos.Y <= toolbarPos.Y + height;
@@ -210,22 +276,23 @@ public sealed class ToolbarService : IDisposable
     // Position helpers
     // -------------------------------------------------------------------------
 
-    private float GetToolbarHeight() => _buttons.Count * 44f + 16f;
+    private float GetToolbarHeight() => _buttons.Count * 44f + DragHandleSize + 16f;
 
     private Vector2 CalculateToolbarPos(ImGuiViewportPtr viewport, float height)
     {
-        float vx = viewport.Pos.X;
-        float vy = viewport.Pos.Y;
-        float vw = viewport.Size.X;
-        float vh = viewport.Size.Y;
+        float vx  = viewport.Pos.X;
+        float vy  = viewport.Pos.Y;
+        float vw  = viewport.Size.X;
+        float vh  = viewport.Size.Y;
+        float off = _config.ToolbarOffset;
 
         return _config.ToolbarAnchor switch
         {
-            ToolbarAnchor.Left   => new Vector2(vx + 8f,                                  vy + (vh - height) / 2f),
-            ToolbarAnchor.Right  => new Vector2(vx + vw - _toolbarWidth - 8f,             vy + (vh - height) / 2f),
-            ToolbarAnchor.Top    => new Vector2(vx + (vw - _toolbarWidth) / 2f,           vy + 8f),
-            ToolbarAnchor.Bottom => new Vector2(vx + (vw - _toolbarWidth) / 2f,           vy + vh - GetToolbarHeight() - 8f),
-            _                    => new Vector2(vx + 8f,                                  vy + (vh - height) / 2f),
+            ToolbarAnchor.Left   => new Vector2(vx + 8f,                        vy + (vh - height) / 2f + off),
+            ToolbarAnchor.Right  => new Vector2(vx + vw - _toolbarWidth - 8f,   vy + (vh - height) / 2f + off),
+            ToolbarAnchor.Top    => new Vector2(vx + (vw - _toolbarWidth) / 2f + off, vy + 8f),
+            ToolbarAnchor.Bottom => new Vector2(vx + (vw - _toolbarWidth) / 2f + off, vy + vh - height - 8f),
+            _                    => new Vector2(vx + 8f,                        vy + (vh - height) / 2f + off),
         };
     }
 

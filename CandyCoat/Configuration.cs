@@ -103,6 +103,12 @@ public class Configuration : IPluginConfiguration
     public bool ToolbarLocked { get; set; } = false;
     public float BalloonWidth { get; set; } = 380f;
     public string LastActiveEntryId { get; set; } = string.Empty;
+    /// <summary>
+    /// Drag offset applied along the toolbar's anchor edge.
+    /// Left/Right anchors: vertical offset from center (pixels).
+    /// Top/Bottom anchors: horizontal offset from center (pixels).
+    /// </summary>
+    public float ToolbarOffset { get; set; } = 0f;
 
     // The below exist just to make saving less cumbersome
     public void Save()

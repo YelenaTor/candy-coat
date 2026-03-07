@@ -24,6 +24,8 @@ public class LocatorTab : ITab
     public Action<Patron?>? OnPatronSelected { get; set; }
     public Patron? SelectedPatron { get; set; }
 
+    private Node? _root;
+
     public string Name => "Locator";
 
     public LocatorTab(Plugin plugin, VenueService venueService)
@@ -234,87 +236,116 @@ public class LocatorTab : ITab
 
         // Patron list — rendered via DrawOverlays()
         dynamic.AppendChild(CandyUI.Muted("locator-list-label", "Regulars & Tracked List:"));
-        dynamic.AppendChild(CandyUI.InputSpacer("locator-list-spacer", 0, 200));
+        dynamic.AppendChild(CandyUI.InputSpacer("locator-list-spacer", 440, 200));
 
-        return root;
+        return _root = root;
     }
 
     public void DrawOverlays()
     {
-        // Add-patron input row
-        ImGui.SetNextItemWidth(120);
-        ImGui.InputTextWithHint("##fname", "First Name", ref newPatronFirstName, 50);
-        ImGui.SameLine();
-        ImGui.SetNextItemWidth(120);
-        ImGui.InputTextWithHint("##lname", "Last Name", ref newPatronLastName, 50);
-        ImGui.SameLine();
-        ImGui.SetNextItemWidth(120);
-        ImGui.InputTextWithHint("##world", "World", ref newPatronWorld, 50);
-        ImGui.SameLine();
-        if (ImGui.Button("Track"))
+        if (_root == null) return;
+
+        static bool TryPlace(Node root, string id, out Rect r)
         {
-            var fullName = $"{newPatronFirstName} {newPatronLastName}".Trim();
-            if (!string.IsNullOrWhiteSpace(fullName))
-            {
-                var p = _venueService.EnsurePatronExists(fullName);
-                p.Status = PatronStatus.Regular;
-                if (!string.IsNullOrWhiteSpace(newPatronWorld)) p.World = newPatronWorld;
-                _plugin.Configuration.Save();
-                newPatronFirstName = string.Empty;
-                newPatronLastName  = string.Empty;
-                newPatronWorld     = string.Empty;
-            }
+            r = null!;
+            var node = root.QuerySelector($"#{id}");
+            if (node == null) return false;
+            r = node.Bounds.ContentRect;
+            if (r == null || (r.Width < 1 && r.Height < 1)) return false;
+            ImGui.SetCursorScreenPos(new Vector2(r.X1, r.Y1));
+            return true;
         }
 
-        if (ImGui.Button("Detect Targeted"))
+        if (TryPlace(_root, "locator-fname", out _))
         {
-            var target = Svc.Targets.Target;
-            if (target != null && target.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Player)
-            {
-                var nameParts = target.Name.ToString().Split(' ', 2);
-                newPatronFirstName = nameParts.Length > 0 ? nameParts[0] : string.Empty;
-                newPatronLastName  = nameParts.Length > 1 ? nameParts[1] : string.Empty;
-                if (target is IPlayerCharacter pc && pc.HomeWorld.IsValid)
-                    newPatronWorld = pc.HomeWorld.Value.Name.ToString();
-                else
-                    newPatronWorld = Svc.PlayerState.HomeWorld.Value.Name.ToString();
-            }
+            ImGui.SetNextItemWidth(120);
+            ImGui.InputTextWithHint("##fname", "First Name", ref newPatronFirstName, 50);
         }
 
-        ImGui.Separator();
-        ImGui.Spacing();
-        ImGui.Text("Regulars & Tracked List:");
-
-        using var patronList = ImRaii.Child("PatronList", new System.Numerics.Vector2(0, 180), true);
-        foreach (var p in _plugin.Configuration.Patrons)
+        if (TryPlace(_root, "locator-lname", out _))
         {
-            var ptier    = _plugin.Configuration.GetTier(p);
-            var ptierStr = p.Status == PatronStatus.Regular ? $" [{ptier}]" : string.Empty;
-            if (ImGui.Selectable($"- {p.Name}{ptierStr}##{p.Name}", SelectedPatron == p))
-            {
-                SelectedPatron = p;
-                OnPatronSelected?.Invoke(p);
-            }
+            ImGui.SetNextItemWidth(120);
+            ImGui.InputTextWithHint("##lname", "Last Name", ref newPatronLastName, 50);
+        }
 
-            if (p.ActiveVip != null && !p.ActiveVip.IsExpired)
-            {
-                ImGui.SameLine(0, 4f);
-                ImGui.TextColored(new System.Numerics.Vector4(1f, 0.8f, 0.2f, 1f), "💎");
-                if (ImGui.IsItemHovered()) ImGui.SetTooltip($"VIP: {p.ActiveVip.PackageName}");
-            }
+        if (TryPlace(_root, "locator-world", out _))
+        {
+            ImGui.SetNextItemWidth(120);
+            ImGui.InputTextWithHint("##world", "World", ref newPatronWorld, 50);
+        }
 
-            if (ImGui.BeginPopupContextItem($"PatronContext{p.Name}"))
+        if (TryPlace(_root, "locator-track-btn", out _))
+        {
+            if (ImGui.Button("Track"))
             {
-                if (ImGui.Selectable("Remove"))
+                var fullName = $"{newPatronFirstName} {newPatronLastName}".Trim();
+                if (!string.IsNullOrWhiteSpace(fullName))
                 {
-                    _venueService.UntrackPatron(p);
-                    if (SelectedPatron == p)
+                    var p = _venueService.EnsurePatronExists(fullName);
+                    p.Status = PatronStatus.Regular;
+                    if (!string.IsNullOrWhiteSpace(newPatronWorld)) p.World = newPatronWorld;
+                    _plugin.Configuration.Save();
+                    newPatronFirstName = string.Empty;
+                    newPatronLastName  = string.Empty;
+                    newPatronWorld     = string.Empty;
+                }
+            }
+        }
+
+        if (TryPlace(_root, "locator-detect-btn", out _))
+        {
+            if (ImGui.Button("Detect Targeted"))
+            {
+                var target = Svc.Targets.Target;
+                if (target != null && target.ObjectKind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Player)
+                {
+                    var nameParts = target.Name.ToString().Split(' ', 2);
+                    newPatronFirstName = nameParts.Length > 0 ? nameParts[0] : string.Empty;
+                    newPatronLastName  = nameParts.Length > 1 ? nameParts[1] : string.Empty;
+                    if (target is IPlayerCharacter pc && pc.HomeWorld.IsValid)
+                        newPatronWorld = pc.HomeWorld.Value.Name.ToString();
+                    else
+                        newPatronWorld = Svc.PlayerState.HomeWorld.Value.Name.ToString();
+                }
+            }
+        }
+
+        if (TryPlace(_root, "locator-list-spacer", out var ls))
+        {
+            using var patronList = ImRaii.Child("PatronList", new Vector2(ls.Width, ls.Height), true);
+            if (patronList)
+            {
+                foreach (var p in _plugin.Configuration.Patrons)
+                {
+                    var ptier    = _plugin.Configuration.GetTier(p);
+                    var ptierStr = p.Status == PatronStatus.Regular ? $" [{ptier}]" : string.Empty;
+                    if (ImGui.Selectable($"- {p.Name}{ptierStr}##{p.Name}", SelectedPatron == p))
                     {
-                        SelectedPatron = null;
-                        OnPatronSelected?.Invoke(null);
+                        SelectedPatron = p;
+                        OnPatronSelected?.Invoke(p);
+                    }
+
+                    if (p.ActiveVip != null && !p.ActiveVip.IsExpired)
+                    {
+                        ImGui.SameLine(0, 4f);
+                        ImGui.TextColored(new System.Numerics.Vector4(1f, 0.8f, 0.2f, 1f), "\U0001f48e");
+                        if (ImGui.IsItemHovered()) ImGui.SetTooltip($"VIP: {p.ActiveVip.PackageName}");
+                    }
+
+                    if (ImGui.BeginPopupContextItem($"PatronContext{p.Name}"))
+                    {
+                        if (ImGui.Selectable("Remove"))
+                        {
+                            _venueService.UntrackPatron(p);
+                            if (SelectedPatron == p)
+                            {
+                                SelectedPatron = null;
+                                OnPatronSelected?.Invoke(null);
+                            }
+                        }
+                        ImGui.EndPopup();
                     }
                 }
-                ImGui.EndPopup();
             }
         }
     }

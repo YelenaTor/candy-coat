@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.20.1] - 2026-03-08
+
+### Fixed
+- **Panel layout broken**: all tab `DrawOverlays()` methods now use `SetCursorScreenPos` from `InputSpacer.Bounds.ContentRect` to place ImGui widgets at the exact screen position of each spacer node — previously all widgets rendered at balloon origin (Y=0) instead of inside the content area
+- **Settings unclickable**: replaced separate `ImGui.Begin("##SettingsOverlay")` window (which had z-order and focus issues inside the ghost window) with an inline `BeginChild` positioned at the settings placeholder node's bounds
+- **Toolbar expand width**: reduced `ExpandedWidth` from 160px to 132px — now wraps label text snugly
+- **Toolbar drag handle**: added grip-dots handle at top of toolbar; drag it to slide the toolbar strip along its anchored screen edge; position saved to config
+- Null safety in `TryPlace` helpers: guard against `Bounds.ContentRect` being null on first render frame
+
 ## [0.20.0] - 2026-03-08
 
 ### Changed

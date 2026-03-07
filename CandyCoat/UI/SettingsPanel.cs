@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility.Raii;
 using CandyCoat.Data;
 using Una.Drawing;
 
@@ -30,46 +31,44 @@ public class SettingsPanel
     /// Returns a Una.Drawing placeholder node sized to fill the content area.
     /// The actual settings UI is drawn via DrawOverlays().
     /// </summary>
+    private Node? _root;
+
     public Node BuildNode()
     {
-        return UdtHelper.CreateFromTemplate("settings-panel.xml", "settings-layout");
+        return _root = UdtHelper.CreateFromTemplate("settings-panel.xml", "settings-layout");
     }
 
     /// <summary>
-    /// Draws the full settings UI as raw ImGui, positioned over the content area.
-    /// Must be called after _rootNode.Render() so it appears on top of the Una.Drawing layer.
+    /// Draws the full settings UI as raw ImGui inline within the balloon ghost window,
+    /// positioned over the Una.Drawing settings placeholder node.
     /// </summary>
     public void DrawOverlays() => DrawOverlays(ImGui.GetContentRegionAvail());
 
     public void DrawOverlays(Vector2 region)
     {
-        // The balloon ghost window is already positioned at the balloon origin —
-        // no sidebar offset needed here.
-        var contentPos  = ImGui.GetWindowPos() + ImGui.GetWindowContentRegionMin();
-        var contentSize = new Vector2(region.X, region.Y);
+        // Position the settings content at the placeholder node's screen bounds.
+        // Fall back to a simple inline render if bounds are not yet computed.
+        var   boundsRect = _root?.Bounds.ContentRect;
+        bool  hasBounds  = boundsRect != null && boundsRect.Width > 1 && boundsRect.Height > 1;
 
-        ImGui.SetNextWindowPos(contentPos, ImGuiCond.Always);
-        ImGui.SetNextWindowSize(contentSize, ImGuiCond.Always);
-        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.10f, 0.08f, 0.13f, 1f));
-        ImGui.PushStyleColor(ImGuiCol.ChildBg,  new Vector4(0.10f, 0.08f, 0.13f, 1f));
-        ImGui.SetNextWindowBgAlpha(1f);
+        if (hasBounds)
+            ImGui.SetCursorScreenPos(new Vector2(boundsRect!.X1, boundsRect.Y1));
 
-        bool open = true;
-        ImGui.Begin("##SettingsOverlay", ref open,
-            ImGuiWindowFlags.NoTitleBar
-            | ImGuiWindowFlags.NoResize
-            | ImGuiWindowFlags.NoMove
-            | ImGuiWindowFlags.NoScrollbar
-            | ImGuiWindowFlags.NoSavedSettings
-            | ImGuiWindowFlags.NoBringToFrontOnFocus);
+        var childSize = hasBounds
+            ? new Vector2(boundsRect!.Width, boundsRect.Height)
+            : new Vector2(region.X, region.Y - 36f); // subtract rough title-bar offset
 
-        ImGui.TextColored(new Vector4(1f, 0.6f, 0.8f, 1f), "Settings");
-        ImGui.Separator();
-        ImGui.Spacing();
-        DrawSettings();
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.10f, 0.08f, 0.13f, 1f));
+        using var scroll = ImRaii.Child("##SettingsContent", childSize, false, ImGuiWindowFlags.None);
+        ImGui.PopStyleColor();
 
-        ImGui.End();
-        ImGui.PopStyleColor(2);
+        if (scroll)
+        {
+            ImGui.TextColored(new Vector4(1f, 0.6f, 0.8f, 1f), "Settings");
+            ImGui.Separator();
+            ImGui.Spacing();
+            DrawSettings();
+        }
     }
 
     // ─── Settings sections ───────────────────────────────────────────────────
