@@ -11,7 +11,7 @@ namespace CandyCoat.UI;
 /// BuildNode() returns a placeholder node that fills the content area.
 /// DrawOverlays() renders the full settings UI as raw ImGui on top.
 /// </summary>
-internal class SettingsPanel
+public class SettingsPanel
 {
     private readonly Plugin _plugin;
 
