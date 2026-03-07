@@ -308,7 +308,9 @@ public class TellWindow : Window, IDisposable
         }
         ImGui.SameLine();
         if (ImGui.Button("Booking##tellBook", new Vector2(btnW2, 0)))
-            _plugin.MainWindow.OpenBookingsTab();
+        {
+            // Navigation handled via toolbar; no direct jump needed.
+        }
         ImGui.SameLine();
         if (ImGui.Button("Export##tellExp", new Vector2(btnW3, 0)))
             ExportConversation(conv);

@@ -1,7 +1,6 @@
 ﻿using Dalamud.Game.Command;
 using Dalamud.IoC;
 using Dalamud.Plugin;
-using System.IO;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using Dalamud.Game.Gui.ContextMenu;
@@ -9,12 +8,15 @@ using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.ClientState.Objects.Enums;
 using System.Linq;
+using System.Collections.Generic;
 using CandyCoat.Windows;
 using CandyCoat.Windows.SRT;
+using CandyCoat.Windows.Tabs;
 using CandyCoat.Data;
 using CandyCoat.Services;
 using CandyCoat.IPC;
 using CandyCoat.UI;
+using CandyCoat.UI.Toolbar;
 
 using ECommons;
 using ECommons.DalamudServices;
@@ -37,7 +39,7 @@ public sealed class Plugin : IDalamudPlugin
     public Configuration Configuration { get; init; }
 
     public readonly WindowSystem WindowSystem = new("CandyCoat");
-    public MainWindow MainWindow { get; init; }
+    public ToolbarService ToolbarService { get; init; }
 
     public SessionManager SessionManager { get; init; }
     public VenueService VenueService { get; init; }
@@ -72,9 +74,6 @@ public sealed class Plugin : IDalamudPlugin
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         var needsProfileSync = MigrateConfig();
 
-        // You might normally want to embed resources and load them from the manifest stream
-        var goatImagePath = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "goat.png");
-
         CosmeticFontManager = new CosmeticFontManager();
         CosmeticBadgeManager = new CosmeticBadgeManager();
         CosmeticWindow = new CosmeticWindow(this, CosmeticFontManager, CosmeticBadgeManager);
@@ -106,7 +105,6 @@ public sealed class Plugin : IDalamudPlugin
         PatronDetailsWindow = new PatronDetailsWindow(this, glamourerIpc);
         ProfileWindow = new ProfileWindow(this);
         SrtFeatureWindow = new SrtFeatureWindow(Configuration);
-        MainWindow = new MainWindow(this, VenueService, WaitlistManager, ShiftManager, PatronDetailsWindow, goatImagePath, CosmeticWindow, ProfileWindow, SrtFeatureWindow);
         SessionWindow = new SessionWindow(SessionManager, PluginInterface.ConfigDirectory.FullName);
         PatronAlertOverlay = new PatronAlertOverlay(this, PatronAlertService);
         TellWindow = new TellWindow(this);
@@ -114,11 +112,48 @@ public sealed class Plugin : IDalamudPlugin
         WindowSystem.AddWindow(PatronDetailsWindow);
         WindowSystem.AddWindow(ProfileWindow);
         WindowSystem.AddWindow(SrtFeatureWindow);
-        WindowSystem.AddWindow(MainWindow);
         WindowSystem.AddWindow(SessionWindow);
         WindowSystem.AddWindow(CosmeticWindow);
         WindowSystem.AddWindow(PatronAlertOverlay);
         WindowSystem.AddWindow(TellWindow);
+
+        // Build toolbar entries
+        var bookingsTab = new BookingsTab(this, VenueService);
+        bookingsTab.OnPatronSelected += p => { if (p != null) PatronDetailsWindow.OpenForPatron(p); };
+
+        var locatorTab = new LocatorTab(this, VenueService);
+        locatorTab.OnPatronSelected += p => { if (p != null) PatronDetailsWindow.OpenForPatron(p); };
+
+        var overviewTabs = new List<ITab>
+        {
+            new OverviewTab(this),
+            bookingsTab,
+            locatorTab,
+            new SessionTab(this),
+            new WaitlistTab(WaitlistManager),
+            new StaffTab(ShiftManager),
+        };
+
+        var srtPanels = new List<(IToolboxPanel Panel, string Icon)>
+        {
+            (new SweetheartPanel(this), "\uF004"),
+            (new CandyHeartPanel(this), "\uF0A0"),
+            (new BartenderPanel(this), "\uF000"),
+            (new GambaPanel(this), "\uF11B"),
+            (new DJPanel(this), "\uF001"),
+            (new ManagementPanel(this), "\uF0E8"),
+            (new OwnerPanel(this), "\uF521"),
+            (new GreeterPanel(this), "\uF2B9"),
+        };
+
+        var entries = new List<IToolbarEntry>();
+        entries.Add(new OverviewEntry(overviewTabs));
+        foreach (var (panel, icon) in srtPanels)
+            entries.Add(new SrtEntry(panel, icon));
+        entries.Add(new SettingsEntry(new SettingsPanel(this)));
+
+        ToolbarService = new ToolbarService(PluginInterface, Configuration);
+        ToolbarService.SetEntries(entries);
 
         // Initialize IPC
         ChatTwoIpc = new ChatTwoIpc(
@@ -146,12 +181,7 @@ public sealed class Plugin : IDalamudPlugin
         {
             SetupWindow.IsOpen = true;
         }
-        else
-        {
-            // Normal startup
-            // MainWindow.IsOpen = true; // Or keep closed until command? 
-            // Usually we don't auto-open main window on load unless configured.
-        }
+        // Toolbar renders automatically via UiBuilder.Draw; no explicit open needed.
 
         CommandManager.AddHandler(MainCommandName, new CommandInfo(OnMainCommand)
         {
@@ -188,7 +218,7 @@ public sealed class Plugin : IDalamudPlugin
         ChatTwoIpc?.Dispose();
         NameplateRenderer.Dispose();
         
-        MainWindow.Dispose();
+        ToolbarService?.Dispose();
         PatronDetailsWindow.Dispose();
         ProfileWindow?.Dispose();
         SessionWindow?.Dispose();
@@ -211,7 +241,7 @@ public sealed class Plugin : IDalamudPlugin
     private void OnMainCommand(string command, string args)
     {
         if (!Configuration.IsSetupComplete) { SetupWindow.IsOpen = true; return; }
-        MainWindow.Toggle();
+        // Toolbar is always visible; /candy is a no-op once setup is complete.
     }
     
     /// <summary>
@@ -248,7 +278,7 @@ public sealed class Plugin : IDalamudPlugin
 
     public void OnSetupComplete()
     {
-        MainWindow.IsOpen = true;
+        // Toolbar is always visible; nothing to open explicitly.
     }
 
     public void ToggleMainUi()
@@ -256,9 +286,7 @@ public sealed class Plugin : IDalamudPlugin
         if (!Configuration.IsSetupComplete)
         {
             SetupWindow.IsOpen = true;
-            return;
         }
-        MainWindow.Toggle();
     }
 
     public void ToggleConfigUi()
@@ -266,9 +294,7 @@ public sealed class Plugin : IDalamudPlugin
         if (!Configuration.IsSetupComplete)
         {
             SetupWindow.IsOpen = true;
-            return;
         }
-        MainWindow.Toggle();
     }
 
     private void OnMenuOpened(IMenuOpenedArgs args)
