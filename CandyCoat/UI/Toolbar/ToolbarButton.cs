@@ -6,8 +6,9 @@ namespace CandyCoat.UI.Toolbar;
 
 /// <summary>
 /// A self-contained Una.Drawing node for one toolbar button.
-/// Contains an icon node (FontAwesome glyph), a label node, and an animated
-/// glow ring that pulses when <see cref="IsActive"/> is true.
+/// Contains an icon node (FontAwesome glyph) and a label node.
+/// The glow ring effect is applied directly to the icon node via StrokeColor/StrokeWidth
+/// animation, avoiding a separate sibling node that would consume horizontal space.
 /// </summary>
 public sealed class ToolbarButton : IDisposable
 {
@@ -19,7 +20,7 @@ public sealed class ToolbarButton : IDisposable
     public Node Root { get; }
 
     /// <summary>
-    /// When true the glow ring animates to full opacity.
+    /// When true the glow ring animates to full opacity on the icon node.
     /// When false it fades out.
     /// </summary>
     public bool IsActive
@@ -28,20 +29,17 @@ public sealed class ToolbarButton : IDisposable
         set
         {
             if (_isActive == value) return;
-            _isActive    = value;
-            _glowTarget  = value ? MaxGlowAlpha : 0f;
+            _isActive   = value;
+            _glowTarget = value ? MaxGlowAlpha : 0f;
         }
     }
-
-    /// <summary>Fired when the button is clicked.</summary>
-    public event Action? OnClick;
 
     // -------------------------------------------------------------------------
     // Constants
     // -------------------------------------------------------------------------
 
-    private const float GlowLerpSpeed  = 6f;   // units per second
-    private const float MaxGlowAlpha   = 200f;  // 0–255 range
+    private const float GlowLerpSpeed = 6f;   // units per second
+    private const float MaxGlowAlpha  = 200f;  // 0–255 range
 
     // -------------------------------------------------------------------------
     // Private fields
@@ -49,7 +47,6 @@ public sealed class ToolbarButton : IDisposable
 
     private readonly Node _iconNode;
     private readonly Node _labelNode;
-    private readonly Node _glowNode;
 
     private bool  _isActive;
     private float _glowAlpha  = 0f;
@@ -59,35 +56,25 @@ public sealed class ToolbarButton : IDisposable
     // Constructor
     // -------------------------------------------------------------------------
 
-    public ToolbarButton(string id, string icon, string label)
+    public ToolbarButton(string id, string icon, string label, Action onClick)
     {
-        // Glow ring — rendered behind the icon via SortIndex
-        _glowNode = new Node
-        {
-            Id    = $"{id}-glow",
-            Style = new Style
-            {
-                Size          = new Size(36, 36),
-                BorderRadius  = 18f,
-                StrokeWidth   = 2f,
-                StrokeColor   = new Color("Toolbar.Glow"),
-                Opacity       = 0f,
-                Anchor        = Anchor.MiddleCenter,
-            },
-        };
-
-        // Icon node — FontAwesome glyph centred in a 36×36 box
+        // Icon node — FontAwesome glyph centred in a 36×36 box.
+        // StrokeColor/StrokeWidth are animated here to produce the glow ring
+        // effect without needing a separate sibling node in the horizontal flow.
         _iconNode = new Node
         {
             Id        = $"{id}-icon",
             NodeValue = icon,
             Style     = new Style
             {
-                Size      = new Size(36, 36),
-                FontSize  = 18,
-                TextAlign = Anchor.MiddleCenter,
-                Color     = new Color("Toolbar.Icon"),
-                Anchor    = Anchor.MiddleCenter,
+                Size        = new Size(36, 36),
+                FontSize    = 18,
+                TextAlign   = Anchor.MiddleCenter,
+                Color       = new Color("Toolbar.Icon"),
+                Anchor      = Anchor.MiddleCenter,
+                StrokeColor = new Color("Toolbar.Glow"),
+                StrokeWidth = 2f,
+                Opacity     = 1f,
             },
         };
 
@@ -98,12 +85,12 @@ public sealed class ToolbarButton : IDisposable
             NodeValue = label,
             Style     = new Style
             {
-                FontSize    = 11,
-                Color       = new Color("Toolbar.Label"),
-                TextAlign   = Anchor.MiddleCenter,
+                FontSize     = 11,
+                Color        = new Color("Toolbar.Label"),
+                TextAlign    = Anchor.MiddleCenter,
                 TextOverflow = false,
-                IsVisible   = false,
-                Margin      = new EdgeSize(0, 0, 0, 6),
+                IsVisible    = false,
+                Margin       = new EdgeSize(0, 0, 0, 6),
             },
         };
 
@@ -114,10 +101,10 @@ public sealed class ToolbarButton : IDisposable
             Id    = buttonId,
             Style = new Style
             {
-                Flow    = Flow.Horizontal,
-                Anchor  = Anchor.MiddleLeft,
-                Padding = new EdgeSize(4),
-                Gap     = 0f,
+                Flow            = Flow.Horizontal,
+                Anchor          = Anchor.MiddleLeft,
+                Padding         = new EdgeSize(4),
+                Gap             = 0f,
                 BackgroundColor = new Color(0x00000000), // fully transparent default
             },
             Stylesheet = new Stylesheet(new List<Stylesheet.StyleDefinition>
@@ -140,19 +127,21 @@ public sealed class ToolbarButton : IDisposable
             }),
         };
 
-        // Build tree: glow behind icon, then label
-        Root.AppendChild(_glowNode);
+        // Build tree: icon then label
         Root.AppendChild(_iconNode);
         Root.AppendChild(_labelNode);
 
-        // Wire click — both root and icon should respond
-        Root.OnClick += _ => OnClick?.Invoke();
+        // Wire click to the provided action
+        Root.OnClick += _ => onClick();
 
-        // Make icon inherit hover tags from the button wrapper so :hover
-        // pseudo-class on the icon selector resolves when the wrapper is hovered
+        // Make child nodes inherit hover tags from the button wrapper so
+        // :hover pseudo-class selectors resolve when the wrapper is hovered
         _iconNode.InheritTags  = true;
         _labelNode.InheritTags = true;
-        _glowNode.InheritTags  = true;
+
+        // Initialise glow to invisible (opacity on the stroke is not a direct
+        // property, so we drive it by setting StrokeWidth to 0 when alpha is 0)
+        _iconNode.Style.StrokeWidth = 0f;
     }
 
     // -------------------------------------------------------------------------
@@ -173,16 +162,10 @@ public sealed class ToolbarButton : IDisposable
         // Only update the style when the value meaningfully changed
         if (Math.Abs(_glowAlpha - prev) < 0.5f) return;
 
-        float opacity = _glowAlpha / 255f;
-        _glowNode.Style = new Style
-        {
-            Size         = new Size(36, 36),
-            BorderRadius = 18f,
-            StrokeWidth  = 2f,
-            StrokeColor  = new Color("Toolbar.Glow"),
-            Opacity      = opacity,
-            Anchor       = Anchor.MiddleCenter,
-        };
+        // Mutate in-place — no new Style allocation.
+        // Drive the glow ring by scaling StrokeWidth with the animated alpha
+        // (0 = no stroke, 2 = full glow ring). This avoids a separate sibling node.
+        _iconNode.Style.StrokeWidth = 2f * (_glowAlpha / MaxGlowAlpha);
     }
 
     // -------------------------------------------------------------------------
@@ -195,15 +178,8 @@ public sealed class ToolbarButton : IDisposable
     public void SetExpanded(bool expanded)
     {
         if (Root.IsDisposed) return;
-        _labelNode.Style = new Style
-        {
-            FontSize     = 11,
-            Color        = new Color("Toolbar.Label"),
-            TextAlign    = Anchor.MiddleCenter,
-            TextOverflow = false,
-            IsVisible    = expanded,
-            Margin       = new EdgeSize(0, 0, 0, 6),
-        };
+        // Mutate in-place — no new Style allocation
+        _labelNode.Style.IsVisible = expanded;
     }
 
     // -------------------------------------------------------------------------
