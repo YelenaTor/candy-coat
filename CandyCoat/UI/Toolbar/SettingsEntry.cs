@@ -1,5 +1,3 @@
-using System.Numerics;
-using Dalamud.Bindings.ImGui;
 using CandyCoat.Data;
 using Una.Drawing;
 
@@ -35,9 +33,5 @@ internal class SettingsEntry : IToolbarEntry
     public Node BuildPanel() => _settingsPanel.BuildNode();
 
     /// <inheritdoc/>
-    public void DrawOverlays()
-    {
-        var region = ImGui.GetContentRegionAvail();
-        _settingsPanel.DrawOverlays(region);
-    }
+    public void DrawOverlays() => _settingsPanel.DrawOverlays();
 }

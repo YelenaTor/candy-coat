@@ -47,6 +47,8 @@ public class SettingsPanel
     /// Draws the full settings UI as raw ImGui, positioned over the content area.
     /// Must be called after _rootNode.Render() so it appears on top of the Una.Drawing layer.
     /// </summary>
+    public void DrawOverlays() => DrawOverlays(ImGui.GetContentRegionAvail());
+
     public void DrawOverlays(Vector2 region)
     {
         const float sidebarW = 200f + 16f; // sidebar width + its internal padding
